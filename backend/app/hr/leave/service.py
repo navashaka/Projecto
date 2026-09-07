@@ -1,0 +1,1 @@
+"""Leave business logic."""

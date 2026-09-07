@@ -1,0 +1,1 @@
+"""Attendance data access."""

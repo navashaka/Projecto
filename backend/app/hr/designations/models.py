@@ -1,0 +1,1 @@
+"""Designation database models."""
