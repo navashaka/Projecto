@@ -1,0 +1,1 @@
+"""Payment data access repository."""

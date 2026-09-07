@@ -1,0 +1,1 @@
+"""Customer data access repository."""

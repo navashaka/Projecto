@@ -1,0 +1,1 @@
+"""Purchase data access repository."""
