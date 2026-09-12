@@ -14,12 +14,12 @@ from app.core.database import Base
 
 
 class OnEmployment(Base):
-    __tablename__ = "on_employment_hr"
+    __tablename__ = "hr_on_employment"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     employee_refno_id = Column(
         BigInteger,
-        ForeignKey("users_hr.id"),
+        ForeignKey("hr_userenquiry.id"),
         nullable=False,
     )
 

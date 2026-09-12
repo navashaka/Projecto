@@ -3,7 +3,7 @@ from app.core.database import Base
 
 
 class Attendance(Base):
-    __tablename__ = "attendance"
+    __tablename__ = "hr_attendance"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 

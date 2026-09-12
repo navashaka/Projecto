@@ -7,10 +7,10 @@ from app.core.database import Base
 
 
 class TravellingExpensesReimbursement(Base):
-    __tablename__ = "travelling_expenses_reimbursement"
+    __tablename__ = "hr_travelling_expenses_reimbursement"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("hr_userenquiry.id"), nullable=False)
 
     name = Column(String(150))
     employee_code = Column(String(50))

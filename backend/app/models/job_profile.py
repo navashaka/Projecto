@@ -5,7 +5,7 @@ from app.core.database import Base
 
 
 class JobProfile(Base):
-    __tablename__ = "job_profile"
+    __tablename__ = "hr_job_profile"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     job_description = Column(Text)

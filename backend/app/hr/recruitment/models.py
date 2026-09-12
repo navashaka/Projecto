@@ -5,7 +5,7 @@ from app.core.database import Base
 
 
 class UserEnquiry(Base):
-    __tablename__ = "hr_user_enquiries"
+    __tablename__ = "hr_userenquiry"
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_name = Column(String(200), nullable=False)

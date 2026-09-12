@@ -12,10 +12,10 @@ from app.core.database import Base
 
 
 class SalaryDetails(Base):
-    __tablename__ = "salary_details"
+    __tablename__ = "hr_salary_details"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("hr_userenquiry.id"), nullable=False)
 
     salary_offered_ctc = Column(Numeric(12, 2))
     yearly_increment = Column(Numeric(12, 2))

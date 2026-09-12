@@ -12,10 +12,10 @@ from app.core.database import Base
 
 
 class Employment(Base):
-    __tablename__ = "employment"
+    __tablename__ = "hr_employment_details"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("hr_userenquiry.id"), nullable=False)
 
     employee_code = Column(String(50))
     designation = Column(String(150))

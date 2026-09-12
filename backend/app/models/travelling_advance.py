@@ -5,10 +5,10 @@ from app.core.database import Base
 
 
 class TravellingAdvance(Base):
-    __tablename__ = "travelling_advance"
+    __tablename__ = "hr_travelling_advance"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("hr_userenquiry.id"), nullable=False)
 
     employee_code = Column(String(50))
     designation = Column(String(150))
