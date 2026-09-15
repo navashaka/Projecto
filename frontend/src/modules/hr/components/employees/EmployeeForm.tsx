@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Grid, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import apiClient from '../../../../services/apiClient'
 
 const optionalText = (max = 255, label = 'Value') =>
 	z.string().trim().max(max, `${label} must be ${max} characters or less`).optional().or(z.literal(''))
@@ -83,8 +84,36 @@ function EmployeeForm() {
 		},
 	})
 
-	const onSubmit = (data: EmployeeEnquiryFormData) => {
-		console.log(data)
+	const onSubmit = async (data: EmployeeEnquiryFormData) => {
+		await apiClient.post('/api/v1/user-enquiries/', {
+			candidate_name: data.candidate_name,
+			father_name: data.father_name,
+			date_of_birth: data.date_of_birth,
+			blood_group: data.blood_group,
+			marital_status: data.marital_status,
+			address: data.address,
+			phone: data.phone,
+			pan: data.pan,
+			aadhaar: data.aadhaar,
+			passport_no: data.passport_no,
+			personal_email: data.personal_email,
+			emergency_phone_1: data.emergency_phone,
+			emergency_phone_2: data.emergency_phone2,
+			mother_tongue: data.mother_tongue,
+			other_languages_known: data.other_languages,
+			religion: data.religion,
+			nationality: data.nationality,
+			highest_qualification: data.highest_qualification,
+			year_of_pass: data.year_of_pass,
+			highest_qualification_document: data.qualification_certificate?.item(0)?.name,
+			current_employer: data.current_employer,
+			current_position: data.position,
+			department: data.department,
+			working_period: data.working_period,
+			role_responsibilities: data.role_responsibilities_achievements,
+			current_ctc: data.current_ctc,
+			employer_documents: data.employment_documents?.item(0)?.name,
+		})
 	}
 
 	return (
