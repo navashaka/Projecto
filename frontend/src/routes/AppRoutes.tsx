@@ -1,4 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import AdminPage from '../modules/admin/AdminPage.tsx'
+import AdminResourcePage from '../modules/admin/AdminResourcePage.tsx'
 import CreateAttendancePage from '../modules/hr/pages/attendance/CreateAttendancePage.tsx'
 import CreateEmployeePage from '../modules/hr/pages/employees/CreateEmployeePage.tsx'
 import CreateEmploymentDetailsPage from '../modules/hr/pages/employment/CreateEmploymentDetailsPage.tsx'
@@ -12,6 +14,8 @@ function AppRoutes() {
 	return (
 		<BrowserRouter>
 			<Routes>
+				<Route path="/admin" element={<AdminPage />} />
+				<Route path="/admin/:resourceKey" element={<AdminResourcePage />} />
 				<Route path="/attendance/create" element={<CreateAttendancePage />} />
 				<Route path="/employees/create" element={<CreateEmployeePage />} />
 				<Route path="/employment/create" element={<CreateEmploymentDetailsPage />} />
