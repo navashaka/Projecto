@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.users import router as users_router
 from app.api.v1.attendance import router as attendance_router
@@ -15,9 +16,19 @@ from app.api.v1.router import router as api_v1_router
 from app.core.database import Base, engine
 from app.hr.recruitment.models import UserEnquiry  # noqa: F401
 
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Projecto API")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")

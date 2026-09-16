@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -23,7 +24,7 @@ class UserEnquiryBase(BaseModel):
     nationality: str | None = None
 
     highest_qualification: str | None = None
-    year_of_pass: str | None = None
+    year_of_pass: int | None = None
     highest_qualification_document: str | None = None
     year_of_pass_document: str | None = None
 
@@ -32,7 +33,7 @@ class UserEnquiryBase(BaseModel):
     department: str | None = None
     working_period: str | None = None
     role_responsibilities: str | None = None
-    current_ctc: str | None = None
+    current_ctc: Decimal | None = None
     employer_documents: str | None = None
 
     previous_employer_name: str | None = None
@@ -70,7 +71,7 @@ class UserEnquiryUpdate(BaseModel):
     nationality: str | None = None
 
     highest_qualification: str | None = None
-    year_of_pass: str | None = None
+    year_of_pass: int | None = None
     highest_qualification_document: str | None = None
     year_of_pass_document: str | None = None
 
@@ -79,7 +80,7 @@ class UserEnquiryUpdate(BaseModel):
     department: str | None = None
     working_period: str | None = None
     role_responsibilities: str | None = None
-    current_ctc: str | None = None
+    current_ctc: Decimal | None = None
     employer_documents: str | None = None
 
     previous_employer_name: str | None = None
@@ -95,8 +96,7 @@ class UserEnquiryUpdate(BaseModel):
 
 class UserEnquiryRead(UserEnquiryBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
-

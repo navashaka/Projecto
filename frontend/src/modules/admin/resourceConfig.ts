@@ -77,22 +77,24 @@ export const adminResources: AdminResource[] = [
 			boolean('is_active', 'Active'),
 		],
 	},
+
 	{
 		key: 'attendance',
 		label: 'Attendance',
 		endpoint: '/api/v1/attendance/',
 		fields: [
-			text('employee_name', 'Employee name', true),
+			number('user_id', 'User ID', true),
 			number('cl', 'CL'),
 			number('el', 'EL'),
 			number('pl', 'PL'),
 			number('lop', 'LOP'),
 			number('nh', 'NH'),
 			number('sundays', 'Sundays'),
-			number('other_paid', 'Other paid days'),
+			number('other_paid_days', 'Other paid days'),
 			number('net_present_days', 'Net present days', true),
 		],
 	},
+
 	{
 		key: 'employment-details',
 		label: 'Employment Details',
@@ -117,12 +119,16 @@ export const adminResources: AdminResource[] = [
 			text('ifsc', 'IFSC'),
 		],
 	},
+
 	{
 		key: 'job-profile',
 		label: 'Job Profile',
 		endpoint: '/api/v1/job-profile/',
-		fields: [longText('job_description', 'Job description')],
+		fields: [
+			longText('job_description', 'Job description'),
+		],
 	},
+
 	{
 		key: 'on-employment',
 		label: 'On Employment',
@@ -176,6 +182,7 @@ export const adminResources: AdminResource[] = [
 			number('total_ctc', 'Total CTC'),
 		],
 	},
+
 	{
 		key: 'salary-details',
 		label: 'Salary Details',
@@ -214,6 +221,7 @@ export const adminResources: AdminResource[] = [
 			number('total_ctc', 'Total CTC'),
 		],
 	},
+
 	{
 		key: 'travelling-advance',
 		label: 'Travelling Advance',
@@ -236,6 +244,7 @@ export const adminResources: AdminResource[] = [
 			number('total_advance', 'Total advance'),
 		],
 	},
+
 	{
 		key: 'travelling-expenses-reimbursement',
 		label: 'Travelling Expenses Reimbursement',
