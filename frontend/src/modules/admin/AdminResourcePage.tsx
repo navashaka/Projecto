@@ -27,6 +27,17 @@ import type { AdminField, AdminRecord, AdminResource } from './types'
 type FormValue = string | number | boolean | undefined
 type FormValues = Record<string, FormValue>
 
+const salaryCalculatedFields = new Set([
+	'gross',
+	'epf_deduction',
+	'esi_insurance_deduction',
+	'total_deductions',
+	'net_salary',
+	'epf_employer_share',
+	'esi_employer_share',
+	'total_ctc',
+])
+
 function defaultValues(resource: AdminResource): FormValues {
 	return Object.fromEntries(
 		resource.fields.map((field) => [
@@ -56,6 +67,118 @@ function displayValue(value: unknown) {
 	}
 
 	return String(value)
+}
+
+function roundValue(value: number) {
+	return Math.round(value)
+}
+
+function getNumber(values: FormValues, name: string) {
+	const value = values[name]
+
+	return typeof value === 'number' && !Number.isNaN(value)
+		? value
+		: 0
+}
+
+function calculateSalary(values: FormValues): FormValues {
+	const basic = getNumber(values, 'basic')
+
+	const allowances =
+		getNumber(values, 'allowance1') +
+		getNumber(values, 'allowance2') +
+		getNumber(values, 'allowance3') +
+		getNumber(values, 'allowance4') +
+		getNumber(values, 'allowance5') +
+		getNumber(values, 'allowance6') +
+		getNumber(values, 'other_allowance')
+
+	// Basic + allowances = Gross
+	const gross = roundValue(basic + allowances)
+
+	// Employee EPF = 12% of Basic
+	const epfDeduction = roundValue(basic * 0.12)
+
+	// Employee ESI = 0.75% of Gross when Gross <= 21000
+	const esiDeduction =
+		gross <= 21000 ? roundValue(gross * 0.0075) : 0
+
+	const tds = getNumber(values, 'tds')
+	const canteenDeduction = getNumber(values, 'canteen_deduction')
+	const advanceDeduction = getNumber(values, 'advance_deduction')
+	const loanEmi = getNumber(values, 'loan_emi')
+	const otherDeduction = getNumber(values, 'other_deduction')
+
+	// Total deductions
+	const totalDeductions = roundValue(
+		epfDeduction +
+			esiDeduction +
+			tds +
+			canteenDeduction +
+			advanceDeduction +
+			loanEmi +
+			otherDeduction,
+	)
+
+	// Gross - total deductions = Net salary
+	const netSalary = roundValue(gross - totalDeductions)
+
+	// Employer EPF = 3.67% of Basic
+	const employerEpf = roundValue(basic * 0.0367)
+
+	// Employer EPS = 8.33% of Basic
+	// No separate EPS DB field exists, so include it directly in Total CTC.
+	const employerEps = roundValue(basic * 0.0833)
+
+	// Employer ESI = 3.25% of Gross when Gross <= 21000
+	const employerEsi =
+		gross <= 21000 ? roundValue(gross * 0.0325) : 0
+
+	const insuranceEmployerShare = getNumber(
+		values,
+		'insurance_employer_share',
+	)
+
+	const transportAllowance = getNumber(
+		values,
+		'transport_allowance',
+	)
+
+	const canteenAllowance = getNumber(
+		values,
+		'canteen_allowance',
+	)
+
+	const bonus = getNumber(values, 'bonus')
+
+	const otherEmployerContribution = getNumber(
+		values,
+		'other_employer_contribution',
+	)
+
+	// CTC = Gross + employer contributions + bonus + other contributions
+	const totalCtc = roundValue(
+		gross +
+			employerEpf +
+			employerEps +
+			employerEsi +
+			insuranceEmployerShare +
+			transportAllowance +
+			canteenAllowance +
+			bonus +
+			otherEmployerContribution,
+	)
+
+	return {
+		gross,
+		epf_deduction: epfDeduction,
+		esi_insurance_deduction: esiDeduction,
+		total_deductions: totalDeductions,
+		net_salary: netSalary,
+		epf_employer_share: employerEpf,
+		esi_employer_share: employerEsi,
+		total_ctc: totalCtc,
+	}
 }
 
 function AdminResourcePage() {
@@ -125,6 +248,8 @@ function AdminResourcePage() {
 		)
 	}
 
+	const isSalaryDetails = resource.key === 'salary-details'
+
 	const openAdd = () => {
 		setEditingRecord(null)
 		setFormValues(defaultValues(resource))
@@ -157,6 +282,13 @@ function AdminResourcePage() {
 		field: AdminField,
 		value: string,
 	) => {
+		if (
+			isSalaryDetails &&
+			salaryCalculatedFields.has(field.name)
+		) {
+			return
+		}
+
 		let parsedValue: FormValue
 
 		if (field.kind === 'number') {
@@ -168,19 +300,41 @@ function AdminResourcePage() {
 			parsedValue = value
 		}
 
-		setFormValues((current) => ({
-			...current,
-			[field.name]: parsedValue,
-		}))
+		setFormValues((current) => {
+			const updatedValues = {
+				...current,
+				[field.name]: parsedValue,
+			}
+
+			if (isSalaryDetails) {
+				return {
+					...updatedValues,
+					...calculateSalary(updatedValues),
+				}
+			}
+
+			return updatedValues
+		})
 	}
 
 	const saveRecord = async () => {
+		let valuesToSave = formValues
+
+		if (isSalaryDetails) {
+			valuesToSave = {
+				...formValues,
+				...calculateSalary(formValues),
+			}
+
+			setFormValues(valuesToSave)
+		}
+
 		const missingField = resource.fields.find(
 			(field) =>
 				field.required &&
 				(
-					formValues[field.name] === '' ||
-					formValues[field.name] === undefined
+					valuesToSave[field.name] === '' ||
+					valuesToSave[field.name] === undefined
 				),
 		)
 
@@ -194,8 +348,8 @@ function AdminResourcePage() {
 		const invalidNumber = resource.fields.some(
 			(field) =>
 				field.kind === 'number' &&
-				typeof formValues[field.name] === 'number' &&
-				Number.isNaN(formValues[field.name]),
+				typeof valuesToSave[field.name] === 'number' &&
+				Number.isNaN(valuesToSave[field.name] as number),
 		)
 
 		if (invalidNumber) {
@@ -209,12 +363,12 @@ function AdminResourcePage() {
 			resource.fields
 				.filter(
 					(field) =>
-						formValues[field.name] !== undefined &&
-						formValues[field.name] !== '',
+						valuesToSave[field.name] !== undefined &&
+						valuesToSave[field.name] !== '',
 				)
 				.map((field) => [
 					field.name,
-					formValues[field.name],
+					valuesToSave[field.name],
 				]),
 		)
 
@@ -468,72 +622,83 @@ function AdminResourcePage() {
 						sx={{ pt: 1 }}
 					>
 						{resource.fields.map(
-							(field) => (
-								<Grid
-									key={field.name}
-									size={{
-										xs: 12,
-										sm: field.multiline
-											? 12
-											: 6,
-									}}
-								>
-									<TextField
-										fullWidth
-										label={
-											field.label
-										}
-										multiline={
-											field.multiline
-										}
-										onChange={(
-											event,
-										) =>
-											setValue(
-												field,
-												event
-													.target
-													.value,
-											)
-										}
-										required={
-											field.required
-										}
-										select={
-											field.kind ===
-											'boolean'
-										}
-										type={
-											field.kind ===
-											'date'
-												? 'date'
-												: field.kind ===
-													  'number'
-													? 'number'
-													: 'text'
-										}
-										value={
-											formValues[
-												field.name
-											] ?? ''
-										}
-										variant="outlined"
-									>
-										{field.kind ===
-											'boolean' && (
-											<>
-												<MenuItem value="true">
-													Active
-												</MenuItem>
+							(field) => {
+								const isCalculated =
+									isSalaryDetails &&
+									salaryCalculatedFields.has(
+										field.name,
+									)
 
-												<MenuItem value="false">
-													Inactive
-												</MenuItem>
-											</>
-										)}
-									</TextField>
-								</Grid>
-							),
+								return (
+									<Grid
+										key={field.name}
+										size={{
+											xs: 12,
+											sm: field.multiline
+												? 12
+												: 6,
+										}}
+									>
+										<TextField
+											fullWidth
+											label={
+												field.label
+											}
+											multiline={
+												field.multiline
+											}
+											onChange={(
+												event,
+											) =>
+												setValue(
+													field,
+													event
+														.target
+														.value,
+												)
+											}
+											required={
+												field.required
+											}
+											select={
+												field.kind ===
+												'boolean'
+											}
+											type={
+												field.kind ===
+												'date'
+													? 'date'
+													: field.kind ===
+														  'number'
+														? 'number'
+														: 'text'
+											}
+											value={
+												formValues[
+													field.name
+												] ?? ''
+											}
+											variant="outlined"
+											disabled={
+												isCalculated
+											}
+										>
+											{field.kind ===
+												'boolean' && (
+												<>
+													<MenuItem value="true">
+														Active
+													</MenuItem>
+
+													<MenuItem value="false">
+														Inactive
+													</MenuItem>
+												</>
+											)}
+										</TextField>
+									</Grid>
+								)
+							},
 						)}
 					</Grid>
 				</DialogContent>

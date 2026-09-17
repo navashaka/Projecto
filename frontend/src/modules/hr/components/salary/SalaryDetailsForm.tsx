@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
-import { useForm } from 'react-hook-form'
+import { useEffect } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
 const decimalSchema = (label: string) =>
@@ -62,6 +63,7 @@ type NumericField = {
 	name: keyof Omit<SalaryDetailsFormData, 'user_id'>
 	label: string
 	integer?: boolean
+	calculated?: boolean
 }
 
 const salaryFields: NumericField[] = [
@@ -77,36 +79,42 @@ const salaryFields: NumericField[] = [
 	{ name: 'allowance6', label: 'Allowance 6' },
 	{ name: 'other_allowance', label: 'Other allowance' },
 	{ name: 'arrears', label: 'Arrears' },
-	{ name: 'gross', label: 'Gross' },
+	{ name: 'gross', label: 'Gross', calculated: true },
 ]
 
 const deductionFields: NumericField[] = [
-	{ name: 'epf_deduction', label: 'EPF deduction' },
-	{ name: 'esi_insurance_deduction', label: 'ESI insurance deduction' },
+	{ name: 'epf_deduction', label: 'EPF deduction', calculated: true },
+	{ name: 'esi_insurance_deduction', label: 'ESI insurance deduction', calculated: true },
 	{ name: 'tds', label: 'TDS' },
 	{ name: 'canteen_deduction', label: 'Canteen deduction' },
 	{ name: 'advance_deduction', label: 'Advance deduction' },
 	{ name: 'loan_emi', label: 'Loan EMI' },
 	{ name: 'other_deduction', label: 'Other deduction' },
-	{ name: 'total_deductions', label: 'Total deductions' },
-	{ name: 'net_salary', label: 'Net salary' },
+	{ name: 'total_deductions', label: 'Total deductions', calculated: true },
+	{ name: 'net_salary', label: 'Net salary', calculated: true },
 ]
 
 const contributionFields: NumericField[] = [
-	{ name: 'epf_employer_share', label: 'EPF employer share' },
-	{ name: 'esi_employer_share', label: 'ESI employer share' },
+	{ name: 'epf_employer_share', label: 'EPF employer share', calculated: true },
+	{ name: 'esi_employer_share', label: 'ESI employer share', calculated: true },
 	{ name: 'insurance_employer_share', label: 'Insurance employer share' },
 	{ name: 'transport_allowance', label: 'Transport allowance' },
 	{ name: 'canteen_allowance', label: 'Canteen allowance' },
 	{ name: 'bonus', label: 'Bonus' },
 	{ name: 'other_employer_contribution', label: 'Other employer contribution' },
-	{ name: 'total_ctc', label: 'Total CTC' },
+	{ name: 'total_ctc', label: 'Total CTC', calculated: true },
 ]
+
+const roundValue = (value: number) => Math.round(value)
+
+const getValue = (value: number | undefined) => value ?? 0
 
 function SalaryDetailsForm() {
 	const {
 		register,
 		handleSubmit,
+		control,
+		setValue,
 		formState: { errors },
 	} = useForm<SalaryDetailsFormData>({
 		resolver: zodResolver(salaryDetailsSchema),
@@ -145,7 +153,123 @@ function SalaryDetailsForm() {
 		},
 	})
 
-	const onSubmit = (_data: SalaryDetailsFormData) => undefined
+	const values = useWatch({ control })
+
+	useEffect(() => {
+		const basic = getValue(values.basic)
+
+		const allowances =
+			getValue(values.allowance1) +
+			getValue(values.allowance2) +
+			getValue(values.allowance3) +
+			getValue(values.allowance4) +
+			getValue(values.allowance5) +
+			getValue(values.allowance6) +
+			getValue(values.other_allowance)
+
+		// Gross = Basic + Allowances
+		const gross = roundValue(basic + allowances)
+
+		setValue('gross', gross)
+
+		// Employee EPF = 12% of Basic
+		const epf = roundValue(basic * 0.12)
+		setValue('epf_deduction', epf)
+
+		// Employee ESI = 0.75% of Gross, only when Gross <= 21000
+		const esi = gross <= 21000 ? roundValue(gross * 0.0075) : 0
+		setValue('esi_insurance_deduction', esi)
+
+		// Total deductions
+		const totalDeductions = roundValue(
+			epf +
+				esi +
+				getValue(values.tds) +
+				getValue(values.canteen_deduction) +
+				getValue(values.advance_deduction) +
+				getValue(values.loan_emi) +
+				getValue(values.other_deduction),
+		)
+
+		setValue('total_deductions', totalDeductions)
+
+		// Net salary
+		const netSalary = roundValue(gross - totalDeductions)
+		setValue('net_salary', netSalary)
+
+		// Employer EPF = 3.67% of Basic
+		const employerEpf = roundValue(basic * 0.0367)
+		setValue('epf_employer_share', employerEpf)
+
+		// Employer ESI = 3.25% of Gross, only when Gross <= 21000
+		const employerEsi =
+			gross <= 21000 ? roundValue(gross * 0.0325) : 0
+		setValue('esi_employer_share', employerEsi)
+
+		// Total CTC
+		const totalCtc = roundValue(
+			gross +
+				employerEpf +
+				getValue(values.epf_employer_share) * 0 +
+				employerEsi +
+				getValue(values.insurance_employer_share) +
+				getValue(values.transport_allowance) +
+				getValue(values.canteen_allowance) +
+				getValue(values.bonus) +
+				getValue(values.other_employer_contribution),
+		)
+
+		setValue('total_ctc', totalCtc)
+	}, [
+		values.basic,
+		values.allowance1,
+		values.allowance2,
+		values.allowance3,
+		values.allowance4,
+		values.allowance5,
+		values.allowance6,
+		values.other_allowance,
+		values.tds,
+		values.canteen_deduction,
+		values.advance_deduction,
+		values.loan_emi,
+		values.other_deduction,
+		values.insurance_employer_share,
+		values.transport_allowance,
+		values.canteen_allowance,
+		values.bonus,
+		values.other_employer_contribution,
+		setValue,
+	])
+
+	const onSubmit = (data: SalaryDetailsFormData) => {
+		console.log('Salary details:', data)
+	}
+
+	const renderField = ({
+		name,
+		label,
+		integer,
+		calculated,
+	}: NumericField) => (
+		<Grid key={name} size={{ xs: 12, sm: 6, md: 4 }}>
+			<TextField
+				{...register(name, {
+					setValueAs: (value) =>
+						value === '' ? undefined : Number(value),
+				})}
+				error={!!errors[name]}
+				helperText={errors[name]?.message}
+				label={label}
+				type="number"
+				slotProps={{
+					htmlInput: { step: integer ? 1 : '0.01' },
+				}}
+				fullWidth
+				disabled={calculated}
+			/>
+		</Grid>
+	)
 
 	return (
 		<Paper
@@ -182,25 +306,9 @@ function SalaryDetailsForm() {
 				].map(({ title, fields }) => (
 					<Stack key={title} spacing={2}>
 						<Typography variant="h6">{title}</Typography>
+
 						<Grid container spacing={2}>
-							{fields.map(({ name, label, integer }) => (
-								<Grid key={name} size={{ xs: 12, sm: 6, md: 4 }}>
-									<TextField
-										{...register(name, {
-											setValueAs: (value) =>
-												value === '' ? undefined : Number(value),
-										})}
-										error={!!errors[name]}
-										helperText={errors[name]?.message}
-										label={label}
-										type="number"
-										slotProps={{
-											htmlInput: { step: integer ? 1 : '0.01' },
-										}}
-										fullWidth
-									/>
-								</Grid>
-							))}
+							{fields.map(renderField)}
 						</Grid>
 					</Stack>
 				))}
