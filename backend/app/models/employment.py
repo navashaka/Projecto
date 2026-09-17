@@ -1,12 +1,4 @@
-from sqlalchemy import (
-    Column,
-    BigInteger,
-    String,
-    Date,
-    DateTime,
-    ForeignKey,
-)
-from sqlalchemy.sql import func
+from sqlalchemy import Column, BigInteger, String, Date, DateTime, func
 
 from app.core.database import Base
 
@@ -15,32 +7,49 @@ class Employment(Base):
     __tablename__ = "hr_employment_details"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("hr_userenquiry.id"), nullable=False)
 
-    employee_code = Column(String(50))
-    designation = Column(String(150))
-    department = Column(String(150))
-    immediate_reporting_head = Column(String(150))
-    department_head = Column(String(150))
-    location = Column(String(150))
+    user_id = Column(BigInteger, nullable=False)
 
-    epf_uan = Column(String(50))
-    esi = Column(String(50))
+    employee_code = Column(String(100), nullable=True)
+    designation = Column(String(150), nullable=True)
+    department = Column(String(150), nullable=True)
 
-    health_insurance = Column(String(150))
-    health_insurance_date = Column(Date)
+    immediate_reporting_head = Column(String(150), nullable=True)
+    department_head = Column(String(150), nullable=True)
 
-    work_email = Column(String(150))
+    location = Column(String(150), nullable=True)
 
-    bank_account_name = Column(String(150))
-    account_no = Column(String(50))
-    bank = Column(String(150))
-    branch = Column(String(150))
-    ifsc = Column(String(20))
+    epf_uan = Column(String(100), nullable=True)
+    esi = Column(String(100), nullable=True)
 
-    created_at = Column(DateTime, server_default=func.now())
+    health_insurance = Column(String(100), nullable=True)
+    health_insurance_date = Column(Date, nullable=True)
+
+    work_email = Column(String(150), nullable=True)
+
+    bank_account_name = Column(String(150), nullable=True)
+
+    # API field: account_no
+    # Database column: account_number
+    account_no = Column(
+        "account_number",
+        String(100),
+        nullable=True,
+    )
+
+    bank = Column(String(150), nullable=True)
+    branch = Column(String(150), nullable=True)
+    ifsc = Column(String(50), nullable=True)
+
+    created_at = Column(
+        DateTime,
+        server_default=func.now(),
+        nullable=True,
+    )
+
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now(),
+        nullable=True,
     )
