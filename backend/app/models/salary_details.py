@@ -3,6 +3,7 @@ from sqlalchemy import (
     BigInteger,
     Integer,
     Numeric,
+    Date,
     DateTime,
     ForeignKey,
 )
@@ -16,6 +17,9 @@ class SalaryDetails(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("hr_userenquiry.id"), nullable=False)
+
+    # Salary breakup effective date
+    effective_date = Column(Date)
 
     salary_offered_ctc = Column(Numeric(12, 2))
     yearly_increment = Column(Numeric(12, 2))

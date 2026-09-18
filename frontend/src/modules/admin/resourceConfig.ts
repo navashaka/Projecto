@@ -189,6 +189,7 @@ export const adminResources: AdminResource[] = [
 		endpoint: '/api/v1/salary-details/',
 		fields: [
 			number('user_id', 'User ID', true),
+			date('effective_date', 'Effective Date'),
 			number('salary_offered_ctc', 'Salary offered CTC'),
 			number('yearly_increment', 'Yearly increment'),
 			number('increment_year', 'Increment year'),
