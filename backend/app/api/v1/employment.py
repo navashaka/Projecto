@@ -37,8 +37,13 @@ def get_employment(
     db: Session = Depends(get_db),
 ):
     employment = get_employment_service(db, employment_id)
+
     if not employment:
-        raise HTTPException(status_code=404, detail="Employment not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Employment not found",
+        )
+
     return employment
 
 
@@ -48,14 +53,35 @@ def update_employment(
     data: EmploymentUpdate,
     db: Session = Depends(get_db),
 ):
-    employment = update_employment_service(db, employment_id, data)
+    employment = update_employment_service(
+        db,
+        employment_id,
+        data,
+    )
+
     if not employment:
-        raise HTTPException(status_code=404, detail="Employment not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Employment not found",
+        )
+
     return employment
 
 
 @router.delete("/{employment_id}")
-def delete_employment(employment_id: int, db: Session = Depends(get_db)):
-    if not delete_employment_service(db, employment_id):
-        raise HTTPException(status_code=404, detail="Employment not found")
-    return {"detail": "Employment deleted"}
+def delete_employment(
+    employment_id: int,
+    db: Session = Depends(get_db),
+):
+    if not delete_employment_service(
+        db,
+        employment_id,
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="Employment not found",
+        )
+
+    return {
+        "detail": "Employment deleted"
+    }

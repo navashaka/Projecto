@@ -726,4 +726,4 @@ function AdminResourcePage() {
 	)
 }
 
-export default AdminResourcePage
+export default AdminResourcePage 
