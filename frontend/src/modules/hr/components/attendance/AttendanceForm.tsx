@@ -1,179 +1,517 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import {
+	Button,
+	Grid,
+	Paper,
+	Stack,
+	TextField,
+	Typography,
+} from '@mui/material'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { z } from 'zod'
 
-const attendanceSchema = z.object({
-	user_id: z.number().int('User ID must be a whole number'),
-	cl: z.number().int('CL must be a whole number').optional(),
-	el: z.number().int('EL must be a whole number').optional(),
-	pl: z.number().int('PL must be a whole number').optional(),
-	lop: z.number().int('LOP must be a whole number').optional(),
-	nh: z.number().int('NH must be a whole number').optional(),
-	sundays: z.number().int('Sundays must be a whole number').optional(),
-	other_paid_days: z
-		.number()
-		.int('Other paid days must be a whole number')
-		.optional(),
-	net_present_days: z
-		.number()
-		.int('Net present days must be a whole number'),
-})
+function getSundaysInMonth(month: string) {
+	if (!month) return 0
 
-type AttendanceFormData = z.infer<typeof attendanceSchema>
+	const [year, monthNumber] = month
+		.split('-')
+		.map(Number)
 
-const attendanceNumberFields = [
-	{ name: 'cl', label: 'CL' },
-	{ name: 'el', label: 'EL' },
-	{ name: 'pl', label: 'PL' },
-	{ name: 'lop', label: 'LOP' },
-	{ name: 'nh', label: 'NH' },
-	{ name: 'sundays', label: 'Sundays' },
-	{ name: 'other_paid_days', label: 'Other paid days' },
-	{ name: 'net_present_days', label: 'Net present days' },
-] as const
+	const daysInMonth = new Date(
+		year,
+		monthNumber,
+		0,
+	).getDate()
+
+	let sundays = 0
+
+	for (let day = 1; day <= daysInMonth; day++) {
+		const date = new Date(
+			year,
+			monthNumber - 1,
+			day,
+		)
+
+		if (date.getDay() === 0) {
+			sundays++
+		}
+	}
+
+	return sundays
+}
 
 function AttendanceForm() {
 	const navigate = useNavigate()
+
+	const [employeeCode, setEmployeeCode] =
+		useState('')
+
+	const [month, setMonth] = useState('')
+
+	const [cl, setCl] = useState('0')
+	const [el, setEl] = useState('0')
+	const [lop, setLop] = useState('0')
+	const [otherPaidLeaves, setOtherPaidLeaves] =
+		useState('0')
+
+	const [nationalHolidays, setNationalHolidays] =
+		useState(0)
+
 	const [saving, setSaving] = useState(false)
-	const [saved, setSaved] = useState(false)
+	const [attendanceId, setAttendanceId] =
+		useState<number | null>(null)
 
-	const {
-		register,
-		handleSubmit,
-		getValues,
-		formState: { errors },
-	} = useForm<AttendanceFormData>({
-		resolver: zodResolver(attendanceSchema),
-		defaultValues: {
-			user_id: 1,
-			cl: 0,
-			el: 0,
-			pl: 0,
-			lop: 0,
-			nh: 0,
-			sundays: 0,
-			other_paid_days: 0,
-			net_present_days: 0,
-		},
-	})
+	const daysInMonth = useMemo(() => {
+		if (!month) return 0
 
-	const onSubmit = async (data: AttendanceFormData) => {
+		const [year, monthNumber] = month
+			.split('-')
+			.map(Number)
+
+		return new Date(
+			year,
+			monthNumber,
+			0,
+		).getDate()
+	}, [month])
+
+	const sundays = useMemo(
+		() => getSundaysInMonth(month),
+		[month],
+	)
+
+	const netPresentDays = useMemo(() => {
+		const casualLeave = Number(cl) || 0
+		const earnedLeave = Number(el) || 0
+		const lossOfPay = Number(lop) || 0
+
+		return Math.max(
+			0,
+			daysInMonth -
+				casualLeave -
+				earnedLeave -
+				lossOfPay -
+				nationalHolidays -
+				sundays,
+		)
+	}, [
+		daysInMonth,
+		cl,
+		el,
+		lop,
+		nationalHolidays,
+		sundays,
+	])
+
+	const netPayableDays = useMemo(() => {
+		const paidLeaves =
+			Number(otherPaidLeaves) || 0
+
+		return netPresentDays + paidLeaves
+	}, [
+		netPresentDays,
+		otherPaidLeaves,
+	])
+
+	const loadCompanyHolidays = async (
+		selectedMonth: string,
+	) => {
+		if (!selectedMonth) {
+			setNationalHolidays(0)
+			return
+		}
+
+		try {
+			const response = await fetch(
+				'http://localhost:8000/api/v1/company-holidays/',
+			)
+
+			const result = await response.json()
+
+			if (!response.ok) {
+				throw new Error(
+					result?.detail ||
+						'Unable to load company holidays',
+				)
+			}
+
+			const count = result.filter(
+				(holiday: {
+					holiday_date: string
+				}) =>
+					holiday.holiday_date.startsWith(
+						selectedMonth,
+					),
+			).length
+
+			setNationalHolidays(count)
+		} catch (error) {
+			console.error(error)
+			setNationalHolidays(0)
+		}
+	}
+
+	const handleMonthChange = (
+		value: string,
+	) => {
+		setMonth(value)
+		loadCompanyHolidays(value)
+	}
+
+	const handleSave = async () => {
+		if (!employeeCode.trim()) {
+			alert('Please enter Employee Code')
+			return
+		}
+
+		if (!month) {
+			alert('Please select Month')
+			return
+		}
+
 		try {
 			setSaving(true)
 
-			const response = await fetch(
-				'http://localhost:8000/api/v1/attendance/',
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						user_id: data.user_id,
-						cl: data.cl ?? 0,
-						el: data.el ?? 0,
-						pl: data.pl ?? 0,
-						lop: data.lop ?? 0,
-						nh: data.nh ?? 0,
-						sundays: data.sundays ?? 0,
-						other_paid_days: data.other_paid_days ?? 0,
-						net_present_days: data.net_present_days,
-					}),
-				},
-			)
+			const employmentResponse =
+				await fetch(
+					`http://localhost:8000/api/v1/employment/by-code/${encodeURIComponent(
+						employeeCode.trim(),
+					)}`,
+				)
 
-			if (!response.ok) {
-				const errorData = await response.text()
-				throw new Error(errorData || 'Failed to save attendance')
+			const employmentResult =
+				await employmentResponse.json()
+
+			if (!employmentResponse.ok) {
+				throw new Error(
+					employmentResult?.detail ||
+						'Employee not found',
+				)
 			}
 
-			setSaved(true)
-			alert('Attendance saved successfully')
+			const userId =
+				employmentResult.user_id
+
+			if (!userId) {
+				throw new Error(
+					'Employee User ID is missing',
+				)
+			}
+
+			const attendanceResponse =
+				await fetch(
+					'http://localhost:8000/api/v1/attendance/',
+					{
+						method: 'POST',
+						headers: {
+							'Content-Type':
+								'application/json',
+						},
+						body: JSON.stringify({
+							user_id: userId,
+							attendance_month: `${month}-01`,
+							cl: Number(cl) || 0,
+							el: Number(el) || 0,
+							pl: 0,
+							lop: Number(lop) || 0,
+							nh: nationalHolidays,
+							sundays,
+							other_paid_days:
+								Number(
+									otherPaidLeaves,
+								) || 0,
+							net_present_days:
+								netPresentDays,
+							net_payable_days:
+								netPayableDays,
+						}),
+					},
+				)
+
+			const attendanceResult =
+				await attendanceResponse.json()
+
+			if (!attendanceResponse.ok) {
+				throw new Error(
+					attendanceResult?.detail ||
+						'Failed to save Attendance',
+				)
+			}
+
+			setAttendanceId(
+				attendanceResult.id,
+			)
+
+			alert(
+				'Attendance saved successfully',
+			)
 		} catch (error) {
 			console.error(error)
-			alert('Unable to save attendance')
+
+			alert(
+				error instanceof Error
+					? error.message
+					: 'Unable to save Attendance',
+			)
 		} finally {
 			setSaving(false)
 		}
 	}
 
-	const handleNext = () => {
-		const userId = getValues('user_id')
+	const handleSelectCostElement = () => {
+		if (!attendanceId) {
+			alert(
+				'Please save Attendance first',
+			)
+			return
+		}
 
-		navigate('/admin/paysheet', {
+		navigate('/admin/cost-of-element', {
 			state: {
-				userId,
+				employeeCode:
+					employeeCode.trim(),
+				attendanceId,
+				netPresentDays,
+				netPayableDays,
 			},
 		})
 	}
 
 	return (
 		<Paper
-			component="form"
-			onSubmit={handleSubmit(onSubmit)}
-			sx={{ p: { xs: 2, md: 4 } }}
+			sx={{
+				p: {
+					xs: 2,
+					md: 4,
+				},
+			}}
 		>
 			<Stack spacing={3}>
-				<div>
-					<Typography variant="h5">Attendance</Typography>
-					<Typography color="text.secondary" variant="body2">
-						Capture employee attendance and leave details.
-					</Typography>
-				</div>
+				<Typography variant="h5">
+					Attendance
+				</Typography>
 
 				<Grid container spacing={2}>
-					<Grid size={{ xs: 12 }}>
+					<Grid
+						size={{
+							xs: 12,
+							md: 6,
+						}}
+					>
 						<TextField
-							{...register('user_id', {
-								setValueAs: (value) =>
-									value === '' ? undefined : Number(value),
-							})}
-							error={!!errors.user_id}
-							helperText={errors.user_id?.message}
-							label="User ID"
-							type="number"
-							required
+							label="Employee Code"
+							value={employeeCode}
+							onChange={(event) =>
+								setEmployeeCode(
+									event.target.value,
+								)
+							}
 							fullWidth
 						/>
 					</Grid>
 
-					{attendanceNumberFields.map(({ name, label }) => (
-						<Grid key={name} size={{ xs: 12, sm: 6, md: 3 }}>
-							<TextField
-								{...register(name, {
-									setValueAs: (value) =>
-										value === '' ? undefined : Number(value),
-								})}
-								error={!!errors[name]}
-								helperText={errors[name]?.message}
-								label={label}
-								type="number"
-								fullWidth
-							/>
-						</Grid>
-					))}
+					<Grid
+						size={{
+							xs: 12,
+							md: 6,
+						}}
+					>
+						<TextField
+							label="Month"
+							type="month"
+							value={month}
+							onChange={(event) =>
+								handleMonthChange(
+									event.target.value,
+								)
+							}
+							fullWidth
+							slotProps={{
+								inputLabel: {
+									shrink: true,
+								},
+							}}
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+							md: 3,
+						}}
+					>
+						<TextField
+							label="Casual Leave (CL)"
+							type="number"
+							value={cl}
+							onChange={(event) =>
+								setCl(
+									event.target.value,
+								)
+							}
+							slotProps={{
+								htmlInput: {
+									min: 0,
+								},
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+							md: 3,
+						}}
+					>
+						<TextField
+							label="Earned Leave (EL)"
+							type="number"
+							value={el}
+							onChange={(event) =>
+								setEl(
+									event.target.value,
+								)
+							}
+							slotProps={{
+								htmlInput: {
+									min: 0,
+								},
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+							md: 3,
+						}}
+					>
+						<TextField
+							label="Loss of Pay (LOP)"
+							type="number"
+							value={lop}
+							onChange={(event) =>
+								setLop(
+									event.target.value,
+								)
+							}
+							slotProps={{
+								htmlInput: {
+									min: 0,
+								},
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+							md: 3,
+						}}
+					>
+						<TextField
+							label="Other Paid Leaves"
+							type="number"
+							value={otherPaidLeaves}
+							onChange={(event) =>
+								setOtherPaidLeaves(
+									event.target.value,
+								)
+							}
+							slotProps={{
+								htmlInput: {
+									min: 0,
+								},
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+							md: 4,
+						}}
+					>
+						<TextField
+							label="National Holiday (NH)"
+							value={nationalHolidays}
+							disabled
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+							md: 4,
+						}}
+					>
+						<TextField
+							label="Sundays"
+							value={sundays}
+							disabled
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+							md: 4,
+						}}
+					>
+						<TextField
+							label="Net Present Days"
+							value={netPresentDays}
+							disabled
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid
+						size={{
+							xs: 12,
+						}}
+					>
+						<TextField
+							label="Net Payable Days"
+							value={netPayableDays}
+							disabled
+							fullWidth
+						/>
+					</Grid>
 				</Grid>
 
-				<Stack direction="row" spacing={2}>
+				<Stack
+					direction={{
+						xs: 'column',
+						sm: 'row',
+					}}
+					spacing={2}
+				>
 					<Button
-						type="submit"
 						variant="contained"
+						onClick={handleSave}
 						disabled={saving}
 					>
-						{saving ? 'Saving...' : 'Save Attendance'}
+						{saving
+							? 'Saving...'
+							: 'Save'}
 					</Button>
 
-					<Button
-						type="button"
-						variant="contained"
-						disabled={!saved}
-						onClick={handleNext}
-					>
-						Next
-					</Button>
+					{attendanceId && (
+						<Button
+							variant="outlined"
+							onClick={
+								handleSelectCostElement
+							}
+						>
+							Select Cost Element
+						</Button>
+					)}
 				</Stack>
 			</Stack>
 		</Paper>

@@ -1,406 +1,730 @@
 import {
 	Alert,
 	Box,
+	Button,
 	Card,
 	CardContent,
 	CircularProgress,
 	Divider,
 	Grid,
+	MenuItem,
 	Stack,
+	TextField,
 	Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
-type SalaryDetails = {
-	id: number
+type PaysheetData = {
 	user_id: number
+	salary_month: string
+	employee_code: string | null
+	employee_name: string | null
+	designation: string | null
+	department: string | null
+	date_of_joining: string | null
+	total_days: number | null
+	present_days: number | null
+	paid_days: number | null
+	lop_days: number | null
 	basic: number | null
-	allowance1: number | null
-	allowance2: number | null
-	allowance3: number | null
-	allowance4: number | null
-	allowance5: number | null
-	allowance6: number | null
-	other_allowance: number | null
-	arrears: number | null
-	gross: number | null
-	epf_deduction: number | null
-	esi_insurance_deduction: number | null
+	hra: number | null
+	allowances: number | null
+	other_earnings: number | null
+	gross_earnings: number | null
+	epf: number | null
+	esi: number | null
+	professional_tax: number | null
 	tds: number | null
-	canteen_deduction: number | null
 	advance_deduction: number | null
-	loan_emi: number | null
-	other_deduction: number | null
+	other_deductions: number | null
 	total_deductions: number | null
 	net_salary: number | null
-	epf_employer_share: number | null
-	esi_employer_share: number | null
-	insurance_employer_share: number | null
-	transport_allowance: number | null
-	canteen_allowance: number | null
-	bonus: number | null
-	other_employer_contribution: number | null
-	total_ctc: number | null
-	effective_date: string | null
 }
 
-type Attendance = {
-	id: number
-	user_id: number
-	cl: number | null
-	el: number | null
-	pl: number | null
-	lop: number | null
-	nh: number | null
-	sundays: number | null
-	other_paid_days: number | null
-	net_present_days: number | null
+function formatAmount(
+	value: number | null | undefined,
+) {
+	return `₹${Number(value ?? 0).toLocaleString(
+		'en-IN',
+		{
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2,
+		},
+	)}`
 }
 
-function formatAmount(value: number | null | undefined) {
-	return `₹${Number(value ?? 0).toLocaleString('en-IN', {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	})}`
+function getCurrentMonth() {
+	const today = new Date()
+
+	return `${today.getFullYear()}-${String(
+		today.getMonth() + 1,
+	).padStart(2, '0')}`
 }
 
 function PaysheetPage() {
 	const location = useLocation()
 
-	const userId = location.state?.userId as number | undefined
+	const stateUserId =
+		location.state?.userId as
+			| number
+			| undefined
 
-	const [salary, setSalary] = useState<SalaryDetails | null>(null)
-	const [attendance, setAttendance] = useState<Attendance | null>(null)
-	const [loading, setLoading] = useState(true)
+	const attendanceUserId =
+		location.state?.userId as
+			| number
+			| undefined
+
+	const userId =
+		stateUserId ?? attendanceUserId
+
+	const [month, setMonth] = useState(
+		getCurrentMonth(),
+	)
+
+	const [paysheet, setPaysheet] =
+		useState<PaysheetData | null>(null)
+
+	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState('')
 
-	useEffect(() => {
-		const loadPaysheet = async () => {
-			if (!userId) {
-				setError('User ID was not provided from Attendance.')
-				setLoading(false)
-				return
-			}
-
-			try {
-				setLoading(true)
-				setError('')
-
-				const [salaryResponse, attendanceResponse] = await Promise.all([
-					fetch('http://localhost:8000/api/v1/salary-details/'),
-					fetch('http://localhost:8000/api/v1/attendance/'),
-				])
-
-				if (!salaryResponse.ok) {
-					throw new Error('Unable to load salary details')
-				}
-
-				if (!attendanceResponse.ok) {
-					throw new Error('Unable to load attendance details')
-				}
-
-				const salaryData: SalaryDetails[] =
-					await salaryResponse.json()
-
-				const attendanceData: Attendance[] =
-					await attendanceResponse.json()
-
-				const userSalary = salaryData
-					.filter((item) => item.user_id === userId)
-					.sort((a, b) => b.id - a.id)[0]
-
-				const userAttendance = attendanceData
-					.filter((item) => item.user_id === userId)
-					.sort((a, b) => b.id - a.id)[0]
-
-				if (!userSalary) {
-					throw new Error(
-						`Salary details not found for User ID ${userId}`,
-					)
-				}
-
-				setSalary(userSalary)
-				setAttendance(userAttendance ?? null)
-			} catch (err) {
-				console.error(err)
-
-				if (err instanceof Error) {
-					setError(err.message)
-				} else {
-					setError('Unable to load paysheet')
-				}
-			} finally {
-				setLoading(false)
-			}
+	const loadPaysheet = async () => {
+		if (!userId) {
+			setError(
+				'User ID was not provided.',
+			)
+			return
 		}
 
-		loadPaysheet()
-	}, [userId])
+		if (!month) {
+			setError('Please select month.')
+			return
+		}
 
-	if (loading) {
-		return (
-			<Box
-				sx={{
-					display: 'flex',
-					justifyContent: 'center',
-					p: 5,
-				}}
-			>
-				<CircularProgress />
-			</Box>
-		)
+		try {
+			setLoading(true)
+			setError('')
+			setPaysheet(null)
+
+			const response = await fetch(
+				`http://localhost:8000/api/v1/paysheets/calculate/${userId}?salary_month=${month}-01`,
+			)
+
+			const result =
+				await response.json()
+
+			if (!response.ok) {
+				throw new Error(
+					result?.detail ||
+						'Unable to generate Paysheet',
+				)
+			}
+
+			setPaysheet(result)
+		} catch (err) {
+			console.error(err)
+
+			setError(
+				err instanceof Error
+					? err.message
+					: 'Unable to generate Paysheet',
+			)
+		} finally {
+			setLoading(false)
+		}
 	}
 
-	if (error) {
-		return (
-			<Stack spacing={2} sx={{ p: { xs: 2, md: 4 } }}>
-				<Typography variant="h5">Paysheet</Typography>
+	useEffect(() => {
+		if (userId) {
+			loadPaysheet()
+		}
+	}, [userId])
 
-				<Alert severity="error">{error}</Alert>
+	if (!userId) {
+		return (
+			<Stack
+				spacing={2}
+				sx={{
+					p: {
+						xs: 2,
+						md: 4,
+					},
+				}}
+			>
+				<Typography variant="h5">
+					Paysheet
+				</Typography>
+
+				<Alert severity="warning">
+					Open Paysheet from Attendance
+					after saving employee
+					attendance.
+				</Alert>
 			</Stack>
 		)
 	}
 
-	if (!salary) {
-		return (
-			<Alert severity="warning">
-				Salary details are not available.
-			</Alert>
-		)
-	}
-
 	return (
-		<Stack spacing={3} sx={{ p: { xs: 2, md: 4 } }}>
+		<Stack
+			spacing={3}
+			sx={{
+				p: {
+					xs: 2,
+					md: 4,
+				},
+			}}
+		>
 			<Box>
-				<Typography variant="h4">Paysheet</Typography>
+				<Typography variant="h4">
+					Paysheet
+				</Typography>
 
 				<Typography color="text.secondary">
-					Salary and attendance details for User ID {userId}
+					Monthly employee paysheet
 				</Typography>
 			</Box>
 
 			<Card>
 				<CardContent>
-					<Typography variant="h6" gutterBottom>
-						Salary Summary
-					</Typography>
+					<Grid
+						container
+						spacing={2}
+						sx={{ alignItems: 'center' }}
+					>
+						<Grid
+							size={{
+								xs: 12,
+								md: 6,
+							}}
+						>
+							<TextField
+								select
+								label="Salary Month"
+								value={month}
+								onChange={(event) =>
+									setMonth(
+										event.target.value,
+									)
+								}
+								fullWidth
+							>
+								<MenuItem value="2026-01">
+									January 2026
+								</MenuItem>
 
-					<Divider sx={{ mb: 2 }} />
+								<MenuItem value="2026-02">
+									February 2026
+								</MenuItem>
 
-					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Basic
-							</Typography>
-							<Typography variant="h6">
-								{formatAmount(salary.basic)}
-							</Typography>
+								<MenuItem value="2026-03">
+									March 2026
+								</MenuItem>
+
+								<MenuItem value="2026-04">
+									April 2026
+								</MenuItem>
+
+								<MenuItem value="2026-05">
+									May 2026
+								</MenuItem>
+
+								<MenuItem value="2026-06">
+									June 2026
+								</MenuItem>
+
+								<MenuItem value="2026-07">
+									July 2026
+								</MenuItem>
+
+								<MenuItem value="2026-08">
+									August 2026
+								</MenuItem>
+
+								<MenuItem value="2026-09">
+									September 2026
+								</MenuItem>
+
+								<MenuItem value="2026-10">
+									October 2026
+								</MenuItem>
+
+								<MenuItem value="2026-11">
+									November 2026
+								</MenuItem>
+
+								<MenuItem value="2026-12">
+									December 2026
+								</MenuItem>
+							</TextField>
 						</Grid>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Gross Salary
-							</Typography>
-							<Typography variant="h6">
-								{formatAmount(salary.gross)}
-							</Typography>
+						<Grid
+							size={{
+								xs: 12,
+								md: 3,
+							}}
+						>
+							<Button
+								variant="contained"
+								onClick={loadPaysheet}
+								disabled={loading}
+								fullWidth
+							>
+								{loading
+									? 'Generating...'
+									: 'Generate Paysheet'}
+							</Button>
 						</Grid>
+					</Grid>
+				</CardContent>
+			</Card>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Total Deductions
-							</Typography>
-							<Typography variant="h6">
-								{formatAmount(salary.total_deductions)}
-							</Typography>
-						</Grid>
+			{loading && (
+				<Box
+					sx={{
+						display: 'flex',
+						justifyContent:
+							'center',
+						p: 4,
+					}}
+				>
+					<CircularProgress />
+				</Box>
+			)}
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
+			{error && (
+				<Alert severity="error">
+					{error}
+				</Alert>
+			)}
+
+			{paysheet && !loading && (
+				<>
+					<Card>
+						<CardContent>
+							<Typography
+								variant="h5"
+								gutterBottom
+							>
+								Employee Details
+							</Typography>
+
+							<Divider
+								sx={{ mb: 2 }}
+							/>
+
+							<Grid
+								container
+								spacing={2}
+							>
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Employee Code
+									</Typography>
+
+									<Typography>
+										{paysheet.employee_code ||
+											'-'}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Employee Name
+									</Typography>
+
+									<Typography>
+										{paysheet.employee_name ||
+											'-'}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Designation
+									</Typography>
+
+									<Typography>
+										{paysheet.designation ||
+											'-'}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Department
+									</Typography>
+
+									<Typography>
+										{paysheet.department ||
+											'-'}
+									</Typography>
+								</Grid>
+							</Grid>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardContent>
+							<Typography
+								variant="h5"
+								gutterBottom
+							>
+								Attendance
+							</Typography>
+
+							<Divider
+								sx={{ mb: 2 }}
+							/>
+
+							<Grid
+								container
+								spacing={2}
+							>
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Total Days
+									</Typography>
+
+									<Typography variant="h6">
+										{paysheet.total_days ??
+											0}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Present Days
+									</Typography>
+
+									<Typography variant="h6">
+										{paysheet.present_days ??
+											0}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Paid Days
+									</Typography>
+
+									<Typography variant="h6">
+										{paysheet.paid_days ??
+											0}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										LOP Days
+									</Typography>
+
+									<Typography variant="h6">
+										{paysheet.lop_days ??
+											0}
+									</Typography>
+								</Grid>
+							</Grid>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardContent>
+							<Typography
+								variant="h5"
+								gutterBottom
+							>
+								Earnings
+							</Typography>
+
+							<Divider
+								sx={{ mb: 2 }}
+							/>
+
+							<Grid
+								container
+								spacing={2}
+							>
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Basic
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.basic,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										HRA
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.hra,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Allowances
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.allowances,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Other Earnings
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.other_earnings,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+									}}
+								>
+									<Typography color="text.secondary">
+										Gross Earnings
+									</Typography>
+
+									<Typography variant="h5">
+										{formatAmount(
+											paysheet.gross_earnings,
+										)}
+									</Typography>
+								</Grid>
+							</Grid>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardContent>
+							<Typography
+								variant="h5"
+								gutterBottom
+							>
+								Deductions
+							</Typography>
+
+							<Divider
+								sx={{ mb: 2 }}
+							/>
+
+							<Grid
+								container
+								spacing={2}
+							>
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										EPF
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.epf,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										ESI
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.esi,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										TDS
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.tds,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+										sm: 6,
+										md: 3,
+									}}
+								>
+									<Typography color="text.secondary">
+										Other Deductions
+									</Typography>
+
+									<Typography>
+										{formatAmount(
+											paysheet.other_deductions,
+										)}
+									</Typography>
+								</Grid>
+
+								<Grid
+									size={{
+										xs: 12,
+									}}
+								>
+									<Typography color="text.secondary">
+										Total Deductions
+									</Typography>
+
+									<Typography variant="h6">
+										{formatAmount(
+											paysheet.total_deductions,
+										)}
+									</Typography>
+								</Grid>
+							</Grid>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardContent>
+							<Typography
+								variant="h5"
+								gutterBottom
+							>
 								Net Salary
 							</Typography>
-							<Typography variant="h5">
-								{formatAmount(salary.net_salary)}
+
+							<Divider
+								sx={{ mb: 2 }}
+							/>
+
+							<Typography
+								variant="h3"
+								sx={{ fontWeight: "bold" }}
+							>
+								{formatAmount(
+									paysheet.net_salary,
+								)}
 							</Typography>
-						</Grid>
-					</Grid>
-				</CardContent>
-			</Card>
 
-			<Card>
-				<CardContent>
-					<Typography variant="h6" gutterBottom>
-						Allowances
-					</Typography>
-
-					<Divider sx={{ mb: 2 }} />
-
-					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Allowance 1
+							<Typography
+								color="text.secondary"
+								sx={{ mt: 1 }}
+							>
+								Salary Month:{' '}
+								{paysheet.salary_month}
 							</Typography>
-							<Typography>
-								{formatAmount(salary.allowance1)}
-							</Typography>
-						</Grid>
-
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Allowance 2
-							</Typography>
-							<Typography>
-								{formatAmount(salary.allowance2)}
-							</Typography>
-						</Grid>
-
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Allowance 3
-							</Typography>
-							<Typography>
-								{formatAmount(salary.allowance3)}
-							</Typography>
-						</Grid>
-
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Other Allowance
-							</Typography>
-							<Typography>
-								{formatAmount(salary.other_allowance)}
-							</Typography>
-						</Grid>
-					</Grid>
-				</CardContent>
-			</Card>
-
-			<Card>
-				<CardContent>
-					<Typography variant="h6" gutterBottom>
-						Deductions
-					</Typography>
-
-					<Divider sx={{ mb: 2 }} />
-
-					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								EPF
-							</Typography>
-							<Typography>
-								{formatAmount(salary.epf_deduction)}
-							</Typography>
-						</Grid>
-
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								ESI
-							</Typography>
-							<Typography>
-								{formatAmount(salary.esi_insurance_deduction)}
-							</Typography>
-						</Grid>
-
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								TDS
-							</Typography>
-							<Typography>
-								{formatAmount(salary.tds)}
-							</Typography>
-						</Grid>
-
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-							<Typography color="text.secondary">
-								Other Deduction
-							</Typography>
-							<Typography>
-								{formatAmount(salary.other_deduction)}
-							</Typography>
-						</Grid>
-					</Grid>
-				</CardContent>
-			</Card>
-
-			<Card>
-				<CardContent>
-					<Typography variant="h6" gutterBottom>
-						Attendance
-					</Typography>
-
-					<Divider sx={{ mb: 2 }} />
-
-					{attendance ? (
-						<Grid container spacing={2}>
-							<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-								<Typography color="text.secondary">
-									CL
-								</Typography>
-								<Typography>
-									{attendance.cl ?? 0}
-								</Typography>
-							</Grid>
-
-							<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-								<Typography color="text.secondary">
-									EL
-								</Typography>
-								<Typography>
-									{attendance.el ?? 0}
-								</Typography>
-							</Grid>
-
-							<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-								<Typography color="text.secondary">
-									LOP
-								</Typography>
-								<Typography>
-									{attendance.lop ?? 0}
-								</Typography>
-							</Grid>
-
-							<Grid size={{ xs: 12, sm: 6, md: 3 }}>
-								<Typography color="text.secondary">
-									Net Present Days
-								</Typography>
-								<Typography>
-									{attendance.net_present_days ?? 0}
-								</Typography>
-							</Grid>
-						</Grid>
-					) : (
-						<Typography color="text.secondary">
-							Attendance record not found.
-						</Typography>
-					)}
-				</CardContent>
-			</Card>
-
-			<Card>
-				<CardContent>
-					<Typography variant="h6" gutterBottom>
-						Final Salary
-					</Typography>
-
-					<Divider sx={{ mb: 2 }} />
-
-					<Typography color="text.secondary">
-						Current Net Payable Salary
-					</Typography>
-
-					<Typography variant="h3">
-						{formatAmount(salary.net_salary)}
-					</Typography>
-
-					{salary.effective_date && (
-						<Typography color="text.secondary" sx={{ mt: 1 }}>
-							Effective from: {salary.effective_date}
-						</Typography>
-					)}
-				</CardContent>
-			</Card>
+						</CardContent>
+					</Card>
+				</>
+			)}
 		</Stack>
 	)
 }

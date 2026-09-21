@@ -1,8 +1,12 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+
 import AdminPage from '../modules/admin/AdminPage.tsx'
 import AdminResourcePage from '../modules/admin/AdminResourcePage.tsx'
+import CompanyHolidayUploadPage from '../modules/admin/CompanyHolidayUploadPage.tsx'
+import CostOfElementPage from '../modules/admin/CostOfElementPage.tsx'
 import PaysheetPage from '../modules/admin/PaysheetPage.tsx'
 import SalaryBreakupPage from '../modules/admin/SalaryBreakupPage.tsx'
+
 import CreateAttendancePage from '../modules/hr/pages/attendance/CreateAttendancePage.tsx'
 import CreateEmployeePage from '../modules/hr/pages/employees/CreateEmployeePage.tsx'
 import CreateEmploymentDetailsPage from '../modules/hr/pages/employment/CreateEmploymentDetailsPage.tsx'
@@ -16,15 +20,33 @@ function AppRoutes() {
 	return (
 		<BrowserRouter>
 			<Routes>
-				<Route path="/admin" element={<AdminPage />} />
+				<Route
+					path="/admin"
+					element={<AdminPage />}
+				/>
+
+				<Route
+					path="/admin/company-holidays"
+					element={
+						<CompanyHolidayUploadPage />
+					}
+				/>
+
 				<Route
 					path="/admin/salary-breakup"
 					element={<SalaryBreakupPage />}
 				/>
+
+				<Route
+					path="/admin/cost-of-element"
+					element={<CostOfElementPage />}
+				/>
+
 				<Route
 					path="/admin/paysheet"
 					element={<PaysheetPage />}
 				/>
+
 				<Route
 					path="/admin/:resourceKey"
 					element={<AdminResourcePage />}
@@ -34,33 +56,46 @@ function AppRoutes() {
 					path="/attendance/create"
 					element={<CreateAttendancePage />}
 				/>
+
 				<Route
 					path="/employees/create"
 					element={<CreateEmployeePage />}
 				/>
+
 				<Route
 					path="/employment/create"
-					element={<CreateEmploymentDetailsPage />}
+					element={
+						<CreateEmploymentDetailsPage />
+					}
 				/>
+
 				<Route
 					path="/job-profile/create"
 					element={<CreateJobProfilePage />}
 				/>
+
 				<Route
 					path="/on-employment/create"
 					element={<CreateOnEmploymentPage />}
 				/>
+
 				<Route
 					path="/salary/create"
 					element={<CreateSalaryDetailsPage />}
 				/>
+
 				<Route
 					path="/travelling-advance/create"
-					element={<CreateTravellingAdvancePage />}
+					element={
+						<CreateTravellingAdvancePage />
+					}
 				/>
+
 				<Route
 					path="/travelling-expenses-reimbursement/create"
-					element={<CreateTravellingExpensesReimbursementPage />}
+					element={
+						<CreateTravellingExpensesReimbursementPage />
+					}
 				/>
 			</Routes>
 		</BrowserRouter>

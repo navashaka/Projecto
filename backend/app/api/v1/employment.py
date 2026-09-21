@@ -31,6 +31,31 @@ def list_employment(db: Session = Depends(get_db)):
     return list_employment_service(db)
 
 
+@router.get("/by-code/{employee_code}")
+def get_employment_by_code(
+    employee_code: str,
+    db: Session = Depends(get_db),
+):
+    employments = list_employment_service(db)
+
+    employment = next(
+        (
+            item
+            for item in employments
+            if item.employee_code == employee_code
+        ),
+        None,
+    )
+
+    if not employment:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found for the given employee code",
+        )
+
+    return employment
+
+
 @router.get("/{employment_id}")
 def get_employment(
     employment_id: int,
