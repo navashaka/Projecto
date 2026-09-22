@@ -17,12 +17,37 @@ from app.api.v1.travelling_expenses_reimbursement import (
     router as travelling_expenses_reimbursement_router,
 )
 
+from app.api.v1.gl_tax_type import router as gl_tax_type_router
+from app.api.v1.gl_group import router as gl_group_router
+from app.api.v1.gl_account import router as gl_account_router
+from app.api.v1.gl_bank_account import router as gl_bank_account_router
+from app.api.v1.gl_cheque_range import router as gl_cheque_range_router
+from app.api.v1.gl_hsn_master import router as gl_hsn_master_router
+from app.api.v1.gl_sac_master import router as gl_sac_master_router
+
+# NEW
+from app.api.v1.gl_od_limit import router as gl_od_limit_router
+
 from app.api.v1.router import router as api_v1_router
+
 from app.core.database import Base, engine
-from app.hr.recruitment.models import UserEnquiry  # noqa: F401
-from app.models.attendance_coe import AttendanceCOE  # noqa: F401
-from app.models.company_holiday import CompanyHoliday  # noqa: F401
-from app.models.paysheet import Paysheet  # noqa: F401
+
+from app.hr.recruitment.models import UserEnquiry
+from app.models.attendance_coe import AttendanceCOE
+from app.models.company_holiday import CompanyHoliday
+from app.models.paysheet import Paysheet
+
+# GL Models
+from app.models.gl_tax_type import GLTaxType
+from app.models.gl_group import GLGroup
+from app.models.gl_account import GLAccount
+from app.models.gl_bank_account import GLBankAccount
+from app.models.gl_cheque_range import GLChequeRange
+from app.models.gl_hsn_master import GLHSNMaster
+from app.models.gl_sac_master import GLSACMaster
+
+# NEW
+from app.models.gl_od_limit import GLOdLimit
 
 
 Base.metadata.create_all(bind=engine)
@@ -32,74 +57,35 @@ app = FastAPI(title="Projecto API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-@app.on_event("startup")
-def startup() -> None:
-    Base.metadata.create_all(bind=engine)
+app.include_router(users_router)
+app.include_router(attendance_router)
+app.include_router(attendance_coe_router)
+app.include_router(company_holidays_router)
+app.include_router(paysheet_router)
+app.include_router(travelling_advance_router)
+app.include_router(salary_details_router)
+app.include_router(job_profile_router)
+app.include_router(on_employment_router)
+app.include_router(employment_router)
+app.include_router(travelling_expenses_reimbursement_router)
 
+# GL APIs
+app.include_router(gl_tax_type_router)
+app.include_router(gl_group_router)
+app.include_router(gl_account_router)
+app.include_router(gl_bank_account_router)
+app.include_router(gl_cheque_range_router)
+app.include_router(gl_hsn_master_router)
+app.include_router(gl_sac_master_router)
 
-app.include_router(
-    users_router,
-    prefix="/api/v1",
-)
+# NEW
+app.include_router(gl_od_limit_router)
 
-app.include_router(
-    attendance_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    attendance_coe_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    company_holidays_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    paysheet_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    travelling_advance_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    salary_details_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    job_profile_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    on_employment_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    employment_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    travelling_expenses_reimbursement_router,
-    prefix="/api/v1",
-)
-
-app.include_router(
-    api_v1_router,
-    prefix="/api/v1",
-)
+app.include_router(api_v1_router)
