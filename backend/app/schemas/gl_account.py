@@ -10,6 +10,15 @@ class GLAccountCreate(BaseModel):
     tax_applicable: bool = False
     tax_type_id: int | None = None
     costing_applicable: bool = False
+
+    hsn_sac_type: str | None = None
+    hsn_id: int | None = None
+    sac_id: int | None = None
+
+    igst_rate: Decimal | None = None
+    cgst_rate: Decimal | None = None
+    sgst_rate: Decimal | None = None
+
     depreciation_applicable: bool = False
     loan_taken_date: date | None = None
     interest_rate: Decimal | None = None
@@ -26,6 +35,15 @@ class GLAccountResponse(BaseModel):
     tax_applicable: bool
     tax_type_id: int | None
     costing_applicable: bool
+
+    hsn_sac_type: str | None
+    hsn_id: int | None
+    sac_id: int | None
+
+    igst_rate: Decimal | None
+    cgst_rate: Decimal | None
+    sgst_rate: Decimal | None
+
     depreciation_applicable: bool
     loan_taken_date: date | None
     interest_rate: Decimal | None

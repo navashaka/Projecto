@@ -38,6 +38,37 @@ class GLAccount(Base):
         default=False,
     )
 
+    # Tax / HSN / SAC fields
+    hsn_sac_type = Column(
+        String(20),
+        nullable=True,
+    )
+
+    hsn_id = Column(
+        Integer,
+        nullable=True,
+    )
+
+    sac_id = Column(
+        Integer,
+        nullable=True,
+    )
+
+    igst_rate = Column(
+        Numeric(5, 2),
+        nullable=True,
+    )
+
+    cgst_rate = Column(
+        Numeric(5, 2),
+        nullable=True,
+    )
+
+    sgst_rate = Column(
+        Numeric(5, 2),
+        nullable=True,
+    )
+
     depreciation_applicable = Column(
         Boolean,
         nullable=False,

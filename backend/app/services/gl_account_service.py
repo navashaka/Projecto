@@ -21,6 +21,14 @@ def create_account(
         tax_applicable=data.tax_applicable,
         tax_type_id=data.tax_type_id,
         costing_applicable=data.costing_applicable,
+
+        hsn_sac_type=data.hsn_sac_type,
+        hsn_id=data.hsn_id,
+        sac_id=data.sac_id,
+        igst_rate=data.igst_rate,
+        cgst_rate=data.cgst_rate,
+        sgst_rate=data.sgst_rate,
+
         depreciation_applicable=data.depreciation_applicable,
         loan_taken_date=data.loan_taken_date,
         interest_rate=data.interest_rate,
@@ -61,6 +69,14 @@ def update_account(
     gl_account.tax_applicable = data.tax_applicable
     gl_account.tax_type_id = data.tax_type_id
     gl_account.costing_applicable = data.costing_applicable
+
+    gl_account.hsn_sac_type = data.hsn_sac_type
+    gl_account.hsn_id = data.hsn_id
+    gl_account.sac_id = data.sac_id
+    gl_account.igst_rate = data.igst_rate
+    gl_account.cgst_rate = data.cgst_rate
+    gl_account.sgst_rate = data.sgst_rate
+
     gl_account.depreciation_applicable = data.depreciation_applicable
     gl_account.loan_taken_date = data.loan_taken_date
     gl_account.interest_rate = data.interest_rate
