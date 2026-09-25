@@ -9,14 +9,29 @@ import Footer from './components/layout/Footer'
 import { useAppStore } from './store'
 
 function App() {
-  const isAuthenticated = useAppStore((state) => state.isAuthenticated)
-  const showRegisterForm = useAppStore((state) => state.showRegisterForm)
-  const login = useAppStore((state) => state.login)
-  const toggleRegisterForm = useAppStore((state) => state.toggleRegisterForm)
+  const isAuthenticated = useAppStore(
+    (state) => state.isAuthenticated
+  )
+
+  const showRegisterForm = useAppStore(
+    (state) => state.showRegisterForm
+  )
+
+  const login = useAppStore(
+    (state) => state.login
+  )
+
+  const toggleRegisterForm = useAppStore(
+    (state) => state.toggleRegisterForm
+  )
 
   if (!isAuthenticated) {
     return showRegisterForm ? (
-      <UserEnquiryForm onBackToLogin={() => toggleRegisterForm(false)} />
+      <UserEnquiryForm
+        onBackToLogin={() =>
+          toggleRegisterForm(false)
+        }
+      />
     ) : (
       <LoginPage
         onLogin={() =>
@@ -26,7 +41,9 @@ function App() {
             role: 'admin',
           })
         }
-        onRegister={() => toggleRegisterForm(true)}
+        onRegister={() =>
+          toggleRegisterForm(true)
+        }
       />
     )
   }
@@ -37,7 +54,9 @@ function App() {
 
       <div className="app-body">
         <LeftSidebar />
+
         <MainContent />
+
         <RightSidebar />
       </div>
 
