@@ -1,521 +1,604 @@
-import {
-	Button,
-	Grid,
-	Paper,
-	Stack,
-	TextField,
-	Typography,
-} from '@mui/material'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 function getSundaysInMonth(month: string) {
-	if (!month) return 0
+  if (!month) return 0
 
-	const [year, monthNumber] = month
-		.split('-')
-		.map(Number)
+  const [year, monthNumber] = month
+    .split('-')
+    .map(Number)
 
-	const daysInMonth = new Date(
-		year,
-		monthNumber,
-		0,
-	).getDate()
+  const daysInMonth = new Date(
+    year,
+    monthNumber,
+    0,
+  ).getDate()
 
-	let sundays = 0
+  let sundays = 0
 
-	for (let day = 1; day <= daysInMonth; day++) {
-		const date = new Date(
-			year,
-			monthNumber - 1,
-			day,
-		)
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(
+      year,
+      monthNumber - 1,
+      day,
+    )
 
-		if (date.getDay() === 0) {
-			sundays++
-		}
-	}
+    if (date.getDay() === 0) {
+      sundays++
+    }
+  }
 
-	return sundays
+  return sundays
 }
 
 function AttendanceForm() {
-	const navigate = useNavigate()
+  const navigate = useNavigate()
 
-	const [employeeCode, setEmployeeCode] =
-		useState('')
+  const [employeeCode, setEmployeeCode] =
+    useState('')
 
-	const [month, setMonth] = useState('')
+  const [month, setMonth] = useState('')
 
-	const [cl, setCl] = useState('0')
-	const [el, setEl] = useState('0')
-	const [lop, setLop] = useState('0')
-	const [otherPaidLeaves, setOtherPaidLeaves] =
-		useState('0')
+  const [cl, setCl] = useState('0')
+  const [el, setEl] = useState('0')
+  const [pl, setPl] = useState('0')
+  const [lop, setLop] = useState('0')
 
-	const [nationalHolidays, setNationalHolidays] =
-		useState(0)
+  const [otherPaidLeaves, setOtherPaidLeaves] =
+    useState('0')
 
-	const [saving, setSaving] = useState(false)
-	const [attendanceId, setAttendanceId] =
-		useState<number | null>(null)
+  const [nationalHolidays, setNationalHolidays] =
+    useState(0)
 
-	const daysInMonth = useMemo(() => {
-		if (!month) return 0
+  const [saving, setSaving] = useState(false)
 
-		const [year, monthNumber] = month
-			.split('-')
-			.map(Number)
+  const [attendanceId, setAttendanceId] =
+    useState<number | null>(null)
 
-		return new Date(
-			year,
-			monthNumber,
-			0,
-		).getDate()
-	}, [month])
+  const daysInMonth = useMemo(() => {
+    if (!month) return 0
 
-	const sundays = useMemo(
-		() => getSundaysInMonth(month),
-		[month],
-	)
+    const [year, monthNumber] = month
+      .split('-')
+      .map(Number)
 
-	const netPresentDays = useMemo(() => {
-		const casualLeave = Number(cl) || 0
-		const earnedLeave = Number(el) || 0
-		const lossOfPay = Number(lop) || 0
+    return new Date(
+      year,
+      monthNumber,
+      0,
+    ).getDate()
+  }, [month])
 
-		return Math.max(
-			0,
-			daysInMonth -
-				casualLeave -
-				earnedLeave -
-				lossOfPay -
-				nationalHolidays -
-				sundays,
-		)
-	}, [
-		daysInMonth,
-		cl,
-		el,
-		lop,
-		nationalHolidays,
-		sundays,
-	])
+  const sundays = useMemo(
+    () => getSundaysInMonth(month),
+    [month],
+  )
 
-	const netPayableDays = useMemo(() => {
-		const paidLeaves =
-			Number(otherPaidLeaves) || 0
+  const netPresentDays = useMemo(() => {
+    const casualLeave = Number(cl) || 0
+    const earnedLeave = Number(el) || 0
+    const lossOfPay = Number(lop) || 0
 
-		return netPresentDays + paidLeaves
-	}, [
-		netPresentDays,
-		otherPaidLeaves,
-	])
+    return Math.max(
+      0,
+      daysInMonth -
+        casualLeave -
+        earnedLeave -
+        lossOfPay -
+        nationalHolidays -
+        sundays,
+    )
+  }, [
+    daysInMonth,
+    cl,
+    el,
+    lop,
+    nationalHolidays,
+    sundays,
+  ])
 
-	const loadCompanyHolidays = async (
-		selectedMonth: string,
-	) => {
-		if (!selectedMonth) {
-			setNationalHolidays(0)
-			return
-		}
+  const netPayableDays = useMemo(() => {
+    const paidLeaves =
+      Number(otherPaidLeaves) || 0
 
-		try {
-			const response = await fetch(
-				'http://localhost:8000/api/v1/company-holidays/',
-			)
+    return netPresentDays + paidLeaves
+  }, [
+    netPresentDays,
+    otherPaidLeaves,
+  ])
 
-			const result = await response.json()
+  const loadCompanyHolidays = async (
+    selectedMonth: string,
+  ) => {
+    if (!selectedMonth) {
+      setNationalHolidays(0)
+      return
+    }
 
-			if (!response.ok) {
-				throw new Error(
-					result?.detail ||
-						'Unable to load company holidays',
-				)
-			}
+    try {
+      const response = await fetch(
+        'http://localhost:8000/company-holidays/',
+      )
 
-			const count = result.filter(
-				(holiday: {
-					holiday_date: string
-				}) =>
-					holiday.holiday_date.startsWith(
-						selectedMonth,
-					),
-			).length
+      const result = await response.json()
 
-			setNationalHolidays(count)
-		} catch (error) {
-			console.error(error)
-			setNationalHolidays(0)
-		}
-	}
+      if (!response.ok) {
+        throw new Error(
+          result?.detail ||
+            'Unable to load company holidays',
+        )
+      }
 
-	const handleMonthChange = (
-		value: string,
-	) => {
-		setMonth(value)
-		loadCompanyHolidays(value)
-	}
+      const count = result.filter(
+        (holiday: {
+          holiday_date: string
+        }) =>
+          holiday.holiday_date.startsWith(
+            selectedMonth,
+          ),
+      ).length
 
-	const handleSave = async () => {
-		if (!employeeCode.trim()) {
-			alert('Please enter Employee Code')
-			return
-		}
+      setNationalHolidays(count)
+    } catch (error) {
+      console.error(error)
+      setNationalHolidays(0)
+    }
+  }
 
-		if (!month) {
-			alert('Please select Month')
-			return
-		}
+  const handleMonthChange = (
+    value: string,
+  ) => {
+    setMonth(value)
+    loadCompanyHolidays(value)
+  }
 
-		try {
-			setSaving(true)
+  const handleSave = async () => {
+    if (!employeeCode.trim()) {
+      alert('Please enter Employee Code')
+      return
+    }
 
-			const employmentResponse =
-				await fetch(
-					`http://localhost:8000/api/v1/employment/by-code/${encodeURIComponent(
-						employeeCode.trim(),
-					)}`,
-				)
+    if (!month) {
+      alert('Please select Month')
+      return
+    }
 
-			const employmentResult =
-				await employmentResponse.json()
+    try {
+      setSaving(true)
 
-			if (!employmentResponse.ok) {
-				throw new Error(
-					employmentResult?.detail ||
-						'Employee not found',
-				)
-			}
+      const employmentResponse =
+        await fetch(
+          `http://localhost:8000/employment/by-code/${encodeURIComponent(
+            employeeCode.trim(),
+          )}`,
+        )
 
-			const userId =
-				employmentResult.user_id
+      const employmentResult =
+        await employmentResponse.json()
 
-			if (!userId) {
-				throw new Error(
-					'Employee User ID is missing',
-				)
-			}
+      if (!employmentResponse.ok) {
+        throw new Error(
+          employmentResult?.detail ||
+            'Employee not found',
+        )
+      }
 
-			const attendanceResponse =
-				await fetch(
-					'http://localhost:8000/api/v1/attendance/',
-					{
-						method: 'POST',
-						headers: {
-							'Content-Type':
-								'application/json',
-						},
-						body: JSON.stringify({
-							user_id: userId,
-							attendance_month: `${month}-01`,
-							cl: Number(cl) || 0,
-							el: Number(el) || 0,
-							pl: 0,
-							lop: Number(lop) || 0,
-							nh: nationalHolidays,
-							sundays,
-							other_paid_days:
-								Number(
-									otherPaidLeaves,
-								) || 0,
-							net_present_days:
-								netPresentDays,
-							net_payable_days:
-								netPayableDays,
-						}),
-					},
-				)
+      const userId =
+        employmentResult.user_id
 
-			const attendanceResult =
-				await attendanceResponse.json()
+      if (!userId) {
+        throw new Error(
+          'Employee User ID is missing',
+        )
+      }
 
-			if (!attendanceResponse.ok) {
-				throw new Error(
-					attendanceResult?.detail ||
-						'Failed to save Attendance',
-				)
-			}
+      const attendanceResponse =
+        await fetch(
+          'http://localhost:8000/attendance/',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              user_id: userId,
 
-			setAttendanceId(
-				attendanceResult.id,
-			)
+              attendance_month:
+                `${month}-01`,
 
-			alert(
-				'Attendance saved successfully',
-			)
-		} catch (error) {
-			console.error(error)
+              cl: Number(cl) || 0,
 
-			alert(
-				error instanceof Error
-					? error.message
-					: 'Unable to save Attendance',
-			)
-		} finally {
-			setSaving(false)
-		}
-	}
+              el: Number(el) || 0,
 
-	const handleSelectCostElement = () => {
-		if (!attendanceId) {
-			alert(
-				'Please save Attendance first',
-			)
-			return
-		}
+              pl: Number(pl) || 0,
 
-		navigate('/admin/cost-of-element', {
-			state: {
-				employeeCode:
-					employeeCode.trim(),
-				attendanceId,
-				netPresentDays,
-				netPayableDays,
-			},
-		})
-	}
+              lop: Number(lop) || 0,
 
-	return (
-		<Paper
-			sx={{
-				p: {
-					xs: 2,
-					md: 4,
-				},
-			}}
-		>
-			<Stack spacing={3}>
-				<Typography variant="h5">
-					Attendance
-				</Typography>
+              nh: nationalHolidays,
 
-				<Grid container spacing={2}>
-					<Grid
-						size={{
-							xs: 12,
-							md: 6,
-						}}
-					>
-						<TextField
-							label="Employee Code"
-							value={employeeCode}
-							onChange={(event) =>
-								setEmployeeCode(
-									event.target.value,
-								)
-							}
-							fullWidth
-						/>
-					</Grid>
+              sundays,
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 6,
-						}}
-					>
-						<TextField
-							label="Month"
-							type="month"
-							value={month}
-							onChange={(event) =>
-								handleMonthChange(
-									event.target.value,
-								)
-							}
-							fullWidth
-							slotProps={{
-								inputLabel: {
-									shrink: true,
-								},
-							}}
-						/>
-					</Grid>
+              other_paid_days:
+                Number(
+                  otherPaidLeaves,
+                ) || 0,
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 3,
-						}}
-					>
-						<TextField
-							label="Casual Leave (CL)"
-							type="number"
-							value={cl}
-							onChange={(event) =>
-								setCl(
-									event.target.value,
-								)
-							}
-							slotProps={{
-								htmlInput: {
-									min: 0,
-								},
-							}}
-							fullWidth
-						/>
-					</Grid>
+              net_present_days:
+                netPresentDays,
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 3,
-						}}
-					>
-						<TextField
-							label="Earned Leave (EL)"
-							type="number"
-							value={el}
-							onChange={(event) =>
-								setEl(
-									event.target.value,
-								)
-							}
-							slotProps={{
-								htmlInput: {
-									min: 0,
-								},
-							}}
-							fullWidth
-						/>
-					</Grid>
+              net_payable_days:
+                netPayableDays,
+            }),
+          },
+        )
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 3,
-						}}
-					>
-						<TextField
-							label="Loss of Pay (LOP)"
-							type="number"
-							value={lop}
-							onChange={(event) =>
-								setLop(
-									event.target.value,
-								)
-							}
-							slotProps={{
-								htmlInput: {
-									min: 0,
-								},
-							}}
-							fullWidth
-						/>
-					</Grid>
+      const attendanceResult =
+        await attendanceResponse.json()
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 3,
-						}}
-					>
-						<TextField
-							label="Other Paid Leaves"
-							type="number"
-							value={otherPaidLeaves}
-							onChange={(event) =>
-								setOtherPaidLeaves(
-									event.target.value,
-								)
-							}
-							slotProps={{
-								htmlInput: {
-									min: 0,
-								},
-							}}
-							fullWidth
-						/>
-					</Grid>
+      if (!attendanceResponse.ok) {
+        throw new Error(
+          attendanceResult?.detail ||
+            'Failed to save Attendance',
+        )
+      }
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 4,
-						}}
-					>
-						<TextField
-							label="National Holiday (NH)"
-							value={nationalHolidays}
-							disabled
-							fullWidth
-						/>
-					</Grid>
+      setAttendanceId(
+        attendanceResult.id,
+      )
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 4,
-						}}
-					>
-						<TextField
-							label="Sundays"
-							value={sundays}
-							disabled
-							fullWidth
-						/>
-					</Grid>
+      alert(
+        'Attendance saved successfully',
+      )
+    } catch (error) {
+      console.error(error)
 
-					<Grid
-						size={{
-							xs: 12,
-							md: 4,
-						}}
-					>
-						<TextField
-							label="Net Present Days"
-							value={netPresentDays}
-							disabled
-							fullWidth
-						/>
-					</Grid>
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Unable to save Attendance',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
 
-					<Grid
-						size={{
-							xs: 12,
-						}}
-					>
-						<TextField
-							label="Net Payable Days"
-							value={netPayableDays}
-							disabled
-							fullWidth
-						/>
-					</Grid>
-				</Grid>
+  const handleSelectCostElement = () => {
+    if (!attendanceId) {
+      alert(
+        'Please save Attendance first',
+      )
+      return
+    }
 
-				<Stack
-					direction={{
-						xs: 'column',
-						sm: 'row',
-					}}
-					spacing={2}
-				>
-					<Button
-						variant="contained"
-						onClick={handleSave}
-						disabled={saving}
-					>
-						{saving
-							? 'Saving...'
-							: 'Save'}
-					</Button>
+    navigate('/admin/cost-of-element', {
+      state: {
+        employeeCode:
+          employeeCode.trim(),
 
-					{attendanceId && (
-						<Button
-							variant="outlined"
-							onClick={
-								handleSelectCostElement
-							}
-						>
-							Select Cost Element
-						</Button>
-					)}
-				</Stack>
-			</Stack>
-		</Paper>
-	)
+        attendanceId,
+
+        netPresentDays,
+
+        netPayableDays,
+      },
+    })
+  }
+
+  const inputClass =
+    'form-control'
+
+  return (
+    <div className="enquiry-page bg-light min-vh-100 py-5">
+      <div className="container">
+
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-4 p-lg-5">
+
+            {/* HEADER */}
+
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+
+              <div>
+                <p className="text-uppercase text-primary fw-semibold mb-1">
+                  HR
+                </p>
+
+                <h1 className="h2 mb-0">
+                  Attendance
+                </h1>
+              </div>
+
+            </div>
+
+            {/* ATTENDANCE INFORMATION */}
+
+            <div className="border rounded bg-white p-3 p-md-4 mb-3">
+
+              <h2 className="h4 mb-3">
+                Attendance Information
+              </h2>
+
+              <div className="row g-3">
+
+                {/* EMPLOYEE CODE */}
+
+                <div className="col-md-6">
+                  <label className="form-label">
+                    Employee Code
+                  </label>
+
+                  <input
+                    type="text"
+                    value={employeeCode}
+                    onChange={(event) =>
+                      setEmployeeCode(
+                        event.target.value,
+                      )
+                    }
+                    className={inputClass}
+                    placeholder="Enter employee code"
+                  />
+                </div>
+
+                {/* MONTH */}
+
+                <div className="col-md-6">
+                  <label className="form-label">
+                    Attendance Month
+                  </label>
+
+                  <input
+                    type="month"
+                    value={month}
+                    onChange={(event) =>
+                      handleMonthChange(
+                        event.target.value,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+
+              </div>
+            </div>
+
+            {/* LEAVE DETAILS */}
+
+            <div className="border rounded bg-white p-3 p-md-4 mb-3">
+
+              <h2 className="h4 mb-3">
+                Leave Details
+              </h2>
+
+              <div className="row g-3">
+
+                {/* CL */}
+
+                <div className="col-md-3">
+                  <label className="form-label">
+                    Casual Leave (CL)
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={cl}
+                    onChange={(event) =>
+                      setCl(
+                        event.target.value,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* EL */}
+
+                <div className="col-md-3">
+                  <label className="form-label">
+                    Earned Leave (EL)
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={el}
+                    onChange={(event) =>
+                      setEl(
+                        event.target.value,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* PL */}
+
+                <div className="col-md-3">
+                  <label className="form-label">
+                    Paid Leave (PL)
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={pl}
+                    onChange={(event) =>
+                      setPl(
+                        event.target.value,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* LOP */}
+
+                <div className="col-md-3">
+                  <label className="form-label">
+                    Loss of Pay (LOP)
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={lop}
+                    onChange={(event) =>
+                      setLop(
+                        event.target.value,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* OTHER PAID DAYS */}
+
+                <div className="col-md-6">
+                  <label className="form-label">
+                    Other Paid Days
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={otherPaidLeaves}
+                    onChange={(event) =>
+                      setOtherPaidLeaves(
+                        event.target.value,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* DAYS IN MONTH */}
+
+                <div className="col-md-6">
+                  <label className="form-label">
+                    Days in Month
+                  </label>
+
+                  <input
+                    type="number"
+                    value={daysInMonth}
+                    disabled
+                    className={inputClass}
+                  />
+                </div>
+
+              </div>
+            </div>
+
+            {/* ATTENDANCE CALCULATION */}
+
+            <div className="border rounded bg-white p-3 p-md-4 mb-3">
+
+              <h2 className="h4 mb-3">
+                Attendance Calculation
+              </h2>
+
+              <div className="row g-3">
+
+                {/* NH */}
+
+                <div className="col-md-4">
+                  <label className="form-label">
+                    National Holidays (NH)
+                  </label>
+
+                  <input
+                    type="number"
+                    value={nationalHolidays}
+                    disabled
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* SUNDAYS */}
+
+                <div className="col-md-4">
+                  <label className="form-label">
+                    Sundays
+                  </label>
+
+                  <input
+                    type="number"
+                    value={sundays}
+                    disabled
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* NET PRESENT */}
+
+                <div className="col-md-4">
+                  <label className="form-label">
+                    Net Present Days
+                  </label>
+
+                  <input
+                    type="number"
+                    value={netPresentDays}
+                    disabled
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* NET PAYABLE */}
+
+                <div className="col-md-6">
+                  <label className="form-label">
+                    Net Payable Days
+                  </label>
+
+                  <input
+                    type="number"
+                    value={netPayableDays}
+                    disabled
+                    className={inputClass}
+                  />
+                </div>
+
+              </div>
+            </div>
+
+            {/* BUTTONS */}
+
+            <div className="col-12 d-flex justify-content-end gap-2">
+
+              <button
+                type="button"
+                className="btn btn-primary btn-lg px-4"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving
+                  ? 'Saving...'
+                  : 'Save'}
+              </button>
+
+              {attendanceId && (
+                <button
+                  type="button"
+                  className="btn btn-outline-primary btn-lg px-4"
+                  onClick={
+                    handleSelectCostElement
+                  }
+                >
+                  Select Cost Element
+                </button>
+              )}
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
 }
 
 export default AttendanceForm

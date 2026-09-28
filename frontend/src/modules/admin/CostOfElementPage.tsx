@@ -122,22 +122,26 @@ function CostOfElementPage() {
 		try {
 			setSaving(true)
 
-			const employmentResponse =
-				await fetch(
-					`http://localhost:8000/api/v1/employment/by-code/${encodeURIComponent(
-						employeeCode,
-					)}`,
-				)
+			// Get employee details
+			const employmentUrl =
+				`http://localhost:8000/employment/by-code/${encodeURIComponent(
+					employeeCode,
+				)}`
 
-			const employmentResult =
-				await employmentResponse.json()
+			const employmentResponse =
+				await fetch(employmentUrl)
+
+			const employmentText =
+				await employmentResponse.text()
 
 			if (!employmentResponse.ok) {
 				throw new Error(
-					employmentResult?.detail ||
-						'Employee not found',
+					`Employee API Error: ${employmentResponse.status} ${employmentText}`,
 				)
 			}
+
+			const employmentResult =
+				JSON.parse(employmentText)
 
 			const userId =
 				employmentResult.user_id
@@ -148,35 +152,39 @@ function CostOfElementPage() {
 				)
 			}
 
+			// Save every Cost Element
 			for (const row of rows) {
-				const coeResponse =
-					await fetch(
-						'http://localhost:8000/api/v1/attendance-coe/',
-						{
-							method: 'POST',
-							headers: {
-								'Content-Type':
-									'application/json',
-							},
-							body: JSON.stringify({
-								attendance_id:
-									attendanceId,
-								item: row.item,
-								worked_days:
-									row.workedDays,
-								salary_per_day: 0,
-								amount: 0,
-							}),
-						},
-					)
+				const coeUrl =
+					'http://localhost:8000/attendance-coe/'
 
-				const coeResult =
-					await coeResponse.json()
+				const requestBody = {
+					attendance_id:
+						attendanceId,
+					item: row.item,
+					worked_days:
+						row.workedDays,
+					salary_per_day: 0,
+					amount: 0,
+				}
+
+				const coeResponse =
+					await fetch(coeUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type':
+								'application/json',
+						},
+						body: JSON.stringify(
+							requestBody,
+						),
+					})
+
+				const coeText =
+					await coeResponse.text()
 
 				if (!coeResponse.ok) {
 					throw new Error(
-						coeResult?.detail ||
-							'Failed to save Cost Element',
+						`Cost Element API Error: ${coeResponse.status} ${coeText}`,
 					)
 				}
 			}
@@ -194,7 +202,10 @@ function CostOfElementPage() {
 				},
 			})
 		} catch (error) {
-			console.error(error)
+			console.error(
+				'Cost Element Save Error:',
+				error,
+			)
 
 			alert(
 				error instanceof Error

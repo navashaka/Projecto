@@ -1,36 +1,47 @@
 import './App.css'
+import { Route, Routes } from 'react-router-dom'
+
 import LoginPage from './components/auth/LoginPage'
 import UserEnquiryForm from './components/auth/UserEnquiryForm'
+
 import Header from './components/layout/Header'
 import LeftSidebar from './components/layout/LeftSidebar'
 import MainContent from './components/layout/MainContent'
 import RightSidebar from './components/layout/RightSidebar'
 import Footer from './components/layout/Footer'
+
+import CreateAttendancePage from './modules/hr/pages/attendance/CreateAttendancePage'
+import CreateEmploymentDetailsPage from './modules/hr/pages/employment/CreateEmploymentDetailsPage'
+import CostOfElementPage from './modules/admin/CostOfElementPage'
+
 import { useAppStore } from './store'
 
+function DashboardLayout() {
+  return (
+    <div className="app-shell">
+      <Header />
+
+      <div className="app-body">
+        <LeftSidebar />
+        <MainContent />
+        <RightSidebar />
+      </div>
+
+      <Footer />
+    </div>
+  )
+}
+
 function App() {
-  const isAuthenticated = useAppStore(
-    (state) => state.isAuthenticated
-  )
-
-  const showRegisterForm = useAppStore(
-    (state) => state.showRegisterForm
-  )
-
-  const login = useAppStore(
-    (state) => state.login
-  )
-
-  const toggleRegisterForm = useAppStore(
-    (state) => state.toggleRegisterForm
-  )
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated)
+  const showRegisterForm = useAppStore((state) => state.showRegisterForm)
+  const login = useAppStore((state) => state.login)
+  const toggleRegisterForm = useAppStore((state) => state.toggleRegisterForm)
 
   if (!isAuthenticated) {
     return showRegisterForm ? (
       <UserEnquiryForm
-        onBackToLogin={() =>
-          toggleRegisterForm(false)
-        }
+        onBackToLogin={() => toggleRegisterForm(false)}
       />
     ) : (
       <LoginPage
@@ -41,27 +52,37 @@ function App() {
             role: 'admin',
           })
         }
-        onRegister={() =>
-          toggleRegisterForm(true)
-        }
+        onRegister={() => toggleRegisterForm(true)}
       />
     )
   }
 
   return (
-    <div className="app-shell">
-      <Header />
+    <Routes>
+      {/* Attendance */}
+      <Route
+        path="/attendance/create"
+        element={<CreateAttendancePage />}
+      />
 
-      <div className="app-body">
-        <LeftSidebar />
+      {/* Employment Details */}
+      <Route
+        path="/employment/create"
+        element={<CreateEmploymentDetailsPage />}
+      />
 
-        <MainContent />
+      {/* Cost Element */}
+      <Route
+        path="/admin/cost-of-element"
+        element={<CostOfElementPage />}
+      />
 
-        <RightSidebar />
-      </div>
-
-      <Footer />
-    </div>
+      {/* Dashboard */}
+      <Route
+        path="*"
+        element={<DashboardLayout />}
+      />
+    </Routes>
   )
 }
 
