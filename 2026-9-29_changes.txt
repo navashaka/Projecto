@@ -1,0 +1,7 @@
+29-09-2026
+
+Frontend Forms: Attendance, Employment, On Employment, Salary, Travelling Advance, Travelling Expenses, Job Profile, Company Holidays, Payroll
+
+Backend: HR APIs, Payroll calculations
+
+DB: HR tables
