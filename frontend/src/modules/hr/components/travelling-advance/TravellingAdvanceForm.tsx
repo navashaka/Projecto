@@ -1,101 +1,53 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { useEffect, useState } from 'react'
+import {
+	Button,
+	Grid,
+	Paper,
+	Stack,
+	TextField,
+	Typography,
+} from '@mui/material'
+import { useForm, useWatch } from 'react-hook-form'
 
-const optionalText = (max: number, label: string) =>
-	z
-		.string()
-		.trim()
-		.max(max, `${label} must be ${max} characters or less`)
-		.optional()
-		.or(z.literal(''))
+type TravellingAdvanceFormData = {
+	user_id: number
+	employee_code: string
+	designation: string
+	department: string
+	from_date: string
+	to_date: string
+	place_visited: string
+	purpose_of_visit: string
+	type_of_expense: string
+	expense_amount?: number
+	additional_expense_type: string
+	additional_expense_amount?: number
+	other_expense_type: string
+	other_expense_amount?: number
+	total_advance: number
+}
 
-const optionalLongText = z.string().trim().optional().or(z.literal(''))
+const getNumber = (value: unknown) => {
+	const number = Number(value)
+	return Number.isFinite(number) ? number : 0
+}
 
-const optionalDate = z
-	.string()
-	.refine((value) => {
-		if (value === '') return true
-		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-		const [year, month, day] = value.split('-').map(Number)
-		const date = new Date(year, month - 1, day)
-		return (
-			date.getFullYear() === year &&
-			date.getMonth() === month - 1 &&
-			date.getDate() === day
-		)
-	}, 'Enter a valid date')
-	.optional()
-	.or(z.literal(''))
-
-const decimalSchema = (label: string) =>
-	z
-		.number()
-		.finite(`${label} must be a valid number`)
-		.refine(
-			(value) => Math.abs(value) <= 9999999999.99,
-			`${label} must fit Numeric(12, 2)`,
-		)
-		.refine(
-			(value) =>
-				Math.abs(value * 100 - Math.round(value * 100)) <=
-				Number.EPSILON * Math.max(1, Math.abs(value * 100)),
-			`${label} must have at most 2 decimal places`,
-		)
-		.optional()
-
-const travellingAdvanceSchema = z.object({
-	user_id: z.number().int('User ID must be a whole number'),
-	employee_code: optionalText(50, 'Employee code'),
-	designation: optionalText(150, 'Designation'),
-	department: optionalText(150, 'Department'),
-	from_date: optionalDate,
-	to_date: optionalDate,
-	place_visited: optionalText(200, 'Place visited'),
-	purpose_of_visit: optionalLongText,
-	type_of_expense: optionalText(100, 'Type of expense'),
-	expense_amount: decimalSchema('Expense amount'),
-	additional_expense_type: optionalText(100, 'Additional expense type'),
-	additional_expense_amount: decimalSchema('Additional expense amount'),
-	other_expense_type: optionalText(100, 'Other expense type'),
-	other_expense_amount: decimalSchema('Other expense amount'),
-	total_advance: decimalSchema('Total advance'),
-})
-
-type TravellingAdvanceFormData = z.infer<typeof travellingAdvanceSchema>
-
-const textFields = [
-	{ name: 'employee_code', label: 'Employee code', maxLength: 50 },
-	{ name: 'designation', label: 'Designation', maxLength: 150 },
-	{ name: 'department', label: 'Department', maxLength: 150 },
-	{ name: 'place_visited', label: 'Place visited', maxLength: 200 },
-	{ name: 'type_of_expense', label: 'Type of expense', maxLength: 100 },
-	{ name: 'additional_expense_type', label: 'Additional expense type', maxLength: 100 },
-	{ name: 'other_expense_type', label: 'Other expense type', maxLength: 100 },
-] as const
-
-const dateFields = [
-	{ name: 'from_date', label: 'From date' },
-	{ name: 'to_date', label: 'To date' },
-] as const
-
-const decimalFields = [
-	{ name: 'expense_amount', label: 'Expense amount' },
-	{ name: 'additional_expense_amount', label: 'Additional expense amount' },
-	{ name: 'other_expense_amount', label: 'Other expense amount' },
-	{ name: 'total_advance', label: 'Total advance' },
-] as const
+const roundValue = (value: number) =>
+	Math.round((value + Number.EPSILON) * 100) / 100
 
 function TravellingAdvanceForm() {
+	const [submitting, setSubmitting] = useState(false)
+	const [successMessage, setSuccessMessage] = useState('')
+	const [errorMessage, setErrorMessage] = useState('')
+
 	const {
 		register,
+		control,
 		handleSubmit,
-		formState: { errors },
+		setValue,
 	} = useForm<TravellingAdvanceFormData>({
-		resolver: zodResolver(travellingAdvanceSchema),
 		defaultValues: {
-			user_id: undefined,
+			user_id: 1,
 			employee_code: '',
 			designation: '',
 			department: '',
@@ -109,11 +61,76 @@ function TravellingAdvanceForm() {
 			additional_expense_amount: undefined,
 			other_expense_type: '',
 			other_expense_amount: undefined,
-			total_advance: undefined,
+			total_advance: 0,
 		},
 	})
 
-	const onSubmit = (_data: TravellingAdvanceFormData) => undefined
+	const expenseAmount = useWatch({
+		control,
+		name: 'expense_amount',
+	})
+
+	const additionalExpenseAmount = useWatch({
+		control,
+		name: 'additional_expense_amount',
+	})
+
+	const otherExpenseAmount = useWatch({
+		control,
+		name: 'other_expense_amount',
+	})
+
+	const totalAdvance = roundValue(
+		getNumber(expenseAmount) +
+			getNumber(additionalExpenseAmount) +
+			getNumber(otherExpenseAmount),
+	)
+
+	useEffect(() => {
+		setValue('total_advance', totalAdvance)
+	}, [totalAdvance, setValue])
+
+	const onSubmit = async (data: TravellingAdvanceFormData) => {
+		setSubmitting(true)
+		setSuccessMessage('')
+		setErrorMessage('')
+
+		try {
+			const response = await fetch(
+				'http://127.0.0.1:8000/travelling-advance/',
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						...data,
+						total_advance: totalAdvance,
+					}),
+				},
+			)
+
+			const result = await response.json()
+
+			if (!response.ok) {
+				throw new Error(
+					result?.detail
+						? JSON.stringify(result.detail)
+						: 'Failed to submit travelling advance',
+				)
+			}
+
+			setSuccessMessage('Submitted successfully!')
+		} catch (error) {
+			setErrorMessage(
+				error instanceof Error
+					? error.message
+					: 'Something went wrong',
+			)
+		} finally {
+			setSubmitting(false)
+		}
+	}
 
 	return (
 		<Paper
@@ -123,18 +140,47 @@ function TravellingAdvanceForm() {
 		>
 			<Stack spacing={3}>
 				<div>
-					<Typography variant="h5">Travelling advance</Typography>
+					<Typography variant="h5">
+						Travelling advance
+					</Typography>
+
 					<Typography color="text.secondary" variant="body2">
 						Capture travel dates, purpose, and advance expenses.
 					</Typography>
 				</div>
 
+				{successMessage && (
+					<div
+						style={{
+							padding: '12px',
+							backgroundColor: '#d1e7dd',
+							color: '#0f5132',
+							borderRadius: '6px',
+						}}
+					>
+						{successMessage}
+					</div>
+				)}
+
+				{errorMessage && (
+					<div
+						style={{
+							padding: '12px',
+							backgroundColor: '#f8d7da',
+							color: '#842029',
+							borderRadius: '6px',
+						}}
+					>
+						{errorMessage}
+					</div>
+				)}
+
 				<Grid container spacing={2}>
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
-							{...register('user_id', { valueAsNumber: true })}
-							error={!!errors.user_id}
-							helperText={errors.user_id?.message}
+							{...register('user_id', {
+								valueAsNumber: true,
+							})}
 							label="User ID"
 							type="number"
 							required
@@ -142,38 +188,73 @@ function TravellingAdvanceForm() {
 						/>
 					</Grid>
 
-					{textFields.map(({ name, label, maxLength }) => (
-						<Grid key={name} size={{ xs: 12, sm: 6 }}>
-							<TextField
-								{...register(name)}
-								error={!!errors[name]}
-								helperText={errors[name]?.message}
-								label={label}
-								slotProps={{ htmlInput: { maxLength } }}
-								fullWidth
-							/>
-						</Grid>
-					))}
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('employee_code')}
+							label="Employee code"
+							fullWidth
+						/>
+					</Grid>
 
-					{dateFields.map(({ name, label }) => (
-						<Grid key={name} size={{ xs: 12, sm: 6 }}>
-							<TextField
-								{...register(name)}
-								error={!!errors[name]}
-								helperText={errors[name]?.message}
-								label={label}
-								type="date"
-								slotProps={{ inputLabel: { shrink: true } }}
-								fullWidth
-							/>
-						</Grid>
-					))}
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('designation')}
+							label="Designation"
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('department')}
+							label="Department"
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('from_date')}
+							label="From date"
+							type="date"
+							slotProps={{
+								inputLabel: { shrink: true },
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('to_date')}
+							label="To date"
+							type="date"
+							slotProps={{
+								inputLabel: { shrink: true },
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('place_visited')}
+							label="Place visited"
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('type_of_expense')}
+							label="Type of expense"
+							fullWidth
+						/>
+					</Grid>
 
 					<Grid size={{ xs: 12 }}>
 						<TextField
 							{...register('purpose_of_visit')}
-							error={!!errors.purpose_of_visit}
-							helperText={errors.purpose_of_visit?.message}
 							label="Purpose of visit"
 							multiline
 							minRows={3}
@@ -181,30 +262,94 @@ function TravellingAdvanceForm() {
 						/>
 					</Grid>
 
-					{decimalFields.map(({ name, label }) => (
-						<Grid key={name} size={{ xs: 12, sm: 6 }}>
-							<TextField
-								{...register(name, {
-									setValueAs: (value) =>
-										value === '' ? undefined : Number(value),
-								})}
-								error={!!errors[name]}
-								helperText={errors[name]?.message}
-								label={label}
-								type="number"
-								slotProps={{ htmlInput: { step: '0.01' } }}
-								fullWidth
-							/>
-						</Grid>
-					))}
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('expense_amount', {
+								setValueAs: (value) =>
+									value === ''
+										? undefined
+										: Number(value),
+							})}
+							label="Expense amount"
+							type="number"
+							slotProps={{
+								htmlInput: { step: '0.01' },
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('additional_expense_type')}
+							label="Additional expense type"
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('additional_expense_amount', {
+								setValueAs: (value) =>
+									value === ''
+										? undefined
+										: Number(value),
+							})}
+							label="Additional expense amount"
+							type="number"
+							slotProps={{
+								htmlInput: { step: '0.01' },
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('other_expense_type')}
+							label="Other expense type"
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							{...register('other_expense_amount', {
+								setValueAs: (value) =>
+									value === ''
+										? undefined
+										: Number(value),
+							})}
+							label="Other expense amount"
+							type="number"
+							slotProps={{
+								htmlInput: { step: '0.01' },
+							}}
+							fullWidth
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, sm: 6 }}>
+						<TextField
+							label="Total advance"
+							type="number"
+							value={totalAdvance}
+							slotProps={{
+								htmlInput: { step: '0.01' },
+								input:{ readOnly:true}
+							}}
+							fullWidth
+						/>
+					</Grid>
 				</Grid>
 
 				<Button
 					type="submit"
 					variant="contained"
+					disabled={submitting}
 					sx={{ alignSelf: 'flex-start' }}
 				>
-					Submit travelling advance
+					{submitting ? 'Submitting...' : 'Submit'}
 				</Button>
 			</Stack>
 		</Paper>

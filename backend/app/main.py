@@ -23,6 +23,9 @@ from app.api.v1.travelling_expenses_reimbursement import (
     router as travelling_expenses_reimbursement_router,
 )
 
+# Payroll API router
+from app.modules.hr.payroll.router import router as payroll_router
+
 # GL API routers
 from app.api.v1.gl_tax_type import router as gl_tax_type_router
 from app.api.v1.gl_group import router as gl_group_router
@@ -199,6 +202,9 @@ app.include_router(job_profile_router)
 app.include_router(on_employment_router)
 app.include_router(employment_router)
 app.include_router(travelling_expenses_reimbursement_router)
+
+# Payroll router
+app.include_router(payroll_router)
 
 # GL routers
 app.include_router(gl_tax_type_router)

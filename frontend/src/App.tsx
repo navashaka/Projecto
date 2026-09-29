@@ -12,6 +12,15 @@ import Footer from './components/layout/Footer'
 
 import CreateAttendancePage from './modules/hr/pages/attendance/CreateAttendancePage'
 import CreateEmploymentDetailsPage from './modules/hr/pages/employment/CreateEmploymentDetailsPage'
+import CreateOnEmploymentPage from './modules/hr/pages/on-employment/CreateOnEmploymentPage'
+import CreateSalaryDetailsPage from './modules/hr/pages/salary/CreateSalaryDetailsPage'
+import CreatePayrollPage from './modules/hr/pages/payroll/CreatePayrollPage'
+import CreateTravellingAdvancePage from './modules/hr/pages/travelling-advance/CreateTravellingAdvancePage'
+
+import JobProfileForm from './modules/hr/components/job-profile/JobProfileForm'
+import TravellingExpensesReimbursementForm from './modules/hr/components/travelling-expenses-reimbursement/TravellingExpensesReimbursementForm'
+import CompanyHolidayForm from './modules/hr/components/company-holidays/CompanyHolidayForm'
+
 import CostOfElementPage from './modules/admin/CostOfElementPage'
 
 import { useAppStore } from './store'
@@ -33,10 +42,21 @@ function DashboardLayout() {
 }
 
 function App() {
-  const isAuthenticated = useAppStore((state) => state.isAuthenticated)
-  const showRegisterForm = useAppStore((state) => state.showRegisterForm)
-  const login = useAppStore((state) => state.login)
-  const toggleRegisterForm = useAppStore((state) => state.toggleRegisterForm)
+  const isAuthenticated = useAppStore(
+    (state) => state.isAuthenticated,
+  )
+
+  const showRegisterForm = useAppStore(
+    (state) => state.showRegisterForm,
+  )
+
+  const login = useAppStore(
+    (state) => state.login,
+  )
+
+  const toggleRegisterForm = useAppStore(
+    (state) => state.toggleRegisterForm,
+  )
 
   if (!isAuthenticated) {
     return showRegisterForm ? (
@@ -71,7 +91,49 @@ function App() {
         element={<CreateEmploymentDetailsPage />}
       />
 
-      {/* Cost Element */}
+      {/* On Employment */}
+      <Route
+        path="/on-employment/create"
+        element={<CreateOnEmploymentPage />}
+      />
+
+      {/* Salary Details */}
+      <Route
+        path="/salary/create"
+        element={<CreateSalaryDetailsPage />}
+      />
+
+      {/* Payroll */}
+      <Route
+        path="/payroll/create"
+        element={<CreatePayrollPage />}
+      />
+
+      {/* Travelling Advance */}
+      <Route
+        path="/travelling-advance/create"
+        element={<CreateTravellingAdvancePage />}
+      />
+
+      {/* Job Profile */}
+      <Route
+        path="/job-profile/create"
+        element={<JobProfileForm />}
+      />
+
+      {/* Travelling Expenses Reimbursement */}
+      <Route
+        path="/travelling-expenses-reimbursement/create"
+        element={<TravellingExpensesReimbursementForm />}
+      />
+
+      {/* Company Holidays */}
+      <Route
+        path="/company-holidays/create"
+        element={<CompanyHolidayForm />}
+      />
+
+      {/* Cost Of Element */}
       <Route
         path="/admin/cost-of-element"
         element={<CostOfElementPage />}

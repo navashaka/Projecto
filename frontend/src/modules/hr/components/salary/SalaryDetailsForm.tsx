@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -25,9 +24,15 @@ const optionalInteger = (label: string) =>
 
 const salaryDetailsSchema = z.object({
 	user_id: z.number().int('User ID must be a whole number'),
+
+	effective_date: z
+		.string()
+		.min(1, 'Effective date is required'),
+
 	salary_offered_ctc: decimalSchema('Salary offered CTC'),
 	yearly_increment: decimalSchema('Yearly increment'),
 	increment_year: optionalInteger('Increment year'),
+
 	basic: decimalSchema('Basic'),
 	allowance1: decimalSchema('Allowance 1'),
 	allowance2: decimalSchema('Allowance 2'),
@@ -38,8 +43,11 @@ const salaryDetailsSchema = z.object({
 	other_allowance: decimalSchema('Other allowance'),
 	arrears: decimalSchema('Arrears'),
 	gross: decimalSchema('Gross'),
+
 	epf_deduction: decimalSchema('EPF deduction'),
-	esi_insurance_deduction: decimalSchema('ESI insurance deduction'),
+	esi_insurance_deduction: decimalSchema(
+		'ESI insurance deduction',
+	),
 	tds: decimalSchema('TDS'),
 	canteen_deduction: decimalSchema('Canteen deduction'),
 	advance_deduction: decimalSchema('Advance deduction'),
@@ -47,62 +55,169 @@ const salaryDetailsSchema = z.object({
 	other_deduction: decimalSchema('Other deduction'),
 	total_deductions: decimalSchema('Total deductions'),
 	net_salary: decimalSchema('Net salary'),
+
 	epf_employer_share: decimalSchema('EPF employer share'),
 	esi_employer_share: decimalSchema('ESI employer share'),
-	insurance_employer_share: decimalSchema('Insurance employer share'),
+	insurance_employer_share: decimalSchema(
+		'Insurance employer share',
+	),
 	transport_allowance: decimalSchema('Transport allowance'),
 	canteen_allowance: decimalSchema('Canteen allowance'),
 	bonus: decimalSchema('Bonus'),
-	other_employer_contribution: decimalSchema('Other employer contribution'),
+	other_employer_contribution: decimalSchema(
+		'Other employer contribution',
+	),
 	total_ctc: decimalSchema('Total CTC'),
 })
 
 type SalaryDetailsFormData = z.infer<typeof salaryDetailsSchema>
 
 type NumericField = {
-	name: keyof Omit<SalaryDetailsFormData, 'user_id'>
+	name: keyof Omit<
+		SalaryDetailsFormData,
+		'user_id' | 'effective_date'
+	>
 	label: string
 	integer?: boolean
 	calculated?: boolean
 }
 
 const salaryFields: NumericField[] = [
-	{ name: 'salary_offered_ctc', label: 'Salary offered CTC' },
-	{ name: 'yearly_increment', label: 'Yearly increment' },
-	{ name: 'increment_year', label: 'Increment year', integer: true },
-	{ name: 'basic', label: 'Basic' },
-	{ name: 'allowance1', label: 'Allowance 1' },
-	{ name: 'allowance2', label: 'Allowance 2' },
-	{ name: 'allowance3', label: 'Allowance 3' },
-	{ name: 'allowance4', label: 'Allowance 4' },
-	{ name: 'allowance5', label: 'Allowance 5' },
-	{ name: 'allowance6', label: 'Allowance 6' },
-	{ name: 'other_allowance', label: 'Other allowance' },
-	{ name: 'arrears', label: 'Arrears' },
-	{ name: 'gross', label: 'Gross', calculated: true },
+	{
+		name: 'salary_offered_ctc',
+		label: 'Salary offered CTC',
+	},
+	{
+		name: 'yearly_increment',
+		label: 'Yearly increment',
+	},
+	{
+		name: 'increment_year',
+		label: 'Increment year',
+		integer: true,
+	},
+	{
+		name: 'basic',
+		label: 'Basic',
+	},
+	{
+		name: 'allowance1',
+		label: 'Allowance 1',
+	},
+	{
+		name: 'allowance2',
+		label: 'Allowance 2',
+	},
+	{
+		name: 'allowance3',
+		label: 'Allowance 3',
+	},
+	{
+		name: 'allowance4',
+		label: 'Allowance 4',
+	},
+	{
+		name: 'allowance5',
+		label: 'Allowance 5',
+	},
+	{
+		name: 'allowance6',
+		label: 'Allowance 6',
+	},
+	{
+		name: 'other_allowance',
+		label: 'Other allowance',
+	},
+	{
+		name: 'arrears',
+		label: 'Arrears',
+	},
+	{
+		name: 'gross',
+		label: 'Gross',
+		calculated: true,
+	},
 ]
 
 const deductionFields: NumericField[] = [
-	{ name: 'epf_deduction', label: 'EPF deduction', calculated: true },
-	{ name: 'esi_insurance_deduction', label: 'ESI insurance deduction', calculated: true },
-	{ name: 'tds', label: 'TDS' },
-	{ name: 'canteen_deduction', label: 'Canteen deduction' },
-	{ name: 'advance_deduction', label: 'Advance deduction' },
-	{ name: 'loan_emi', label: 'Loan EMI' },
-	{ name: 'other_deduction', label: 'Other deduction' },
-	{ name: 'total_deductions', label: 'Total deductions', calculated: true },
-	{ name: 'net_salary', label: 'Net salary', calculated: true },
+	{
+		name: 'epf_deduction',
+		label: 'EPF deduction',
+		calculated: true,
+	},
+	{
+		name: 'esi_insurance_deduction',
+		label: 'ESI insurance deduction',
+		calculated: true,
+	},
+	{
+		name: 'tds',
+		label: 'TDS',
+	},
+	{
+		name: 'canteen_deduction',
+		label: 'Canteen deduction',
+	},
+	{
+		name: 'advance_deduction',
+		label: 'Advance deduction',
+	},
+	{
+		name: 'loan_emi',
+		label: 'Loan EMI',
+	},
+	{
+		name: 'other_deduction',
+		label: 'Other deduction',
+	},
+	{
+		name: 'total_deductions',
+		label: 'Total deductions',
+		calculated: true,
+	},
+	{
+		name: 'net_salary',
+		label: 'Net salary',
+		calculated: true,
+	},
 ]
 
 const contributionFields: NumericField[] = [
-	{ name: 'epf_employer_share', label: 'EPF employer share', calculated: true },
-	{ name: 'esi_employer_share', label: 'ESI employer share', calculated: true },
-	{ name: 'insurance_employer_share', label: 'Insurance employer share' },
-	{ name: 'transport_allowance', label: 'Transport allowance' },
-	{ name: 'canteen_allowance', label: 'Canteen allowance' },
-	{ name: 'bonus', label: 'Bonus' },
-	{ name: 'other_employer_contribution', label: 'Other employer contribution' },
-	{ name: 'total_ctc', label: 'Total CTC', calculated: true },
+	{
+		name: 'epf_employer_share',
+		label: 'EPF employer share',
+		calculated: true,
+	},
+	{
+		name: 'esi_employer_share',
+		label: 'ESI employer share',
+		calculated: true,
+	},
+	{
+		name: 'insurance_employer_share',
+		label: 'Insurance employer share',
+	},
+	{
+		name: 'transport_allowance',
+		label: 'Transport allowance',
+	},
+	{
+		name: 'canteen_allowance',
+		label: 'Canteen allowance',
+	},
+	{
+		name: 'bonus',
+		label: 'Bonus',
+	},
+	{
+		name: 'other_employer_contribution',
+		label: 'Other employer contribution',
+	},
+	{
+		name: 'total_ctc',
+		label: 'Total CTC',
+		calculated: true,
+	},
 ]
 
 const roundValue = (value: number) => Math.round(value)
@@ -110,19 +225,26 @@ const roundValue = (value: number) => Math.round(value)
 const getValue = (value: number | undefined) => value ?? 0
 
 function SalaryDetailsForm() {
+	const [submitMessage, setSubmitMessage] = useState('')
+	const [submitError, setSubmitError] = useState('')
+
 	const {
 		register,
 		handleSubmit,
 		control,
 		setValue,
-		formState: { errors },
+		formState: { errors, isSubmitting },
 	} = useForm<SalaryDetailsFormData>({
 		resolver: zodResolver(salaryDetailsSchema),
+
 		defaultValues: {
 			user_id: undefined,
+			effective_date: '',
+
 			salary_offered_ctc: undefined,
 			yearly_increment: undefined,
 			increment_year: undefined,
+
 			basic: undefined,
 			allowance1: undefined,
 			allowance2: undefined,
@@ -133,6 +255,7 @@ function SalaryDetailsForm() {
 			other_allowance: undefined,
 			arrears: undefined,
 			gross: undefined,
+
 			epf_deduction: undefined,
 			esi_insurance_deduction: undefined,
 			tds: undefined,
@@ -142,6 +265,7 @@ function SalaryDetailsForm() {
 			other_deduction: undefined,
 			total_deductions: undefined,
 			net_salary: undefined,
+
 			epf_employer_share: undefined,
 			esi_employer_share: undefined,
 			insurance_employer_share: undefined,
@@ -174,10 +298,15 @@ function SalaryDetailsForm() {
 
 		// Employee EPF = 12% of Basic
 		const epf = roundValue(basic * 0.12)
+
 		setValue('epf_deduction', epf)
 
-		// Employee ESI = 0.75% of Gross, only when Gross <= 21000
-		const esi = gross <= 21000 ? roundValue(gross * 0.0075) : 0
+		// Employee ESI = 0.75% of Gross when Gross <= 21000
+		const esi =
+			gross <= 21000
+				? roundValue(gross * 0.0075)
+				: 0
+
 		setValue('esi_insurance_deduction', esi)
 
 		// Total deductions
@@ -194,29 +323,45 @@ function SalaryDetailsForm() {
 		setValue('total_deductions', totalDeductions)
 
 		// Net salary
-		const netSalary = roundValue(gross - totalDeductions)
+		const netSalary = roundValue(
+			gross - totalDeductions,
+		)
+
 		setValue('net_salary', netSalary)
 
 		// Employer EPF = 3.67% of Basic
-		const employerEpf = roundValue(basic * 0.0367)
+		const employerEpf = roundValue(
+			basic * 0.0367,
+		)
+
 		setValue('epf_employer_share', employerEpf)
 
-		// Employer ESI = 3.25% of Gross, only when Gross <= 21000
+		// Employer ESI = 3.25% of Gross when Gross <= 21000
 		const employerEsi =
-			gross <= 21000 ? roundValue(gross * 0.0325) : 0
+			gross <= 21000
+				? roundValue(gross * 0.0325)
+				: 0
+
 		setValue('esi_employer_share', employerEsi)
 
 		// Total CTC
 		const totalCtc = roundValue(
 			gross +
 				employerEpf +
-				getValue(values.epf_employer_share) * 0 +
 				employerEsi +
-				getValue(values.insurance_employer_share) +
-				getValue(values.transport_allowance) +
-				getValue(values.canteen_allowance) +
+				getValue(
+					values.insurance_employer_share,
+				) +
+				getValue(
+					values.transport_allowance,
+				) +
+				getValue(
+					values.canteen_allowance,
+				) +
 				getValue(values.bonus) +
-				getValue(values.other_employer_contribution),
+				getValue(
+					values.other_employer_contribution,
+				),
 		)
 
 		setValue('total_ctc', totalCtc)
@@ -242,8 +387,68 @@ function SalaryDetailsForm() {
 		setValue,
 	])
 
-	const onSubmit = (data: SalaryDetailsFormData) => {
-		console.log('Salary details:', data)
+	const onSubmit = async (
+		data: SalaryDetailsFormData,
+	) => {
+		setSubmitMessage('')
+		setSubmitError('')
+
+		try {
+			const response = await fetch(
+				'http://127.0.0.1:8000/salary-details/',
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type':
+							'application/json',
+					},
+					body: JSON.stringify(data),
+				},
+			)
+
+			if (!response.ok) {
+				const errorData =
+					await response
+						.json()
+						.catch(() => null)
+
+				throw new Error(
+					errorData?.detail
+						? typeof errorData.detail ===
+							'string'
+							? errorData.detail
+							: JSON.stringify(
+									errorData.detail,
+								)
+						: `Failed to submit salary details. Status: ${response.status}`,
+				)
+			}
+
+			await response.json().catch(() => null)
+
+			setSubmitMessage(
+				'Salary details submitted successfully!',
+			)
+		} catch (error) {
+			console.error(
+				'Salary details submission error:',
+				error,
+			)
+
+			setSubmitError(
+				error instanceof Error
+					? error.message
+					: 'Failed to submit salary details.',
+			)
+		}
+	}
+
+	const getInputClass = (
+		fieldName: keyof SalaryDetailsFormData,
+	) => {
+		return errors[fieldName]
+			? 'form-control is-invalid'
+			: 'form-control'
 	}
 
 	const renderField = ({
@@ -252,76 +457,217 @@ function SalaryDetailsForm() {
 		integer,
 		calculated,
 	}: NumericField) => (
-		<Grid key={name} size={{ xs: 12, sm: 6, md: 4 }}>
-			<TextField
+		<div
+			className="col-12 col-md-6 col-lg-4"
+			key={name}
+		>
+			<label className="form-label fw-semibold">
+				{label}
+			</label>
+
+			<input
 				{...register(name, {
 					setValueAs: (value) =>
-						value === '' ? undefined : Number(value),
+						value === ''
+							? undefined
+							: Number(value),
 				})}
-				error={!!errors[name]}
-				helperText={errors[name]?.message}
-				label={label}
 				type="number"
-				slotProps={{
-					htmlInput: { step: integer ? 1 : '0.01' },
-				}}
-				fullWidth
-				disabled={calculated}
+				step={integer ? 1 : '0.01'}
+				className={getInputClass(name)}
+				readOnly={calculated}
 			/>
-		</Grid>
+
+			{errors[name] && (
+				<div className="invalid-feedback d-block">
+					{errors[name]?.message}
+				</div>
+			)}
+		</div>
 	)
 
 	return (
-		<Paper
-			component="form"
-			onSubmit={handleSubmit(onSubmit)}
-			sx={{ p: { xs: 2, md: 4 } }}
-		>
-			<Stack spacing={3}>
-				<div>
-					<Typography variant="h5">Salary details</Typography>
-					<Typography color="text.secondary" variant="body2">
-						Capture salary, deduction, and employer contribution details.
-					</Typography>
+		<div className="enquiry-page bg-light min-vh-100 py-5">
+			<div className="container">
+				<div className="card shadow-sm border-0">
+					<div className="card-body p-4 p-lg-5">
+
+						{/* Header */}
+						<div className="mb-4">
+							<p className="text-uppercase text-primary fw-semibold mb-1">
+								HR Management
+							</p>
+
+							<h1 className="h2 mb-1">
+								Salary Details Form
+							</h1>
+
+							<p className="text-muted mb-0">
+								Capture salary, deduction,
+								and employer contribution
+								details.
+							</p>
+						</div>
+
+						<form
+							className="row g-3"
+							onSubmit={handleSubmit(
+								onSubmit,
+							)}
+							noValidate
+						>
+							{/* Salary Information */}
+							<div className="col-12 border rounded bg-white p-3 p-md-4 mb-3">
+								<h2 className="h4 mb-3">
+									Salary Information
+								</h2>
+
+								<div className="row g-3">
+
+									{/* User ID */}
+									<div className="col-12 col-md-6 col-lg-4">
+										<label className="form-label fw-semibold">
+											User ID
+										</label>
+
+										<input
+											{...register(
+												'user_id',
+												{
+													valueAsNumber:
+														true,
+												},
+											)}
+											type="number"
+											className={
+												errors.user_id
+													? 'form-control is-invalid'
+													: 'form-control'
+											}
+										/>
+
+										{errors.user_id && (
+											<div className="invalid-feedback d-block">
+												{
+													errors
+														.user_id
+														.message
+												}
+											</div>
+										)}
+									</div>
+
+									{/* Effective Date */}
+									<div className="col-12 col-md-6 col-lg-4">
+										<label className="form-label fw-semibold">
+											Effective Date
+										</label>
+
+										<input
+											{...register(
+												'effective_date',
+											)}
+											type="date"
+											className={
+												errors.effective_date
+													? 'form-control is-invalid'
+													: 'form-control'
+											}
+										/>
+
+										{errors.effective_date && (
+											<div className="invalid-feedback d-block">
+												{
+													errors
+														.effective_date
+														.message
+												}
+											</div>
+										)}
+									</div>
+
+									{salaryFields
+										.slice(0, 3)
+										.map(renderField)}
+								</div>
+							</div>
+
+							{/* Salary & Earnings */}
+							<div className="col-12 border rounded bg-white p-3 p-md-4 mb-3">
+								<h2 className="h4 mb-3">
+									Salary &amp; Earnings
+								</h2>
+
+								<div className="row g-3">
+									{salaryFields
+										.slice(3)
+										.map(renderField)}
+								</div>
+							</div>
+
+							{/* Employee Deductions */}
+							<div className="col-12 border rounded bg-white p-3 p-md-4 mb-3">
+								<h2 className="h4 mb-3">
+									Employee Deductions
+								</h2>
+
+								<div className="row g-3">
+									{deductionFields.map(
+										renderField,
+									)}
+								</div>
+							</div>
+
+							{/* Employer Contributions */}
+							<div className="col-12 border rounded bg-white p-3 p-md-4 mb-3">
+								<h2 className="h4 mb-3">
+									Employer Contributions
+								</h2>
+
+								<div className="row g-3">
+									{contributionFields.map(
+										renderField,
+									)}
+								</div>
+							</div>
+
+							{/* Success Message */}
+							{submitMessage && (
+								<div className="col-12">
+									<div className="alert alert-success mb-0">
+										{submitMessage}
+									</div>
+								</div>
+							)}
+
+							{/* Error Message */}
+							{submitError && (
+								<div className="col-12">
+									<div className="alert alert-danger mb-0">
+										{submitError}
+									</div>
+								</div>
+							)}
+
+							{/* Submit Button */}
+							<div className="col-12 d-flex justify-content-end">
+								<button
+									type="submit"
+									className="btn btn-primary btn-lg px-4"
+									disabled={
+										isSubmitting
+									}
+								>
+									{isSubmitting
+										? 'Submitting...'
+										: 'Submit Salary Details'}
+								</button>
+							</div>
+						</form>
+					</div>
 				</div>
-
-				<Grid container spacing={2}>
-					<Grid size={{ xs: 12, sm: 6 }}>
-						<TextField
-							{...register('user_id', { valueAsNumber: true })}
-							error={!!errors.user_id}
-							helperText={errors.user_id?.message}
-							label="User ID"
-							type="number"
-							required
-							fullWidth
-						/>
-					</Grid>
-				</Grid>
-
-				{[
-					{ title: 'Salary and earnings', fields: salaryFields },
-					{ title: 'Deductions', fields: deductionFields },
-					{ title: 'Employer contributions', fields: contributionFields },
-				].map(({ title, fields }) => (
-					<Stack key={title} spacing={2}>
-						<Typography variant="h6">{title}</Typography>
-
-						<Grid container spacing={2}>
-							{fields.map(renderField)}
-						</Grid>
-					</Stack>
-				))}
-
-				<Button
-					type="submit"
-					variant="contained"
-					sx={{ alignSelf: 'flex-start' }}
-				>
-					Submit salary details
-				</Button>
-			</Stack>
-		</Paper>
+			</div>
+		</div>
 	)
 }
 

@@ -1,62 +1,118 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Paper, Stack, TextField, Typography } from '@mui/material'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-
-const jobProfileSchema = z.object({
-	job_description: z.string().trim().optional().or(z.literal('')),
-})
-
-type JobProfileFormData = z.infer<typeof jobProfileSchema>
+import { useState } from 'react'
 
 function JobProfileForm() {
-	const {
-		register,
-		handleSubmit,
-		formState: { errors },
-	} = useForm<JobProfileFormData>({
-		resolver: zodResolver(jobProfileSchema),
-		defaultValues: {
-			job_description: '',
-		},
-	})
+  const [jobDescription, setJobDescription] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
-	const onSubmit = (_data: JobProfileFormData) => undefined
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
 
-	return (
-		<Paper
-			component="form"
-			onSubmit={handleSubmit(onSubmit)}
-			sx={{ p: { xs: 2, md: 4 } }}
-		>
-			<Stack spacing={3}>
-				<div>
-					<Typography variant="h5">Job profile</Typography>
-					<Typography color="text.secondary" variant="body2">
-						Capture the job description.
-					</Typography>
-				</div>
+    setSubmitting(true)
+    setSuccessMessage('')
+    setErrorMessage('')
 
-				<TextField
-					{...register('job_description')}
-					error={!!errors.job_description}
-					helperText={errors.job_description?.message}
-					label="Job description"
-					multiline
-					minRows={5}
-					fullWidth
-				/>
+    try {
+      const response = await fetch('http://127.0.0.1:8000/job-profile/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          job_description: jobDescription,
+        }),
+      })
 
-				<Button
-					type="submit"
-					variant="contained"
-					sx={{ alignSelf: 'flex-start' }}
-				>
-					Submit job profile
-				</Button>
-			</Stack>
-		</Paper>
-	)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.detail
+            ? JSON.stringify(data.detail)
+            : 'Failed to submit job profile',
+        )
+      }
+
+      setSuccessMessage('Submitted successfully!')
+      setJobDescription('')
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="bg-light min-vh-100 py-5">
+      <div className="container">
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-4 p-lg-5">
+
+            <div className="mb-4">
+              <h2 className="mb-1">Job Profile</h2>
+              <p className="text-muted mb-0">
+                Capture the job description.
+              </p>
+            </div>
+
+            {successMessage && (
+              <div className="alert alert-success">
+                {successMessage}
+              </div>
+            )}
+
+            {errorMessage && (
+              <div className="alert alert-danger">
+                {errorMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div className="border rounded bg-white p-3 p-md-4 mb-3">
+                <h5 className="mb-3">Job Profile Details</h5>
+
+                <div className="row g-3">
+                  <div className="col-12">
+                    <label
+                      htmlFor="job_description"
+                      className="form-label"
+                    >
+                      Job Description
+                    </label>
+
+                    <textarea
+                      id="job_description"
+                      className="form-control"
+                      rows={7}
+                      value={jobDescription}
+                      onChange={(event) =>
+                        setJobDescription(event.target.value)
+                      }
+                      placeholder="Enter job description"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={submitting}
+              >
+                {submitting ? 'Submitting...' : 'Submit'}
+              </button>
+            </form>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default JobProfileForm

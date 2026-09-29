@@ -15,7 +15,7 @@ const menuItems = [
   },
   {
     label: 'Payroll',
-    path: '/admin/paysheet',
+    path: '/payroll/create',
   },
   {
     label: 'Reports',
