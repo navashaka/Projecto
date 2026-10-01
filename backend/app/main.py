@@ -26,7 +26,10 @@ from app.api.v1.travelling_expenses_reimbursement import (
 # Payroll API router
 from app.modules.hr.payroll.router import router as payroll_router
 
-# GL API routers
+# GL module router
+from app.modules.gl.router import router as gl_router
+
+# Existing GL API routers
 from app.api.v1.gl_tax_type import router as gl_tax_type_router
 from app.api.v1.gl_group import router as gl_group_router
 from app.api.v1.gl_account import router as gl_account_router
@@ -112,7 +115,10 @@ class UserEnquiryPayload(BaseModel):
     )
     highest_qualification: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("highestQualification", "highest_qualification"),
+        validation_alias=AliasChoices(
+            "highestQualification",
+            "highest_qualification",
+        ),
     )
     year_of_pass: str | None = Field(
         default=None,
@@ -149,7 +155,10 @@ class UserEnquiryPayload(BaseModel):
     )
     previous_department: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("previousDepartment", "previous_department"),
+        validation_alias=AliasChoices(
+            "previousDepartment",
+            "previous_department",
+        ),
     )
     previous_working_period: str | None = Field(
         default=None,
@@ -206,7 +215,10 @@ app.include_router(travelling_expenses_reimbursement_router)
 # Payroll router
 app.include_router(payroll_router)
 
-# GL routers
+# GL module router
+app.include_router(gl_router)
+
+# Existing GL routers
 app.include_router(gl_tax_type_router)
 app.include_router(gl_group_router)
 app.include_router(gl_account_router)
