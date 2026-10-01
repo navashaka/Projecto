@@ -1,0 +1,20 @@
+01-10-2026
+==========
+
+GL Module:
+- Created GL module structure similar to HR module
+- Created router, schemas, models, service and repository files
+- Connected GL module router with main application
+- Integrated existing GL models into the GL module
+- Verified 8 existing GL tables
+- Verified GL module endpoint and Swagger integration
+
+GL Tables:
+- GL Tax Type
+- GL Group
+- GL Account
+- GL Bank Account
+- GL Cheque Range
+- GL HSN Master
+- GL SAC Master
+- GL OD Limit
