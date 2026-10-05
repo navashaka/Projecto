@@ -26,6 +26,9 @@ from app.api.v1.travelling_expenses_reimbursement import (
 # Payroll API router
 from app.modules.hr.payroll.router import router as payroll_router
 
+# Company API router
+from app.modules.company.router import router as company_router
+
 # GL API routers
 from app.api.v1.gl_tax_type import router as gl_tax_type_router
 from app.api.v1.gl_group import router as gl_group_router
@@ -42,6 +45,7 @@ from app.hr.recruitment.models import UserEnquiry
 from app.models.attendance_coe import AttendanceCOE
 from app.models.company_holiday import CompanyHoliday
 from app.models.paysheet import Paysheet
+from app.models.company import Company
 
 # GL Models
 from app.models.gl_tax_type import GLTaxType
@@ -205,6 +209,9 @@ app.include_router(travelling_expenses_reimbursement_router)
 
 # Payroll router
 app.include_router(payroll_router)
+
+# Company router
+app.include_router(company_router)
 
 # GL routers
 app.include_router(gl_tax_type_router)

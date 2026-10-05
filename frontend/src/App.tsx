@@ -17,6 +17,8 @@ import CreateSalaryDetailsPage from './modules/hr/pages/salary/CreateSalaryDetai
 import CreatePayrollPage from './modules/hr/pages/payroll/CreatePayrollPage'
 import CreateTravellingAdvancePage from './modules/hr/pages/travelling-advance/CreateTravellingAdvancePage'
 
+import CreateCompanyProfilePage from './modules/auth/pages/company-profile/CreateCompanyProfilePage'
+
 import JobProfileForm from './modules/hr/components/job-profile/JobProfileForm'
 import TravellingExpensesReimbursementForm from './modules/hr/components/travelling-expenses-reimbursement/TravellingExpensesReimbursementForm'
 import CompanyHolidayForm from './modules/hr/components/company-holidays/CompanyHolidayForm'
@@ -107,6 +109,12 @@ function App() {
       <Route
         path="/payroll/create"
         element={<CreatePayrollPage />}
+      />
+
+      {/* Company Profile */}
+      <Route
+        path="/company-profile/create"
+        element={<CreateCompanyProfilePage />}
       />
 
       {/* Travelling Advance */}

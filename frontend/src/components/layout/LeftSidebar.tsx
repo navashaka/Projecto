@@ -18,6 +18,10 @@ const menuItems = [
     path: '/payroll/create',
   },
   {
+    label: 'Company Profile',
+    path: '/company-profile/create',
+  },
+  {
     label: 'Reports',
     path: '/admin/reports',
   },

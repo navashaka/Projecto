@@ -16,6 +16,8 @@ import CreateSalaryDetailsPage from '../modules/hr/pages/salary/CreateSalaryDeta
 import CreateTravellingAdvancePage from '../modules/hr/pages/travelling-advance/CreateTravellingAdvancePage.tsx'
 import CreateTravellingExpensesReimbursementPage from '../modules/hr/pages/travelling-expenses-reimbursement/CreateTravellingExpensesReimbursementPage.tsx'
 
+import CreateCompanyProfilePage from '../modules/auth/pages/company-profile/CreateCompanyProfilePage.tsx'
+
 function AppRoutes() {
   return (
     <Routes>
@@ -87,6 +89,11 @@ function AppRoutes() {
       <Route
         path="/travelling-expenses-reimbursement/create"
         element={<CreateTravellingExpensesReimbursementPage />}
+      />
+
+      <Route
+        path="/company-profile/create"
+        element={<CreateCompanyProfilePage />}
       />
     </Routes>
   )
