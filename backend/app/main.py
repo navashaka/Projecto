@@ -57,6 +57,9 @@ from app.models.gl_hsn_master import GLHSNMaster
 from app.models.gl_sac_master import GLSACMaster
 from app.models.gl_od_limit import GLOdLimit
 
+# Inventory API router. Inventory tables are already managed externally.
+from app.modules.inventory.router import router as inventory_router
+
 
 class UserEnquiryPayload(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
@@ -191,7 +194,12 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    non_inventory_tables = [
+        table
+        for table in Base.metadata.tables.values()
+        if not table.name.startswith("inventory_")
+    ]
+    Base.metadata.create_all(bind=engine, tables=non_inventory_tables)
 
 
 # Existing routers
@@ -222,6 +230,9 @@ app.include_router(gl_cheque_range_router)
 app.include_router(gl_hsn_master_router)
 app.include_router(gl_sac_master_router)
 app.include_router(gl_od_limit_router)
+
+# Inventory router
+app.include_router(inventory_router)
 
 # Main API router
 app.include_router(api_v1_router, prefix="/api/v1")
