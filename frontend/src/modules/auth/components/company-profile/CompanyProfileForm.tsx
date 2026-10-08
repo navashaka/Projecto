@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -11,7 +12,23 @@ import {
   Typography,
 } from "@mui/material";
 
+interface Country {
+  id: number;
+  country: string;
+  abbreviation?: string | null;
+  capital_city?: string | null;
+  continent?: string | null;
+  currency?: string | null;
+  currency_code?: string | null;
+  region?: string | null;
+}
+
 const CompanyProfileForm: React.FC = () => {
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [pincodes, setPincodes] = useState<string[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     organizationName: "",
     cin: "",
@@ -42,6 +59,95 @@ const CompanyProfileForm: React.FC = () => {
     serviceProvider: false,
     allBusiness: false,
   });
+
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:8000/location/countries"
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load countries");
+        }
+
+        const data: Country[] = await response.json();
+
+        setCountries(data);
+
+        const india = data.find(
+          (country) => country.country.toLowerCase() === "india"
+        );
+
+        if (india) {
+          setSelectedCountry(india);
+
+          setFormData((previous) => ({
+            ...previous,
+            country: india.country,
+          }));
+        }
+      } catch (error) {
+        console.error("Country loading error:", error);
+      }
+    };
+
+    loadCountries();
+  }, []);
+
+  const loadPincodes = async (
+    countryId: number,
+    search: string = ""
+  ) => {
+    try {
+      setPincodeLoading(true);
+
+      const params = new URLSearchParams({
+        country_id: countryId.toString(),
+        limit: "50",
+      });
+
+      if (search.trim()) {
+        params.append("search", search.trim());
+      }
+
+      const response = await fetch(
+        `http://127.0.0.1:8000/location/pincodes?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load pincodes");
+      }
+
+      const data: string[] = await response.json();
+
+      setPincodes(data);
+    } catch (error) {
+      console.error("Pincode loading error:", error);
+      setPincodes([]);
+    } finally {
+      setPincodeLoading(false);
+    }
+  };
+
+  const handleCountryChange = (
+    _event: React.SyntheticEvent,
+    country: Country | null
+  ) => {
+    setSelectedCountry(country);
+
+    setFormData((previous) => ({
+      ...previous,
+      country: country?.country || "",
+      pinCode: "",
+    }));
+
+    setPincodes([]);
+
+    if (country) {
+      loadPincodes(country.id);
+    }
+  };
 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -152,9 +258,6 @@ const CompanyProfileForm: React.FC = () => {
         }}
       >
         <Box component="form" onSubmit={handleSubmit}>
-
-          {/* PROFILE */}
-
           <Typography
             variant="h6"
             sx={{
@@ -207,8 +310,6 @@ const CompanyProfileForm: React.FC = () => {
               />
             </Grid>
           </Grid>
-
-          {/* ADDRESS */}
 
           <Typography
             variant="h6"
@@ -305,30 +406,64 @@ const CompanyProfileForm: React.FC = () => {
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
+              <Autocomplete
                 fullWidth
-                label="PIN Code"
-                name="pinCode"
-                value={formData.pinCode}
-                onChange={handleChange}
+                options={pincodes}
+                value={
+                  formData.pinCode
+                    ? formData.pinCode
+                    : null
+                }
+                loading={pincodeLoading}
+                onOpen={() => {
+                  if (selectedCountry) {
+                    loadPincodes(selectedCountry.id);
+                  }
+                }}
+                onInputChange={(_event, value) => {
+                  if (selectedCountry) {
+                    loadPincodes(
+                      selectedCountry.id,
+                      value
+                    );
+                  }
+                }}
+                onChange={(_event, value) => {
+                  setFormData((previous) => ({
+                    ...previous,
+                    pinCode: value || "",
+                  }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="PIN Code"
+                    required
+                  />
+                )}
               />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                select
+              <Autocomplete
                 fullWidth
-                label="Country"
-                name="country"
-                value={formData.country}
-                onChange={handleChange}
-              >
-                <MenuItem value="India">India</MenuItem>
-              </TextField>
+                options={countries}
+                value={selectedCountry}
+                onChange={handleCountryChange}
+                getOptionLabel={(option) => option.country}
+                isOptionEqualToValue={(option, value) =>
+                  option.id === value.id
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Country"
+                    required
+                  />
+                )}
+              />
             </Grid>
           </Grid>
-
-          {/* BANKS & ACCOUNTS */}
 
           <Typography
             variant="h6"
@@ -421,8 +556,6 @@ const CompanyProfileForm: React.FC = () => {
             </Grid>
           </Grid>
 
-          {/* BUSINESS */}
-
           <Typography
             variant="h6"
             sx={{
@@ -480,8 +613,6 @@ const CompanyProfileForm: React.FC = () => {
             />
           </Box>
 
-          {/* SUBMIT */}
-
           <Box
             sx={{
               display: "flex",
@@ -493,7 +624,6 @@ const CompanyProfileForm: React.FC = () => {
               Submit
             </Button>
           </Box>
-
         </Box>
       </Paper>
     </Box>

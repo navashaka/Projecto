@@ -1,0 +1,34 @@
+import { Button, Grid, Paper, Stack, Typography } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
+import { inventoryNavigationItems } from '../constants/inventoryConstants'
+
+function InventoryHomePage() {
+  const navigate = useNavigate()
+
+  return (
+    <Stack spacing={3}>
+      <div>
+        <Typography variant="h4">Inventory</Typography>
+      </div>
+      <Grid container spacing={2}>
+        {inventoryNavigationItems.map((item) => (
+          <Grid key={item.path} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Paper sx={{ p: 3 }}>
+              <Stack spacing={2}>
+                <Typography variant="h6">{item.label}</Typography>
+                <Button
+                  onClick={() => navigate(item.path)}
+                  variant="contained"
+                >
+                  Open form
+                </Button>
+              </Stack>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+    </Stack>
+  )
+}
+
+export default InventoryHomePage
