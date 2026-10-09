@@ -255,26 +255,44 @@ function InventoryField({
         }
 
         if (field.kind === 'boolean') {
+          const isEwayBillRequired =
+            field.name === 'eway_bill_required' &&
+            (isDeliveryChallan || isDeliveryChallanInward)
+          const ewayBillRequired = controlField.value === true
+
           return (
             <FormControl
               error={Boolean(fieldState.error)}
             >
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={
-                      controlField.value === true
-                    }
-                    disabled={disabled}
-                    onChange={(event) =>
-                      controlField.onChange(
-                        event.target.checked,
-                      )
-                    }
-                  />
-                }
-                label={field.label}
-              />
+              <Box sx={{ alignItems: 'center', display: 'flex', gap: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={ewayBillRequired}
+                      disabled={disabled}
+                      onChange={(event) =>
+                        controlField.onChange(
+                          event.target.checked,
+                        )
+                      }
+                    />
+                  }
+                  label={field.label}
+                />
+                {isEwayBillRequired && (
+                  <Button
+                    component="a"
+                    disabled={disabled || !ewayBillRequired}
+                    href="https://ewaybillgst.gov.in/"
+                    rel="noopener noreferrer"
+                    size="small"
+                    target="_blank"
+                    variant="outlined"
+                  >
+                    Generate
+                  </Button>
+                )}
+              </Box>
 
               {fieldState.error?.message && (
                 <FormHelperText>

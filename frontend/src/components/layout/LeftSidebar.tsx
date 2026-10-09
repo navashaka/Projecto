@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { inventoryNavigationItems } from '../../modules/inventory/constants/inventoryConstants'
+import { glResources } from '../../modules/gl/constants/glResources'
 
 const menuItems = [
   {
@@ -37,6 +38,11 @@ const LeftSidebar = () => {
     pathname: location.pathname,
     expanded: isInventoryPage,
   }))
+  const isGLPage = location.pathname === '/gl' || location.pathname.startsWith('/gl/')
+  const [glMenu, setGLMenu] = useState(() => ({
+    pathname: location.pathname,
+    expanded: isGLPage,
+  }))
 
   if (inventoryMenu.pathname !== location.pathname) {
     setInventoryMenu({
@@ -46,6 +52,13 @@ const LeftSidebar = () => {
   }
 
   const inventoryExpanded = inventoryMenu.expanded
+  if (glMenu.pathname !== location.pathname) {
+    setGLMenu({
+      pathname: location.pathname,
+      expanded: isGLPage,
+    })
+  }
+  const glExpanded = glMenu.expanded
 
   return (
     <aside className="card border-0 shadow-sm h-100">
@@ -95,6 +108,46 @@ const LeftSidebar = () => {
                   onClick={() => navigate(item.path)}
                 >
                   {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-light text-start d-flex align-items-center justify-content-between"
+            aria-expanded={glExpanded}
+            aria-controls="gl-submenu"
+            onClick={() =>
+              setGLMenu({
+                pathname: location.pathname,
+                expanded: !glExpanded,
+              })
+            }
+          >
+            General Ledger
+          </button>
+
+          {glExpanded && (
+            <div
+              id="gl-submenu"
+              className="d-grid gap-2 ms-3 ps-2 border-start"
+            >
+              <button
+                type="button"
+                className="btn btn-light text-start"
+                onClick={() => navigate('/gl')}
+              >
+                GL Home
+              </button>
+              {glResources.map((resource) => (
+                <button
+                  key={resource.key}
+                  type="button"
+                  className="btn btn-light text-start"
+                  onClick={() => navigate(`/gl/${resource.key}`)}
+                >
+                  {resource.label}
                 </button>
               ))}
             </div>

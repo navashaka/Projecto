@@ -37,6 +37,8 @@ import DeliveryChallanInwardPage from './modules/inventory/pages/DeliveryChallan
 import GoodsIssuePage from './modules/inventory/pages/GoodsIssuePage'
 import GoodsIssueSalePage from './modules/inventory/pages/GoodsIssueSalePage'
 import InventoryHomePage from './modules/inventory/pages/InventoryHomePage'
+import GLHomePage from './modules/gl/pages/GLHomePage'
+import GLResourcePage from './modules/gl/components/GLResourcePage'
 
 function DashboardLayout() {
   return (
@@ -201,6 +203,14 @@ function App() {
       <Route
         path="/inventory/goods-issue-sales/create"
         element={<GoodsIssueSalePage />}
+      />
+      <Route
+        path="/gl"
+        element={<GLHomePage />}
+      />
+      <Route
+        path="/gl/:resourceKey"
+        element={<GLResourcePage />}
       />
 
       {/* Dashboard */}
