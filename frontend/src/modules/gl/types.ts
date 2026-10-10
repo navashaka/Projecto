@@ -14,6 +14,7 @@ export interface GLFieldDefinition {
   step?: number
   optionEndpoint?: string
   optionLabelFields?: string[]
+  createResourceKey?: string
 }
 
 export interface GLResourceDefinition {

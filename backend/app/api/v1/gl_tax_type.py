@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.models.gl_account import GLAccount
 from app.models.gl_tax_type import GLTaxType
 
 
@@ -50,6 +51,14 @@ def create_gl_tax_type(
     data: GLTaxTypeCreate,
     db: Session = Depends(get_db),
 ):
+    if data.gl_account_id is not None and (
+        db.query(GLAccount)
+        .filter(GLAccount.id == data.gl_account_id)
+        .first()
+        is None
+    ):
+        raise HTTPException(status_code=422, detail="GL Account not found.")
+
     tax_type = GLTaxType(
         name=data.name,
         rate=data.rate,
@@ -117,6 +126,14 @@ def update_gl_tax_type(
             status_code=404,
             detail="GL Tax Type not found",
         )
+
+    if data.gl_account_id is not None and (
+        db.query(GLAccount)
+        .filter(GLAccount.id == data.gl_account_id)
+        .first()
+        is None
+    ):
+        raise HTTPException(status_code=422, detail="GL Account not found.")
 
     tax_type.name = data.name
     tax_type.rate = data.rate

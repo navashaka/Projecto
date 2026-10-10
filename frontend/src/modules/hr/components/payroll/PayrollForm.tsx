@@ -15,6 +15,7 @@ import type {
   PayrollFormData,
 } from '../../types/payrollTypes'
 import { formatPayrollCurrency } from '../../utils/payrollDisplayUtils'
+import HRBackButton from '../HRBackButton'
 
 function PayrollForm() {
   const [formData, setFormData] = useState<PayrollFormData>({
@@ -224,16 +225,18 @@ function PayrollForm() {
           </Grid>
         </Grid>
 
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={loading}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          {loading
-            ? 'Calculating...'
-            : 'Calculate Payroll'}
-        </Button>
+        <div className="d-flex justify-content-end gap-2">
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+          >
+            {loading
+              ? 'Calculating...'
+              : 'Calculate Payroll'}
+          </Button>
+          <HRBackButton />
+        </div>
 
         {result && (
           <>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Autocomplete,
   Box,
@@ -24,6 +25,7 @@ interface Country {
 }
 
 const CompanyProfileForm: React.FC = () => {
+  const navigate = useNavigate();
   const [countries, setCountries] = useState<Country[]>([]);
   const [pincodes, setPincodes] = useState<string[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
@@ -617,9 +619,17 @@ const CompanyProfileForm: React.FC = () => {
             sx={{
               display: "flex",
               justifyContent: "flex-end",
+              gap: 1,
               mt: 4,
             }}
           >
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={() => navigate(-1)}
+            >
+              Back
+            </Button>
             <Button type="submit" variant="contained">
               Submit
             </Button>

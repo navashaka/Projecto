@@ -1,5 +1,10 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.models.gl_group import GLGroup
+from app.models.gl_hsn_master import GLHSNMaster
+from app.models.gl_sac_master import GLSACMaster
+from app.models.gl_tax_type import GLTaxType
 from app.models.gl_account import GLAccount
 from app.repositories.gl_account_repository import (
     create_gl_account,
@@ -11,10 +16,76 @@ from app.repositories.gl_account_repository import (
 from app.schemas.gl_account import GLAccountCreate
 
 
+def validate_account_relationships(
+    db: Session,
+    data: GLAccountCreate,
+) -> None:
+    if db.query(GLGroup).filter(GLGroup.id == data.group_id).first() is None:
+        raise HTTPException(status_code=422, detail="GL Group not found.")
+
+    if data.tax_type_id is not None and (
+        db.query(GLTaxType)
+        .filter(GLTaxType.id == data.tax_type_id)
+        .first()
+        is None
+    ):
+        raise HTTPException(status_code=422, detail="GL Tax Type not found.")
+
+    if data.hsn_id is not None and data.sac_id is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Select either an HSN or an SAC, not both.",
+        )
+
+    has_hsn = data.hsn_id is not None
+    has_sac = data.sac_id is not None
+    if data.tax_applicable and has_hsn == has_sac:
+        raise HTTPException(
+            status_code=422,
+            detail="Tax-applicable accounts require exactly one HSN or SAC.",
+        )
+
+    if has_hsn:
+        if data.hsn_sac_type != "HSN":
+            raise HTTPException(
+                status_code=422,
+                detail="The HSN classification type does not match the selected record.",
+            )
+        if (
+            db.query(GLHSNMaster)
+            .filter(GLHSNMaster.id == data.hsn_id)
+            .first()
+            is None
+        ):
+            raise HTTPException(status_code=422, detail="GL HSN record not found.")
+
+    if has_sac:
+        if data.hsn_sac_type != "SAC":
+            raise HTTPException(
+                status_code=422,
+                detail="The SAC classification type does not match the selected record.",
+            )
+        if (
+            db.query(GLSACMaster)
+            .filter(GLSACMaster.id == data.sac_id)
+            .first()
+            is None
+        ):
+            raise HTTPException(status_code=422, detail="GL SAC record not found.")
+
+    if not has_hsn and not has_sac and data.hsn_sac_type:
+        raise HTTPException(
+            status_code=422,
+            detail="Choose a classification record for the selected type.",
+        )
+
+
 def create_account(
     db: Session,
     data: GLAccountCreate,
 ) -> GLAccount:
+    validate_account_relationships(db, data)
+
     gl_account = GLAccount(
         name=data.name,
         group_id=data.group_id,
@@ -63,6 +134,8 @@ def update_account(
 
     if gl_account is None:
         return None
+
+    validate_account_relationships(db, data)
 
     gl_account.name = data.name
     gl_account.group_id = data.group_id

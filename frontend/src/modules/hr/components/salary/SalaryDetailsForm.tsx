@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import HRBackButton from '../HRBackButton'
 
 const decimalSchema = (label: string) =>
 	z
@@ -650,7 +651,7 @@ function SalaryDetailsForm() {
 							)}
 
 							{/* Submit Button */}
-							<div className="col-12 d-flex justify-content-end">
+							<div className="col-12 d-flex justify-content-end gap-2">
 								<button
 									type="submit"
 									className="btn btn-primary btn-lg px-4"
@@ -662,6 +663,7 @@ function SalaryDetailsForm() {
 										? 'Submitting...'
 										: 'Submit Salary Details'}
 								</button>
+								<HRBackButton />
 							</div>
 						</form>
 					</div>

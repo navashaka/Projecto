@@ -8,6 +8,7 @@ import {
 	Typography,
 } from '@mui/material'
 import { useForm, useWatch } from 'react-hook-form'
+import HRBackButton from '../HRBackButton'
 
 type TravellingAdvanceFormData = {
 	user_id: number
@@ -343,14 +344,16 @@ function TravellingAdvanceForm() {
 					</Grid>
 				</Grid>
 
-				<Button
-					type="submit"
-					variant="contained"
-					disabled={submitting}
-					sx={{ alignSelf: 'flex-start' }}
-				>
-					{submitting ? 'Submitting...' : 'Submit'}
-				</Button>
+				<div className="d-flex justify-content-end gap-2">
+					<Button
+						type="submit"
+						variant="contained"
+						disabled={submitting}
+					>
+						{submitting ? 'Submitting...' : 'Submit'}
+					</Button>
+					<HRBackButton />
+				</div>
 			</Stack>
 		</Paper>
 	)

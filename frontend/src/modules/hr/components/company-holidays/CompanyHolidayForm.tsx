@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import HRBackButton from '../HRBackButton'
 
 type Holiday = {
   id: number
@@ -244,7 +245,8 @@ function CompanyHolidayForm() {
                     />
                   </div>
 
-                  <div className="col-12">
+                  <div className="col-12 d-flex justify-content-end gap-2">
+                    <HRBackButton />
                     <button
                       type="submit"
                       className="btn btn-primary"

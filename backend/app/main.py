@@ -34,6 +34,12 @@ from app.api.v1.gl_cheque_range import router as gl_cheque_range_router
 from app.api.v1.gl_hsn_master import router as gl_hsn_master_router
 from app.api.v1.gl_sac_master import router as gl_sac_master_router
 from app.api.v1.gl_od_limit import router as gl_od_limit_router
+from app.api.v1.gl_account_details import (
+    gl_secured_loans_router,
+    gl_sundry_creditors_router,
+    gl_sundry_debtors_router,
+    gl_unsecured_loans_router,
+)
 
 from app.core.database import Base, engine
 
@@ -51,6 +57,12 @@ from app.models.gl_cheque_range import GLChequeRange
 from app.models.gl_hsn_master import GLHSNMaster
 from app.models.gl_sac_master import GLSACMaster
 from app.models.gl_od_limit import GLOdLimit
+from app.models.gl_account_details import (
+    GLSecuredLoan,
+    GLSundryCreditor,
+    GLSundryDebtor,
+    GLUnsecuredLoan,
+)
 
 from app.modules.inventory.router import router as inventory_router
 
@@ -220,6 +232,10 @@ app.include_router(gl_cheque_range_router)
 app.include_router(gl_hsn_master_router)
 app.include_router(gl_sac_master_router)
 app.include_router(gl_od_limit_router)
+app.include_router(gl_sundry_creditors_router)
+app.include_router(gl_sundry_debtors_router)
+app.include_router(gl_secured_loans_router)
+app.include_router(gl_unsecured_loans_router)
 
 app.include_router(inventory_router)
 

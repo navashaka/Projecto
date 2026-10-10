@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import HRBackButton from '../HRBackButton'
 
 function getSundaysInMonth(month: string) {
   if (!month) return 0
@@ -578,6 +579,7 @@ function AttendanceForm() {
                   ? 'Saving...'
                   : 'Save'}
               </button>
+              <HRBackButton />
 
               {attendanceId && (
                 <button
