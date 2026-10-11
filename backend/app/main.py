@@ -8,7 +8,6 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from app.api.v1.router import router as api_v1_router
 
-# Existing API routers
 from app.api.v1.users import router as users_router
 from app.api.v1.attendance import router as attendance_router
 from app.api.v1.attendance_coe import router as attendance_coe_router
@@ -23,13 +22,11 @@ from app.api.v1.travelling_expenses_reimbursement import (
     router as travelling_expenses_reimbursement_router,
 )
 
-# Payroll API router
 from app.modules.hr.payroll.router import router as payroll_router
-
-# GL module router
+from app.modules.company.router import router as company_router
+from app.modules.location.router import router as location_router
 from app.modules.gl.router import router as gl_router
 
-# Existing GL API routers
 from app.api.v1.gl_tax_type import router as gl_tax_type_router
 from app.api.v1.gl_group import router as gl_group_router
 from app.api.v1.gl_account import router as gl_account_router
@@ -39,14 +36,21 @@ from app.api.v1.gl_hsn_master import router as gl_hsn_master_router
 from app.api.v1.gl_sac_master import router as gl_sac_master_router
 from app.api.v1.gl_od_limit import router as gl_od_limit_router
 
+from app.api.v1.gl_account_details import (
+    gl_secured_loans_router,
+    gl_sundry_creditors_router,
+    gl_sundry_debtors_router,
+    gl_unsecured_loans_router,
+)
+
 from app.core.database import Base, engine
 
 from app.hr.recruitment.models import UserEnquiry
 from app.models.attendance_coe import AttendanceCOE
 from app.models.company_holiday import CompanyHoliday
 from app.models.paysheet import Paysheet
+from app.models.company import Company
 
-# GL Models
 from app.models.gl_tax_type import GLTaxType
 from app.models.gl_group import GLGroup
 from app.models.gl_account import GLAccount
@@ -55,6 +59,14 @@ from app.models.gl_cheque_range import GLChequeRange
 from app.models.gl_hsn_master import GLHSNMaster
 from app.models.gl_sac_master import GLSACMaster
 from app.models.gl_od_limit import GLOdLimit
+from app.models.gl_account_details import (
+    GLSecuredLoan,
+    GLSundryCreditor,
+    GLSundryDebtor,
+    GLUnsecuredLoan,
+)
+
+from app.modules.inventory.router import router as inventory_router
 
 
 class UserEnquiryPayload(BaseModel):
@@ -196,10 +208,14 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    non_inventory_tables = [
+        table
+        for table in Base.metadata.tables.values()
+        if not table.name.startswith("inventory_")
+    ]
+    Base.metadata.create_all(bind=engine, tables=non_inventory_tables)
 
 
-# Existing routers
 app.include_router(users_router)
 app.include_router(attendance_router)
 app.include_router(attendance_coe_router)
@@ -212,13 +228,12 @@ app.include_router(on_employment_router)
 app.include_router(employment_router)
 app.include_router(travelling_expenses_reimbursement_router)
 
-# Payroll router
 app.include_router(payroll_router)
+app.include_router(company_router)
+app.include_router(location_router)
 
-# GL module router
+# General Ledger module and existing GL APIs
 app.include_router(gl_router)
-
-# Existing GL routers
 app.include_router(gl_tax_type_router)
 app.include_router(gl_group_router)
 app.include_router(gl_account_router)
@@ -227,8 +242,15 @@ app.include_router(gl_cheque_range_router)
 app.include_router(gl_hsn_master_router)
 app.include_router(gl_sac_master_router)
 app.include_router(gl_od_limit_router)
+app.include_router(gl_sundry_creditors_router)
+app.include_router(gl_sundry_debtors_router)
+app.include_router(gl_secured_loans_router)
+app.include_router(gl_unsecured_loans_router)
 
-# Main API router
+# Inventory module
+app.include_router(inventory_router)
+
+# API v1 routes
 app.include_router(api_v1_router, prefix="/api/v1")
 
 
@@ -236,7 +258,6 @@ app.include_router(api_v1_router, prefix="/api/v1")
 def receive_user_enquiry(
     payload: UserEnquiryPayload,
 ) -> dict[str, Any]:
-    """Receive candidate enquiry payload from the frontend."""
     return {
         "message": "Enquiry received successfully",
         "data": payload.model_dump(by_alias=True),

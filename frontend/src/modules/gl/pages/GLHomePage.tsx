@@ -1,0 +1,51 @@
+import {
+  Button,
+  Grid,
+  IconButton,
+  Paper,
+  Stack,
+  Tooltip,
+  Typography,
+} from '@mui/material'
+import { Home } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { glResources } from '../constants/glResources'
+
+function GLHomePage() {
+  const navigate = useNavigate()
+
+  return (
+    <Stack spacing={3}>
+      <div className="d-flex align-items-center justify-content-between">
+        <Typography variant="h4">General Ledger</Typography>
+        <Tooltip title="Home">
+          <IconButton
+            aria-label="Go to application home"
+            onClick={() => navigate('/admin')}
+          >
+            <Home size={20} />
+          </IconButton>
+        </Tooltip>
+      </div>
+      <Grid container spacing={2}>
+        {glResources.map((resource) => (
+          <Grid key={resource.key} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Paper sx={{ height: '100%', p: 3 }}>
+              <Stack spacing={2}>
+                <Typography variant="h6">{resource.label}</Typography>
+                <Button
+                  onClick={() => navigate(`/gl/${resource.key}`)}
+                  variant="contained"
+                >
+                  Open
+                </Button>
+              </Stack>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+    </Stack>
+  )
+}
+
+export default GLHomePage

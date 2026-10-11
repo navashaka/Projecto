@@ -1,0 +1,57 @@
+08-10-2026
+
+Inventory Module – Today’s Complete Work:
+
+- Stock Group form tested with dummy data
+- Stock Group multiple records added and save functionality verified
+- Stock Item form tested with dummy data
+- Stock Item validation issue fixed for Select Costing
+- Stock Item save functionality verified
+- Indent form tested with dummy data
+- Indent Status dropdown configured
+- Indent fields updated with proper placeholders
+- Gate Entry form tested with dummy data
+- Gate Entry date and time fields tested
+- Gate Entry item details tested with multiple items
+- Gate Entry quantity and rate values tested
+- Gate Entry header and item records verified in DB
+- Material Receipt Note (MRN) form tested with dummy data
+- MRN Status dropdown configured
+- MRN Costing Purpose dropdown configured
+- MRN item details tested
+- MRN save functionality verified
+- MRN date fields and calendar/date picker checked
+- Delivery Challan form tested with dummy data
+- Delivery Challan Purpose dropdown tested
+- Delivery Challan Status dropdown tested
+- Delivery Challan item details tested
+- Delivery Challan quantity, rate and GST tested
+- Delivery Challan save functionality verified in DB
+- Delivery Challan Inward form tested with dummy data
+- Delivery Challan Inward Purpose and Status dropdowns configured
+- Delivery Challan Inward date fields checked with calendar/date picker
+- Delivery Challan Inward item details tested
+- Goods Issue form tested with dummy data
+- Goods Issue Status dropdown configured with placeholder
+- Goods Issue item details tested
+- Goods Issue Sales Items form checked
+
+UI / Frontend:
+
+- Inventory forms tested with dummy data
+- Placeholder issues fixed in inventory forms
+- Dropdown fields configured where required
+- Date fields kept with calendar/date picker
+- Unwanted “Choose each existing header and master record from the live dropdowns...” helper text removed from required forms
+- Inventory Resource Form UI updated without changing backend functionality
+- Existing save functionality preserved
+
+Database / API Testing:
+
+- Inventory records checked in PostgreSQL
+- Stock Group records verified
+- Stock Item records verified
+- Gate Entry and Gate Entry Item records verified
+- Delivery Challan and Delivery Challan Item records verified
+- Test data successfully saved through APIs
+- Inventory frontend-to-backend save flow tested successfully

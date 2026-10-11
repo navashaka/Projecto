@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import HRBackButton from '../../components/HRBackButton'
 
 const optionalText = (max: number, label: string) =>
   z
@@ -833,7 +834,7 @@ const CreateEmploymentDetailsPage = () => {
 
               {/* SUBMIT */}
 
-              <div className="col-12 d-flex justify-content-end">
+              <div className="col-12 d-flex justify-content-end gap-2">
 
                 <button
                   type="submit"
@@ -841,6 +842,7 @@ const CreateEmploymentDetailsPage = () => {
                 >
                   Save
                 </button>
+                <HRBackButton />
 
               </div>
 

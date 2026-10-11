@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import HRBackButton from '../HRBackButton'
 
 const optionalText = (max: number, label: string) =>
 	z
@@ -319,13 +320,7 @@ function EmploymentDetailsForm() {
 					</Grid>
 				</Grid>
 
-				<Stack
-					direction={{
-						xs: 'column',
-						sm: 'row',
-					}}
-					spacing={2}
-				>
+				<div className="d-flex flex-column flex-sm-row justify-content-end gap-2">
 					<Button
 						type="submit"
 						variant="contained"
@@ -333,6 +328,7 @@ function EmploymentDetailsForm() {
 					>
 						{saving ? 'Saving...' : 'Save'}
 					</Button>
+					<HRBackButton />
 
 					<Button
 						type="button"
@@ -342,7 +338,7 @@ function EmploymentDetailsForm() {
 					>
 						Next
 					</Button>
-				</Stack>
+				</div>
 			</Stack>
 		</Paper>
 	)

@@ -3,6 +3,7 @@ import { Button, Grid, MenuItem, Paper, Stack, TextField, Typography } from '@mu
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import apiClient from '../../../../services/apiClient'
+import HRBackButton from '../HRBackButton'
 
 const optionalText = (max: number, label: string) =>
 	z
@@ -457,13 +458,15 @@ function EmployeeForm() {
 					</Grid>
 				</Grid>
 
-				<Button
-					type="submit"
-					variant="contained"
-					sx={{ alignSelf: 'flex-start' }}
-				>
-					Submit enquiry
-				</Button>
+				<div className="d-flex justify-content-end gap-2">
+					<Button
+						type="submit"
+						variant="contained"
+					>
+						Submit enquiry
+					</Button>
+					<HRBackButton />
+				</div>
 			</Stack>
 		</Paper>
 	)

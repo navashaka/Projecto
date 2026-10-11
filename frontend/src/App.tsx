@@ -17,6 +17,8 @@ import CreateSalaryDetailsPage from './modules/hr/pages/salary/CreateSalaryDetai
 import CreatePayrollPage from './modules/hr/pages/payroll/CreatePayrollPage'
 import CreateTravellingAdvancePage from './modules/hr/pages/travelling-advance/CreateTravellingAdvancePage'
 
+import CreateCompanyProfilePage from './modules/auth/pages/company-profile/CreateCompanyProfilePage'
+
 import JobProfileForm from './modules/hr/components/job-profile/JobProfileForm'
 import TravellingExpensesReimbursementForm from './modules/hr/components/travelling-expenses-reimbursement/TravellingExpensesReimbursementForm'
 import CompanyHolidayForm from './modules/hr/components/company-holidays/CompanyHolidayForm'
@@ -24,6 +26,19 @@ import CompanyHolidayForm from './modules/hr/components/company-holidays/Company
 import CostOfElementPage from './modules/admin/CostOfElementPage'
 
 import { useAppStore } from './store'
+import UnitOfMeasurePage from './modules/inventory/pages/UnitOfMeasurePage'
+import StockGroupPage from './modules/inventory/pages/StockGroupPage'
+import StockItemPage from './modules/inventory/pages/StockItemPage'
+import IndentPage from './modules/inventory/pages/IndentPage'
+import GateEntryPage from './modules/inventory/pages/GateEntryPage'
+import MaterialReceiptNotePage from './modules/inventory/pages/MaterialReceiptNotePage'
+import DeliveryChallanPage from './modules/inventory/pages/DeliveryChallanPage'
+import DeliveryChallanInwardPage from './modules/inventory/pages/DeliveryChallanInwardPage'
+import GoodsIssuePage from './modules/inventory/pages/GoodsIssuePage'
+import GoodsIssueSalePage from './modules/inventory/pages/GoodsIssueSalePage'
+import InventoryHomePage from './modules/inventory/pages/InventoryHomePage'
+import GLHomePage from './modules/gl/pages/GLHomePage'
+import GLResourcePage from './modules/gl/components/GLResourcePage'
 
 function DashboardLayout() {
   return (
@@ -109,6 +124,12 @@ function App() {
         element={<CreatePayrollPage />}
       />
 
+      {/* Company Profile */}
+      <Route
+        path="/company-profile/create"
+        element={<CreateCompanyProfilePage />}
+      />
+
       {/* Travelling Advance */}
       <Route
         path="/travelling-advance/create"
@@ -137,6 +158,59 @@ function App() {
       <Route
         path="/admin/cost-of-element"
         element={<CostOfElementPage />}
+      />
+
+      <Route
+        path="/inventory"
+        element={<InventoryHomePage />}
+      />
+      <Route
+        path="/inventory/unit-of-measures/create"
+        element={<UnitOfMeasurePage />}
+      />
+      <Route
+        path="/inventory/stock-groups/create"
+        element={<StockGroupPage />}
+      />
+      <Route
+        path="/inventory/stock-items/create"
+        element={<StockItemPage />}
+      />
+      <Route
+        path="/inventory/indents/create"
+        element={<IndentPage />}
+      />
+      <Route
+        path="/inventory/gate-entries/create"
+        element={<GateEntryPage />}
+      />
+      <Route
+        path="/inventory/material-receipt-notes/create"
+        element={<MaterialReceiptNotePage />}
+      />
+      <Route
+        path="/inventory/delivery-challans/create"
+        element={<DeliveryChallanPage />}
+      />
+      <Route
+        path="/inventory/delivery-challan-inwards/create"
+        element={<DeliveryChallanInwardPage />}
+      />
+      <Route
+        path="/inventory/goods-issues/create"
+        element={<GoodsIssuePage />}
+      />
+      <Route
+        path="/inventory/goods-issue-sales/create"
+        element={<GoodsIssueSalePage />}
+      />
+      <Route
+        path="/gl"
+        element={<GLHomePage />}
+      />
+      <Route
+        path="/gl/:resourceKey"
+        element={<GLResourcePage />}
       />
 
       {/* Dashboard */}

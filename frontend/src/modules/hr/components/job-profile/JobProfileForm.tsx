@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import HRBackButton from '../HRBackButton'
 
 function JobProfileForm() {
   const [jobDescription, setJobDescription] = useState('')
@@ -99,13 +100,16 @@ function JobProfileForm() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={submitting}
-              >
-                {submitting ? 'Submitting...' : 'Submit'}
-              </button>
+              <div className="d-flex justify-content-end gap-2">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Submitting...' : 'Submit'}
+                </button>
+                <HRBackButton />
+              </div>
             </form>
 
           </div>
