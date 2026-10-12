@@ -1,12 +1,26 @@
 """FastAPI application entry point."""
 
+import os
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import JSONResponse, Response
 
+# Load backend/.env before importing application modules that read env vars.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(BACKEND_DIR / ".env")
+
+from app.api.deps import authenticate_admin
 from app.api.v1.router import router as api_v1_router
+from app.api.v1.auth import router as auth_router
+from app.api.v1.admin_records import router as admin_records_router
 
 from app.api.v1.users import router as users_router
 from app.api.v1.attendance import router as attendance_router
@@ -43,13 +57,14 @@ from app.api.v1.gl_account_details import (
     gl_unsecured_loans_router,
 )
 
-from app.core.database import Base, engine
+from app.core.database import Base, engine, SessionLocal
 
 from app.hr.recruitment.models import UserEnquiry
 from app.models.attendance_coe import AttendanceCOE
 from app.models.company_holiday import CompanyHoliday
 from app.models.paysheet import Paysheet
 from app.models.company import Company
+from app.models.admin_credential import AdminCredential
 
 from app.models.gl_tax_type import GLTaxType
 from app.models.gl_group import GLGroup
@@ -194,6 +209,78 @@ class UserEnquiryPayload(BaseModel):
 
 app = FastAPI(title="Projecto API")
 
+
+@app.exception_handler(RequestValidationError)
+async def hide_passwords_from_validation_errors(
+    _request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    password_fields = {
+        "password",
+        "current_password",
+        "new_password",
+        "confirm_new_password",
+    }
+    errors = []
+
+    for error in exc.errors():
+        sanitized = dict(error)
+        if any(
+            str(part).lower() in password_fields
+            for part in error.get("loc", ())
+        ):
+            sanitized.pop("input", None)
+            sanitized.pop("ctx", None)
+        errors.append(sanitized)
+
+    return JSONResponse(
+        status_code=422,
+        content=jsonable_encoder({"detail": errors}),
+    )
+
+
+ADMIN_MUTATION_PREFIXES = (
+    "/api/v1/user-enquiries",
+    "/attendance",
+    "/attendance-coe",
+    "/company-holidays",
+    "/employment",
+    "/job-profile",
+    "/on-employment",
+    "/paysheet",
+    "/salary-details",
+    "/travelling-advance",
+    "/travelling-expenses-reimbursement",
+    "/gl-",
+    "/inventory/",
+)
+
+
+@app.middleware("http")
+async def protect_record_management(
+    request: Request,
+    call_next: RequestResponseEndpoint,
+) -> Response:
+    if request.method in {"PUT", "PATCH", "DELETE"} and any(
+        request.url.path == prefix.rstrip("/")
+        or request.url.path.startswith(prefix)
+        for prefix in ADMIN_MUTATION_PREFIXES
+    ):
+        db = SessionLocal()
+        try:
+            authenticate_admin(request.headers.get("authorization"), db)
+        except HTTPException as exc:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+                headers=exc.headers,
+            )
+        finally:
+            db.close()
+
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -217,6 +304,8 @@ def startup() -> None:
 
 
 app.include_router(users_router)
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(admin_records_router, prefix="/api/v1")
 app.include_router(attendance_router)
 app.include_router(attendance_coe_router)
 app.include_router(company_holidays_router)

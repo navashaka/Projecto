@@ -28,6 +28,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import apiClient from '../../../services/apiClient'
+import { useAppStore } from '../../../store'
 import { glGroupDefaults } from '../constants/glGroupDefaults'
 import { glResourceMap } from '../constants/glResources'
 import type {
@@ -343,6 +344,8 @@ function getInputValue(record: GLRecord, field: GLFieldDefinition): FormValue {
 function GLResourcePage() {
   const { resourceKey } = useParams<{ resourceKey: string }>()
   const navigate = useNavigate()
+  const session = useAppStore((state) => state.session)
+  const isAdmin = session?.role === 'admin' && Boolean(session.accessToken)
   const resource = resourceKey ? glResourceMap[resourceKey] : undefined
   const [records, setRecords] = useState<GLRecord[]>([])
   const [optionCollections, setOptionCollections] =
@@ -1368,16 +1371,20 @@ function GLResourcePage() {
                     spacing={1}
                     sx={{ justifyContent: 'flex-end' }}
                   >
-                    <Button onClick={() => openEdit(record)} size="small">
-                      Edit
-                    </Button>
-                    <Button
-                      color="error"
-                      onClick={() => void deleteRecord(record)}
-                      size="small"
-                    >
-                      Delete
-                    </Button>
+                    {isAdmin && (
+                      <>
+                        <Button onClick={() => openEdit(record)} size="small">
+                          Edit
+                        </Button>
+                        <Button
+                          color="error"
+                          onClick={() => void deleteRecord(record)}
+                          size="small"
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
                   </Stack>
                 </TableCell>
               </TableRow>

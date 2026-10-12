@@ -1,7 +1,16 @@
 import './App.css'
-import { Route, Routes } from 'react-router-dom'
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
+import { useEffect } from 'react'
 
 import LoginPage from './components/auth/LoginPage'
+import AdminLoginPage from './components/auth/AdminLoginPage'
+import ChangePasswordPage from './components/auth/ChangePasswordPage'
 import UserEnquiryForm from './components/auth/UserEnquiryForm'
 
 import Header from './components/layout/Header'
@@ -24,8 +33,10 @@ import TravellingExpensesReimbursementForm from './modules/hr/components/travell
 import CompanyHolidayForm from './modules/hr/components/company-holidays/CompanyHolidayForm'
 
 import CostOfElementPage from './modules/admin/CostOfElementPage'
+import AdminDashboardPage from './modules/admin/AdminDashboardPage'
 
 import { useAppStore } from './store'
+
 import UnitOfMeasurePage from './modules/inventory/pages/UnitOfMeasurePage'
 import StockGroupPage from './modules/inventory/pages/StockGroupPage'
 import StockItemPage from './modules/inventory/pages/StockItemPage'
@@ -37,133 +48,283 @@ import DeliveryChallanInwardPage from './modules/inventory/pages/DeliveryChallan
 import GoodsIssuePage from './modules/inventory/pages/GoodsIssuePage'
 import GoodsIssueSalePage from './modules/inventory/pages/GoodsIssueSalePage'
 import InventoryHomePage from './modules/inventory/pages/InventoryHomePage'
+
 import GLHomePage from './modules/gl/pages/GLHomePage'
 import GLResourcePage from './modules/gl/components/GLResourcePage'
+
+import HRAdminPage from './modules/hr-admin/HRAdminPage'
+import GLAdminPage from './modules/gl-admin/GLAdminPage'
+import InventoryAdminPage from './modules/inventory-admin/InventoryAdminPage'
+
+import AdminRoute from './routes/AdminRoute'
+import { loginAdmin, logoutAdmin } from './services/authApi'
+
+function getLoginError(error: unknown): Error {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error
+  ) {
+    const response = error.response
+
+    if (
+      typeof response === 'object' &&
+      response !== null &&
+      'data' in response
+    ) {
+      const data = response.data
+
+      if (
+        typeof data === 'object' &&
+        data !== null &&
+        'detail' in data &&
+        typeof data.detail === 'string'
+      ) {
+        return new Error(data.detail)
+      }
+    }
+  }
+
+  return error instanceof Error
+    ? error
+    : new Error('Unable to sign in.')
+}
 
 function DashboardLayout() {
   return (
     <div className="app-shell">
       <Header />
-
       <div className="app-body">
         <LeftSidebar />
         <MainContent />
         <RightSidebar />
       </div>
-
       <Footer />
     </div>
   )
 }
 
 function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const isAuthenticated = useAppStore(
     (state) => state.isAuthenticated,
   )
-
+  const session = useAppStore((state) => state.session)
   const showRegisterForm = useAppStore(
     (state) => state.showRegisterForm,
   )
-
-  const login = useAppStore(
-    (state) => state.login,
-  )
-
+  const setSession = useAppStore((state) => state.login)
   const toggleRegisterForm = useAppStore(
     (state) => state.toggleRegisterForm,
   )
+  const logout = useAppStore((state) => state.logout)
 
-  if (!isAuthenticated) {
-    return showRegisterForm ? (
-      <UserEnquiryForm
-        onBackToLogin={() => toggleRegisterForm(false)}
-      />
-    ) : (
+  const isAdmin = session?.role === 'admin'
+  const isUser = isAuthenticated && session?.role !== 'admin'
+  const path = location.pathname
+
+  useEffect(() => {
+    if (
+      !isAuthenticated &&
+      path !== '/login' &&
+      path !== '/admin-login'
+    ) {
+      navigate('/login', { replace: true })
+    }
+  }, [isAuthenticated, path, navigate])
+
+  const handleAdminLogin = async (
+    email: string,
+    password: string,
+  ) => {
+    try {
+      const response = await loginAdmin(email, password)
+
+      setSession({
+        email: response.email,
+        role: response.role,
+        accessToken: response.access_token,
+        mustChangePassword: response.must_change_password,
+      })
+
+      navigate(
+        response.must_change_password
+          ? '/change-password'
+          : '/admin',
+        { replace: true },
+      )
+    } catch (error) {
+      throw getLoginError(error)
+    }
+  }
+
+  const endAdminSession = async () => {
+    try {
+      await logoutAdmin()
+    } finally {
+      logout()
+      navigate('/login', { replace: true })
+    }
+  }
+
+  // Normal login page
+  if (path === '/login') {
+    if (isAdmin) {
+      return (
+        <Navigate
+          to={session?.mustChangePassword ? '/change-password' : '/admin'}
+          replace
+        />
+      )
+    }
+
+    if (isUser) {
+      return <Navigate to="/" replace />
+    }
+
+    if (showRegisterForm) {
+      return (
+        <UserEnquiryForm
+          onBackToLogin={() => toggleRegisterForm(false)}
+        />
+      )
+    }
+
+    return (
       <LoginPage
-        onLogin={() =>
-          login({
+        onLogin={() => {
+          setSession({
             email: 'user@projecto.com',
             name: 'Projecto User',
-            role: 'admin',
+            role: 'user',
           })
-        }
+          navigate('/', { replace: true })
+        }}
         onRegister={() => toggleRegisterForm(true)}
       />
     )
   }
 
+  // Separate administrator login page
+  if (path === '/admin-login') {
+    if (isAdmin) {
+      return (
+        <Navigate
+          to={session?.mustChangePassword ? '/change-password' : '/admin'}
+          replace
+        />
+      )
+    }
+
+    return (
+      <AdminLoginPage
+        onLogin={handleAdminLogin}
+        onBack={() => navigate('/login', { replace: true })}
+      />
+    )
+  }
+
+  // Protect all other routes from unauthenticated access
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
   return (
     <Routes>
-      {/* Attendance */}
       <Route
-        path="/attendance/create"
-        element={<CreateAttendancePage />}
+        path="/"
+        element={
+          isAdmin
+            ? <Navigate to="/admin" replace />
+            : <DashboardLayout />
+        }
       />
 
-      {/* Employment Details */}
       <Route
-        path="/employment/create"
-        element={<CreateEmploymentDetailsPage />}
+        path="/change-password"
+        element={
+          <AdminRoute allowPasswordChange>
+            <ChangePasswordPage
+              onPasswordChanged={(response) => {
+                setSession({
+                  email: response.email,
+                  role: response.role,
+                  accessToken: response.access_token,
+                  mustChangePassword: false,
+                })
+                navigate('/admin', { replace: true })
+              }}
+              onLogout={endAdminSession}
+            />
+          </AdminRoute>
+        }
       />
 
-      {/* On Employment */}
       <Route
-        path="/on-employment/create"
-        element={<CreateOnEmploymentPage />}
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboardPage
+              email={session?.email ?? ''}
+              onLogout={endAdminSession}
+            />
+          </AdminRoute>
+        }
       />
 
-      {/* Salary Details */}
-      <Route
-        path="/salary/create"
-        element={<CreateSalaryDetailsPage />}
-      />
-
-      {/* Payroll */}
-      <Route
-        path="/payroll/create"
-        element={<CreatePayrollPage />}
-      />
-
-      {/* Company Profile */}
-      <Route
-        path="/company-profile/create"
-        element={<CreateCompanyProfilePage />}
-      />
-
-      {/* Travelling Advance */}
-      <Route
-        path="/travelling-advance/create"
-        element={<CreateTravellingAdvancePage />}
-      />
-
-      {/* Job Profile */}
-      <Route
-        path="/job-profile/create"
-        element={<JobProfileForm />}
-      />
-
-      {/* Travelling Expenses Reimbursement */}
+      <Route path="/attendance/create" element={<CreateAttendancePage />} />
+      <Route path="/employment/create" element={<CreateEmploymentDetailsPage />} />
+      <Route path="/on-employment/create" element={<CreateOnEmploymentPage />} />
+      <Route path="/salary/create" element={<CreateSalaryDetailsPage />} />
+      <Route path="/payroll/create" element={<CreatePayrollPage />} />
+      <Route path="/company-profile/create" element={<CreateCompanyProfilePage />} />
+      <Route path="/travelling-advance/create" element={<CreateTravellingAdvancePage />} />
+      <Route path="/job-profile/create" element={<JobProfileForm />} />
       <Route
         path="/travelling-expenses-reimbursement/create"
         element={<TravellingExpensesReimbursementForm />}
       />
+      <Route path="/company-holidays/create" element={<CompanyHolidayForm />} />
 
-      {/* Company Holidays */}
-      <Route
-        path="/company-holidays/create"
-        element={<CompanyHolidayForm />}
-      />
-
-      {/* Cost Of Element */}
       <Route
         path="/admin/cost-of-element"
-        element={<CostOfElementPage />}
+        element={
+          <AdminRoute>
+            <CostOfElementPage />
+          </AdminRoute>
+        }
       />
 
       <Route
-        path="/inventory"
-        element={<InventoryHomePage />}
+        path="/hr-admin"
+        element={
+          <AdminRoute>
+            <HRAdminPage />
+          </AdminRoute>
+        }
       />
+
+      <Route
+        path="/gl-admin"
+        element={
+          <AdminRoute>
+            <GLAdminPage />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/inventory-admin"
+        element={
+          <AdminRoute>
+            <InventoryAdminPage />
+          </AdminRoute>
+        }
+      />
+
+      <Route path="/inventory" element={<InventoryHomePage />} />
       <Route
         path="/inventory/unit-of-measures/create"
         element={<UnitOfMeasurePage />}
@@ -204,19 +365,17 @@ function App() {
         path="/inventory/goods-issue-sales/create"
         element={<GoodsIssueSalePage />}
       />
-      <Route
-        path="/gl"
-        element={<GLHomePage />}
-      />
-      <Route
-        path="/gl/:resourceKey"
-        element={<GLResourcePage />}
-      />
 
-      {/* Dashboard */}
+      <Route path="/gl" element={<GLHomePage />} />
+      <Route path="/gl/:resourceKey" element={<GLResourcePage />} />
+
       <Route
         path="*"
-        element={<DashboardLayout />}
+        element={
+          isAdmin
+            ? <Navigate to="/admin" replace />
+            : <DashboardLayout />
+        }
       />
     </Routes>
   )

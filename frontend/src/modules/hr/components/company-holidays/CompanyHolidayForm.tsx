@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import apiClient from '../../../../services/apiClient'
+import { useAppStore } from '../../../../store'
 import HRBackButton from '../HRBackButton'
 
 type Holiday = {
@@ -8,6 +10,8 @@ type Holiday = {
 }
 
 function CompanyHolidayForm() {
+  const session = useAppStore((state) => state.session)
+  const isAdmin = session?.role === 'admin' && Boolean(session.accessToken)
   const [holidayDate, setHolidayDate] = useState('')
   const [holidayName, setHolidayName] = useState('')
   const [holidays, setHolidays] = useState<Holiday[]>([])
@@ -101,20 +105,7 @@ function CompanyHolidayForm() {
     setErrorMessage('')
 
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/company-holidays/${holidayId}`,
-        {
-          method: 'DELETE',
-        },
-      )
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(
-          result?.detail || 'Failed to delete holiday',
-        )
-      }
+      await apiClient.delete(`/company-holidays/${holidayId}`)
 
       setSuccessMessage('Holiday deleted successfully!')
 
@@ -297,7 +288,7 @@ function CompanyHolidayForm() {
                         <th>#</th>
                         <th>Holiday Date</th>
                         <th>Holiday Name</th>
-                        <th>Action</th>
+                        {isAdmin && <th>Action</th>}
                       </tr>
                     </thead>
 
@@ -308,22 +299,24 @@ function CompanyHolidayForm() {
                           <td>{holiday.holiday_date}</td>
                           <td>{holiday.holiday_name}</td>
 
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-danger btn-sm"
-                              disabled={
-                                deletingId === holiday.id
-                              }
-                              onClick={() =>
-                                handleDelete(holiday.id)
-                              }
-                            >
-                              {deletingId === holiday.id
-                                ? 'Deleting...'
-                                : 'Delete'}
-                            </button>
-                          </td>
+                          {isAdmin && (
+                            <td>
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm"
+                                disabled={
+                                  deletingId === holiday.id
+                                }
+                                onClick={() =>
+                                  handleDelete(holiday.id)
+                                }
+                              >
+                                {deletingId === holiday.id
+                                  ? 'Deleting...'
+                                  : 'Delete'}
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

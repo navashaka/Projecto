@@ -118,6 +118,50 @@ DATABASE_URL=postgresql+psycopg://postgres:your_password@localhost:5432/projecto
 
 Important: the password must match the actual local PostgreSQL user password. If the password is incorrect, the app will fail at startup with a PostgreSQL authentication error.
 
+## Administrator authentication and record management
+
+Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `AUTH_SECRET` in the private
+`backend/.env` file. `ADMIN_PASSWORD` is the initial temporary password;
+`AUTH_SECRET` must be a randomly generated value of at least 32 characters.
+The checked-in `backend/.env.example` contains empty placeholders only. Never
+commit real credentials or signing secrets.
+
+On the first successful login, the backend stores the administrator email,
+a salted scrypt password hash, password-change state, and token version in the
+new `admin_credentials` table. Existing credentials are not reseeded from the
+environment on subsequent startups, so changing `ADMIN_PASSWORD` does not
+reset a password changed by an administrator. The app creates this new table
+using SQLAlchemy `create_all`; existing tables and records are not reset.
+
+`POST /api/v1/auth/login` verifies the persisted credentials and returns a
+signed bearer token that expires after one hour. First login must change the
+temporary password before accessing admin records. The frontend URLs are:
+
+- `/login` — administrator sign-in
+- `/change-password` — authenticated password change (also required at first
+  login)
+- `/admin` — administrator dashboard
+- `/hr-admin`
+- `/gl-admin`
+- `/inventory-admin`
+
+Change-password requests are sent to `POST /api/v1/auth/change-password`;
+`GET /api/v1/auth/me` verifies the current session and
+`POST /api/v1/auth/logout` revokes it. Password changes and logout increment
+the stored token version, invalidating existing tokens. Passwords are never
+returned by the API or stored in plaintext.
+
+The administrator-only API exposes model-backed resource metadata and records
+under `/api/v1/admin/{hr|gl|inventory}/...`. Collection listing, individual
+record details, updates, and deletes all require the signed administrator
+token. Existing form submission and list endpoints remain unchanged; update,
+patch, and delete operations on the existing HR, GL, and Inventory APIs also
+require administrator authorization.
+
+The existing regular-user option is explicitly a demo session and receives no
+administrator token. The project does not currently provide a separate
+regular-user authentication service.
+
 ## Run locally
 
 ```powershell

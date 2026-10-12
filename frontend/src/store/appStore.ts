@@ -14,6 +14,8 @@ export type UserSession = {
   email: string
   name?: string
   role?: string
+  accessToken?: string
+  mustChangePassword?: boolean
 }
 
 type AppState = {

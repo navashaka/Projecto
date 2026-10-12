@@ -3,6 +3,7 @@ import { IconButton, Tooltip } from '@mui/material'
 import { Home } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { inventoryNavigationItems } from '../../modules/inventory/constants/inventoryConstants'
+import { useAppStore } from '../../store'
 
 const glNavigationItems = [
   { label: 'GL Home', path: '/gl' },
@@ -28,20 +29,19 @@ const hrNavigationItems = [
 
 const menuItems = [
   { label: 'Dashboard', path: '/admin' },
-  {
-    label: 'Company Profile',
-    path: '/company-profile/create',
-  },
-  {
-    label: 'Reports',
-    path: '/admin/reports',
-  },
+  { label: 'Company Profile', path: '/company-profile/create' },
+  { label: 'Reports', path: '/admin/reports' },
 ]
 
 const LeftSidebar = () => {
   const navigate = useNavigate()
   const location = useLocation()
+
+  const session = useAppStore((state) => state.session)
+  const isAdmin = session?.role === 'admin' && Boolean(session.accessToken)
+
   const isInventoryPage = location.pathname.startsWith('/inventory/')
+
   const isHRPage =
     location.pathname.startsWith('/employment/') ||
     location.pathname.startsWith('/attendance/') ||
@@ -51,15 +51,20 @@ const LeftSidebar = () => {
     location.pathname.startsWith('/travelling-advance/') ||
     location.pathname.startsWith('/travelling-expenses-reimbursement/') ||
     location.pathname.startsWith('/job-profile/')
+
   const [hrMenu, setHRMenu] = useState(() => ({
     pathname: location.pathname,
     expanded: isHRPage,
   }))
+
   const [inventoryMenu, setInventoryMenu] = useState(() => ({
     pathname: location.pathname,
     expanded: isInventoryPage,
   }))
-  const isGLPage = location.pathname === '/gl' || location.pathname.startsWith('/gl/')
+
+  const isGLPage =
+    location.pathname === '/gl' || location.pathname.startsWith('/gl/')
+
   const [glMenu, setGLMenu] = useState(() => ({
     pathname: location.pathname,
     expanded: isGLPage,
@@ -78,20 +83,21 @@ const LeftSidebar = () => {
       expanded: isHRPage,
     })
   }
-  const hrExpanded = hrMenu.expanded
-  const inventoryExpanded = inventoryMenu.expanded
+
   if (glMenu.pathname !== location.pathname) {
     setGLMenu({
       pathname: location.pathname,
       expanded: isGLPage,
     })
   }
+
+  const hrExpanded = hrMenu.expanded
+  const inventoryExpanded = inventoryMenu.expanded
   const glExpanded = glMenu.expanded
 
   return (
     <aside className="card border-0 shadow-sm h-100">
       <div className="card-body p-3">
-
         <p className="text-uppercase text-muted small fw-semibold mb-3">
           Menu
         </p>
@@ -107,6 +113,38 @@ const LeftSidebar = () => {
               {item.label}
             </button>
           ))}
+
+          {/* Admin Login appears below Reports and above HR. */}
+          <button
+            type="button"
+            className="btn btn-light text-start"
+            onClick={() => navigate('/admin-login')}
+          >
+            Admin Login
+          </button>
+
+          {isAdmin && (
+            <div className="d-grid gap-2">
+              <p className="text-uppercase text-muted small fw-semibold mb-1 mt-2">
+                Administration
+              </p>
+
+              {[
+                { label: 'HR Admin', path: '/hr-admin' },
+                { label: 'GL Admin', path: '/gl-admin' },
+                { label: 'Inventory Admin', path: '/inventory-admin' },
+              ].map((item) => (
+                <button
+                  key={item.path}
+                  type="button"
+                  className="btn btn-light text-start"
+                  onClick={() => navigate(item.path)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div
             className="d-grid gap-2"
@@ -138,6 +176,7 @@ const LeftSidebar = () => {
               >
                 HR
               </button>
+
               {isHRPage && (
                 <Tooltip title="Home">
                   <IconButton
@@ -268,7 +307,6 @@ const LeftSidebar = () => {
             )}
           </div>
         </div>
-
       </div>
     </aside>
   )
