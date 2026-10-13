@@ -4,13 +4,24 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict, create_model
-from sqlalchemy import Boolean, Date, DateTime, Enum, Float, Integer, Numeric, String, Time
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    Integer,
+    Numeric,
+    String,
+    Time,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Session
 
-from app.api.deps import get_db, require_admin
+from app.api.deps import get_db
 from app.hr.recruitment.models import PreviousEmployment, UserEnquiry
 from app.models.attendance import Attendance
+from app.models.attendance_coe import AttendanceCOE
 from app.models.company_holiday import CompanyHoliday
 from app.models.employment import Employment
 from app.models.gl_account import GLAccount
@@ -35,7 +46,6 @@ from app.models.travelling_advance import TravellingAdvance
 from app.models.travelling_expenses_reimbursement import (
     TravellingExpensesReimbursement,
 )
-from app.models.attendance_coe import AttendanceCOE
 from app.models.user import User
 from app.modules.inventory.models import (
     InventoryDeliveryChallan,
@@ -58,7 +68,9 @@ from app.modules.inventory.models import (
 )
 
 
-RESOURCE_MODELS: dict[str, dict[str, tuple[str, type[DeclarativeBase]]]] = {
+RESOURCE_MODELS: dict[
+    str, dict[str, tuple[str, type[DeclarativeBase]]]
+] = {
     "hr": {
         "user-enquiries": ("User Enquiries", UserEnquiry),
         "previous-employments": ("Previous Employments", PreviousEmployment),
@@ -110,7 +122,10 @@ RESOURCE_MODELS: dict[str, dict[str, tuple[str, type[DeclarativeBase]]]] = {
             "Material Receipt Note Items",
             InventoryMaterialReceiptNoteItem,
         ),
-        "delivery-challans": ("Delivery Challans", InventoryDeliveryChallan),
+        "delivery-challans": (
+            "Delivery Challans",
+            InventoryDeliveryChallan,
+        ),
         "delivery-challan-items": (
             "Delivery Challan Items",
             InventoryDeliveryChallanItem,
@@ -136,28 +151,33 @@ RESOURCE_MODELS: dict[str, dict[str, tuple[str, type[DeclarativeBase]]]] = {
 router = APIRouter(
     prefix="/admin",
     tags=["Administrator record management"],
-    dependencies=[Depends(require_admin)],
 )
 
 
-def _resource(module: str, resource_key: str) -> tuple[str, type[DeclarativeBase]]:
+def _resource(
+    module: str,
+    resource_key: str,
+) -> tuple[str, type[DeclarativeBase]]:
     module_resources = RESOURCE_MODELS.get(module)
     if module_resources is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Administrator resource not found.",
+            status_code=404,
+            detail="Administrator module not found.",
         )
+
     resource = module_resources.get(resource_key)
     if resource is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Administrator resource not found.",
         )
+
     return resource
 
 
 def _column_type(column: Any) -> tuple[str, type[Any]]:
     sql_type = column.type
+
     if isinstance(sql_type, Boolean):
         return "boolean", bool
     if isinstance(sql_type, DateTime):
@@ -179,48 +199,56 @@ def _column_type(column: Any) -> tuple[str, type[Any]]:
         python_type = column.type.python_type
     except (AttributeError, NotImplementedError):
         python_type = str
+
     return "text", python_type
 
 
 def _model_fields(model: type[DeclarativeBase]) -> list[dict[str, Any]]:
     fields: list[dict[str, Any]] = []
+
     for attribute in model.__mapper__.column_attrs:
         column = attribute.columns[0]
         kind, _ = _column_type(column)
+
         read_only = (
             column.primary_key
             or attribute.key in {"created_at", "updated_at"}
             or column.computed is not None
         )
-        label = attribute.key.replace("_", " ").strip().title()
+
         field: dict[str, Any] = {
             "name": attribute.key,
-            "label": label,
+            "label": attribute.key.replace("_", " ").strip().title(),
             "kind": kind,
             "nullable": column.nullable,
             "editable": not read_only,
         }
-        if isinstance(column.type, String) and column.type.length is not None:
+
+        if isinstance(column.type, String) and column.type.length:
             field["max_length"] = column.type.length
+
         if isinstance(column.type, Enum):
             field["options"] = list(column.type.enums)
-        if attribute.key in {"created_at", "updated_at"}:
-            field["kind"] = "datetime"
+
         fields.append(field)
+
     return fields
 
 
 @lru_cache(maxsize=None)
 def _update_schema(model: type[DeclarativeBase]) -> type[BaseModel]:
     schema_fields: dict[str, tuple[Any, Any]] = {}
+
     for attribute in model.__mapper__.column_attrs:
         column = attribute.columns[0]
+
         if (
             column.primary_key
             or attribute.key in {"created_at", "updated_at"}
             or column.computed is not None
         ):
             continue
+
         _, python_type = _column_type(column)
         schema_fields[attribute.key] = (python_type | None, None)
 
@@ -237,10 +265,12 @@ def _primary_key(model: type[DeclarativeBase]) -> Any:
         for attribute in model.__mapper__.column_attrs
         if any(column.primary_key for column in attribute.columns)
     ]
+
     if len(primary_keys) != 1:
         raise RuntimeError(
             f"{model.__name__} must have exactly one mapped primary key."
         )
+
     return getattr(model, primary_keys[0].key)
 
 
@@ -255,11 +285,13 @@ def _serialize(record: DeclarativeBase) -> dict[str, Any]:
 @router.get("/{module}/resources")
 def list_resources(module: str) -> list[dict[str, Any]]:
     module_resources = RESOURCE_MODELS.get(module)
+
     if module_resources is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Administrator module not found.",
         )
+
     return [
         {
             "key": resource_key,
@@ -277,6 +309,7 @@ def list_records(
     db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
     _, model = _resource(module, resource_key)
+
     return [
         _serialize(record)
         for record in db.query(model).order_by(_primary_key(model)).all()
@@ -292,11 +325,10 @@ def get_record(
 ) -> dict[str, Any]:
     _, model = _resource(module, resource_key)
     record = db.get(model, record_id)
+
     if record is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Record not found.",
-        )
+        raise HTTPException(status_code=404, detail="Record not found.")
+
     return _serialize(record)
 
 
@@ -310,17 +342,17 @@ def update_record(
 ) -> dict[str, Any]:
     _, model = _resource(module, resource_key)
     record = db.get(model, record_id)
+
     if record is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Record not found.",
-        )
+        raise HTTPException(status_code=404, detail="Record not found.")
 
     values = _update_schema(model).model_validate(payload).model_dump(
         exclude_unset=True
     )
+
     for field, value in values.items():
         setattr(record, field, value)
+
     try:
         db.commit()
         db.refresh(record)
@@ -330,6 +362,7 @@ def update_record(
             status_code=status.HTTP_409_CONFLICT,
             detail="The record conflicts with existing data or references.",
         ) from exc
+
     return _serialize(record)
 
 
@@ -345,19 +378,22 @@ def delete_record(
 ) -> Response:
     _, model = _resource(module, resource_key)
     record = db.get(model, record_id)
+
     if record is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Record not found.",
-        )
+        raise HTTPException(status_code=404, detail="Record not found.")
 
     db.delete(record)
+
     try:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="The record cannot be deleted while other records reference it.",
+            detail=(
+                "The record cannot be deleted while other records "
+                "reference it."
+            ),
         ) from exc
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)

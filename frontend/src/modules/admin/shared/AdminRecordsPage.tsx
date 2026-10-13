@@ -59,65 +59,52 @@ function recordEndpoint(module: AdminModuleKey, resourceKey: string): string {
 function formatError(error: unknown, fallback: string): string {
   if (typeof error === 'object' && error !== null && 'response' in error) {
     const response = error.response
+
     if (typeof response === 'object' && response !== null && 'data' in response) {
       const data = response.data
+
       if (typeof data === 'object' && data !== null && 'detail' in data) {
-        const detail = data.detail
-        if (typeof detail === 'string') {
-          return detail
-        }
+        if (typeof data.detail === 'string') return data.detail
       }
     }
   }
+
   return error instanceof Error ? error.message : fallback
 }
 
 function displayValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') {
-    return '-'
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No'
-  }
-  if (typeof value === 'object') {
-    return JSON.stringify(value)
-  }
+  if (value === null || value === undefined || value === '') return '-'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
 }
 
 function editValue(field: AdminField, value: unknown): string {
-  if (value === null || value === undefined) {
-    return ''
-  }
-  if (field.kind === 'date' || field.kind === 'datetime') {
-    const textValue = String(value)
-    return field.kind === 'date'
-      ? textValue.slice(0, 10)
-      : textValue.slice(0, 16)
-  }
-  return String(value)
+  if (value === null || value === undefined) return ''
+
+  const textValue = String(value)
+
+  if (field.kind === 'date') return textValue.slice(0, 10)
+  if (field.kind === 'datetime') return textValue.slice(0, 16)
+
+  return textValue
 }
 
 function toPayloadValue(field: AdminField, value: string): unknown {
-  if (value === '') {
-    return null
-  }
-  if (field.kind === 'boolean') {
-    return value === 'true'
-  }
-  if (field.kind === 'number') {
-    return Number(value)
-  }
+  if (value === '') return null
+  if (field.kind === 'boolean') return value === 'true'
+  if (field.kind === 'number') return Number(value)
   return value
 }
 
 function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
   const navigate = useNavigate()
+
   const [resources, setResources] = useState<AdminResource[]>([])
   const [selectedKey, setSelectedKey] = useState('')
   const [records, setRecords] = useState<AdminRecord[]>([])
   const [loadingResources, setLoadingResources] = useState(true)
-  const [loadingRecords, setLoadingRecords] = useState(true)
+  const [loadingRecords, setLoadingRecords] = useState(false)
   const [error, setError] = useState('')
   const [editingRecord, setEditingRecord] = useState<AdminRecord | null>(null)
   const [detailRecord, setDetailRecord] = useState<AdminRecord | null>(null)
@@ -133,22 +120,20 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
   const loadRecords = useCallback(async (resource: AdminResource) => {
     setLoadingRecords(true)
     setError('')
+
     try {
       const response = await apiClient.get<AdminRecord[]>(
         recordEndpoint(module, resource.key),
       )
+
       if (!Array.isArray(response.data)) {
-        throw new Error('The administrator API returned an invalid record list.')
+        throw new Error('The API returned an invalid record list.')
       }
+
       setRecords(response.data)
     } catch (loadError) {
-      setError(
-        formatError(
-          loadError,
-          `Unable to load ${resource.label.toLowerCase()} records.`,
-        ),
-      )
       setRecords([])
+      setError(formatError(loadError, `Unable to load ${resource.label} records.`))
     } finally {
       setLoadingRecords(false)
     }
@@ -161,8 +146,9 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
       .get<AdminResource[]>(`/api/v1/admin/${module}/resources`)
       .then((response) => {
         if (!Array.isArray(response.data)) {
-          throw new Error('The administrator API returned invalid resource metadata.')
+          throw new Error('The API returned invalid resource metadata.')
         }
+
         if (active) {
           setResources(response.data)
           setSelectedKey(response.data[0]?.key ?? '')
@@ -175,9 +161,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
         }
       })
       .finally(() => {
-        if (active) {
-          setLoadingResources(false)
-        }
+        if (active) setLoadingResources(false)
       })
 
     return () => {
@@ -187,14 +171,16 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
 
   useEffect(() => {
     if (selectedResource) {
-      void Promise.resolve().then(() => loadRecords(selectedResource))
+      void loadRecords(selectedResource)
+    } else if (!loadingResources) {
+      setRecords([])
+      setLoadingRecords(false)
     }
-  }, [loadRecords, selectedResource])
+  }, [loadRecords, selectedResource, loadingResources])
 
   const openEdit = (record: AdminRecord) => {
-    if (!selectedResource) {
-      return
-    }
+    if (!selectedResource) return
+
     setEditingRecord(record)
     setFormValues(
       Object.fromEntries(
@@ -207,40 +193,41 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
   }
 
   const openDetails = async (record: AdminRecord) => {
-    if (!selectedResource) {
-      return
-    }
+    if (!selectedResource) return
+
     setError('')
+
     try {
       const response = await apiClient.get<AdminRecord>(
         `${recordEndpoint(module, selectedResource.key)}/${record.id}`,
       )
       setDetailRecord(response.data)
     } catch (detailError) {
-      setError(
-        formatError(detailError, 'Unable to load the selected record details.'),
-      )
+      setError(formatError(detailError, 'Unable to load record details.'))
     }
   }
 
   const saveRecord = async () => {
-    if (!selectedResource || !editingRecord) {
-      return
-    }
+    if (!selectedResource || !editingRecord) return
+
     const editableFields = selectedResource.fields.filter((field) => field.editable)
+
     const missingField = editableFields.find(
       (field) => !field.nullable && !formValues[field.name]?.trim(),
     )
+
     if (missingField) {
       setError(`${missingField.label} cannot be empty.`)
       return
     }
+
     const invalidNumber = editableFields.find(
       (field) =>
         field.kind === 'number' &&
         formValues[field.name] !== '' &&
         !Number.isFinite(Number(formValues[field.name])),
     )
+
     if (invalidNumber) {
       setError(`${invalidNumber.label} must be a valid number.`)
       return
@@ -250,14 +237,14 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
       editableFields
         .filter(
           (field) =>
-            formValues[field.name] !==
-            editValue(field, editingRecord[field.name]),
+            formValues[field.name] !== editValue(field, editingRecord[field.name]),
         )
         .map((field) => [
           field.name,
           toPayloadValue(field, formValues[field.name] ?? ''),
         ]),
     )
+
     if (Object.keys(payload).length === 0) {
       setEditingRecord(null)
       return
@@ -265,6 +252,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
 
     setSaving(true)
     setError('')
+
     try {
       await apiClient.patch(
         `${recordEndpoint(module, selectedResource.key)}/${editingRecord.id}`,
@@ -280,10 +268,10 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
   }
 
   const deleteRecord = async () => {
-    if (!selectedResource || !deletingRecord) {
-      return
-    }
+    if (!selectedResource || !deletingRecord) return
+
     setError('')
+
     try {
       await apiClient.delete(
         `${recordEndpoint(module, selectedResource.key)}/${deletingRecord.id}`,
@@ -295,9 +283,10 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
     }
   }
 
-  const tableFields = selectedResource?.fields
-    .filter((field) => !['id', 'created_at', 'updated_at'].includes(field.name))
-    .slice(0, 6) ?? []
+  const tableFields =
+    selectedResource?.fields
+      .filter((field) => !['id', 'created_at', 'updated_at'].includes(field.name))
+      .slice(0, 6) ?? []
 
   return (
     <Stack spacing={3}>
@@ -309,17 +298,18 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
           justifyContent: 'space-between',
         }}
       >
-        <div>
-          <Typography variant="h4">{title}</Typography>
-          <Typography color="text.secondary" variant="body2">
-            View and manage existing records saved in the database.
-          </Typography>
-        </div>
         <Stack
-          direction="row"
-          spacing={1}
-          sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
         >
+          <Button variant="outlined" onClick={() => navigate('/admin')}>
+            ← Back to Dashboard
+          </Button>
+          <Typography variant="h4">{title}</Typography>
+        </Stack>
+
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
           {[
             { label: 'HR Admin', path: '/hr-admin' },
             { label: 'GL Admin', path: '/gl-admin' },
@@ -327,15 +317,11 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
           ]
             .filter((item) => item.path !== `/${module}-admin`)
             .map((item) => (
-              <Button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                size="small"
-                variant="text"
-              >
+              <Button key={item.path} onClick={() => navigate(item.path)} size="small">
                 {item.label}
               </Button>
             ))}
+
           <FormControl size="small" sx={{ minWidth: 240 }}>
             <Select
               aria-label={`${title} record type`}
@@ -343,7 +329,6 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
               value={selectedKey}
               onChange={(event) => {
                 setSelectedKey(event.target.value)
-                setLoadingRecords(true)
                 setError('')
               }}
             >
@@ -354,6 +339,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
               ))}
             </Select>
           </FormControl>
+
           <Button
             disabled={!selectedResource || loadingRecords}
             onClick={() => selectedResource && void loadRecords(selectedResource)}
@@ -381,6 +367,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
               {loadingRecords ? 'Loading records...' : `${records.length} records`}
             </Typography>
           </Stack>
+
           <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
             <Table size="small" stickyHeader>
               <TableHead>
@@ -392,6 +379,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
+
               <TableBody>
                 {loadingRecords && (
                   <TableRow>
@@ -400,6 +388,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
                     </TableCell>
                   </TableRow>
                 )}
+
                 {!loadingRecords && records.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={tableFields.length + 2} align="center">
@@ -407,6 +396,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
                     </TableCell>
                   </TableRow>
                 )}
+
                 {!loadingRecords &&
                   records.map((record) => (
                     <TableRow hover key={record.id}>
@@ -417,11 +407,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
                         </TableCell>
                       ))}
                       <TableCell align="right">
-                        <Stack
-                          direction="row"
-                          spacing={0.5}
-                          sx={{ justifyContent: 'flex-end' }}
-                        >
+                        <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end' }}>
                           <Button size="small" onClick={() => void openDetails(record)}>
                             Details
                           </Button>
@@ -447,25 +433,87 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
         <Alert severity="info">No records are configured for this module.</Alert>
       )}
 
+      {/* Details dialog - normal report format */}
+<Dialog
+  fullWidth
+  maxWidth="md"
+  open={Boolean(detailRecord)}
+  onClose={() => setDetailRecord(null)}
+>
+  <DialogTitle>
+    {selectedResource?.label} Details
+  </DialogTitle>
+
+  <DialogContent dividers>
+    <Stack spacing={0}>
+      {selectedResource?.fields.map((field) => (
+        <Stack
+          key={field.name}
+          direction="row"
+          spacing={2}
+          sx={{
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography
+            sx={{
+              width: { xs: '45%', sm: '35%' },
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            {field.label}
+          </Typography>
+
+          <Typography
+            sx={{
+              flex: 1,
+              overflowWrap: 'anywhere',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {displayValue(detailRecord?.[field.name])}
+          </Typography>
+        </Stack>
+      ))}
+    </Stack>
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => setDetailRecord(null)}>
+      Close
+    </Button>
+  </DialogActions>
+</Dialog>
       <Dialog
         fullWidth
         maxWidth="md"
         open={Boolean(detailRecord)}
         onClose={() => setDetailRecord(null)}
       >
-        <DialogTitle>{selectedResource?.label} record details</DialogTitle>
+        <DialogTitle>{selectedResource?.label} Details</DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={2}>
-            {selectedResource?.fields.map((field) => (
-              <Grid key={field.name} size={{ xs: 12, sm: 6 }}>
-                <Typography color="text.secondary" variant="caption">
-                  {field.label}
-                </Typography>
-                <Typography sx={{ overflowWrap: 'anywhere' }} variant="body2">
-                  {displayValue(detailRecord?.[field.name])}
-                </Typography>
-              </Grid>
-            ))}
+          <Grid container spacing={2} sx={{ pt: 1 }}>
+            {selectedResource?.fields.map((field) => {
+              const value = displayValue(detailRecord?.[field.name])
+
+              return (
+                <Grid key={field.name} size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label={field.label}
+                    value={value === '-' ? '' : value}
+                    placeholder={`No ${field.label.toLowerCase()} available`}
+                    slotProps={{
+                      input: { readOnly: true },
+                      inputLabel: { shrink: true },
+                    }}
+                  />
+                </Grid>
+              )
+            })}
           </Grid>
         </DialogContent>
         <DialogActions>
@@ -473,6 +521,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
         </DialogActions>
       </Dialog>
 
+      {/* Edit dialog with labels and placeholders */}
       <Dialog
         fullWidth
         maxWidth="md"
@@ -489,6 +538,7 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
                   <TextField
                     fullWidth
                     label={field.label}
+                    placeholder={`Enter ${field.label.toLowerCase()}`}
                     multiline={field.kind === 'text' && !field.max_length}
                     minRows={field.kind === 'text' && !field.max_length ? 3 : undefined}
                     required={!field.nullable}
@@ -517,7 +567,8 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
                         shrink:
                           field.kind === 'date' ||
                           field.kind === 'datetime' ||
-                          field.kind === 'time',
+                          field.kind === 'time' ||
+                          Boolean(formValues[field.name]),
                       },
                     }}
                   >
@@ -546,12 +597,17 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
           <Button disabled={saving} onClick={() => setEditingRecord(null)}>
             Cancel
           </Button>
-          <Button disabled={saving} onClick={() => void saveRecord()} variant="contained">
+          <Button
+            disabled={saving}
+            onClick={() => void saveRecord()}
+            variant="contained"
+          >
             {saving ? 'Saving...' : 'Save changes'}
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* Delete confirmation */}
       <Dialog
         open={Boolean(deletingRecord)}
         onClose={() => setDeletingRecord(null)}
@@ -559,13 +615,17 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
         <DialogTitle>Delete {selectedResource?.label} record?</DialogTitle>
         <DialogContent>
           <Typography>
-            This permanently deletes record {deletingRecord?.id}. This action cannot
-            be undone.
+            This permanently deletes record {deletingRecord?.id}. This action
+            cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeletingRecord(null)}>Cancel</Button>
-          <Button color="error" onClick={() => void deleteRecord()} variant="contained">
+          <Button
+            color="error"
+            onClick={() => void deleteRecord()}
+            variant="contained"
+          >
             Delete record
           </Button>
         </DialogActions>

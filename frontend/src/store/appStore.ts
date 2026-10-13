@@ -21,14 +21,20 @@ export type UserSession = {
 type AppState = {
   isAuthenticated: boolean
   session: UserSession | null
+  userSession: UserSession | null
+  adminSession: UserSession | null
+
   activeModule: ModuleKey
   showRegisterForm: boolean
   leftSidebarCollapsed: boolean
   rightSidebarCollapsed: boolean
   headerCollapsed: boolean
   footerCollapsed: boolean
+
   login: (user: UserSession) => void
   logout: () => void
+  adminLogout: () => void
+
   setActiveModule: (module: ModuleKey) => void
   toggleRegisterForm: (value?: boolean) => void
   toggleLeftSidebar: () => void
@@ -42,6 +48,9 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       isAuthenticated: false,
       session: null,
+      userSession: null,
+      adminSession: null,
+
       activeModule: 'dashboard',
       showRegisterForm: false,
       leftSidebarCollapsed: false,
@@ -50,49 +59,74 @@ export const useAppStore = create<AppState>()(
       footerCollapsed: false,
 
       login: (user) =>
-        set({
-          isAuthenticated: true,
-          session: user,
-          showRegisterForm: false
+        set(() => {
+          if (user.role === 'admin') {
+            return {
+              isAuthenticated: true,
+              session: user,
+              adminSession: user,
+              showRegisterForm: false,
+            }
+          }
+
+          return {
+            isAuthenticated: true,
+            session: user,
+            userSession: user,
+            showRegisterForm: false,
+          }
         }),
 
+      // Normal user logout only.
       logout: () =>
         set({
           isAuthenticated: false,
           session: null,
+          userSession: null,
           showRegisterForm: false,
-          activeModule: 'dashboard'
+          activeModule: 'dashboard',
         }),
 
-      setActiveModule: (module) => set({ activeModule: module }),
+      // Admin logout only; preserve the normal user session.
+      adminLogout: () =>
+        set((state) => ({
+          isAuthenticated: Boolean(state.userSession),
+          session: state.userSession,
+          adminSession: null,
+          showRegisterForm: false,
+          activeModule: 'dashboard',
+        })),
+
+      setActiveModule: (module) =>
+        set({ activeModule: module }),
 
       toggleRegisterForm: (value) =>
         set((state) => ({
-          showRegisterForm: value ?? !state.showRegisterForm
+          showRegisterForm: value ?? !state.showRegisterForm,
         })),
 
       toggleLeftSidebar: () =>
         set((state) => ({
-          leftSidebarCollapsed: !state.leftSidebarCollapsed
+          leftSidebarCollapsed: !state.leftSidebarCollapsed,
         })),
 
       toggleRightSidebar: () =>
         set((state) => ({
-          rightSidebarCollapsed: !state.rightSidebarCollapsed
+          rightSidebarCollapsed: !state.rightSidebarCollapsed,
         })),
 
       toggleHeader: () =>
         set((state) => ({
-          headerCollapsed: !state.headerCollapsed
+          headerCollapsed: !state.headerCollapsed,
         })),
 
       toggleFooter: () =>
         set((state) => ({
-          footerCollapsed: !state.footerCollapsed
-        }))
+          footerCollapsed: !state.footerCollapsed,
+        })),
     }),
     {
-      name: 'projecto-app-store'
-    }
-  )
+      name: 'projecto-app-store',
+    },
+  ),
 )

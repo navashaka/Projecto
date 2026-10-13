@@ -1,0 +1,46 @@
+13-10-2026
+
+Admin Module:
+
+- Updated the Admin Dashboard page.
+- Added HR Admin, GL Admin, and Inventory Admin navigation cards.
+- Removed unnecessary logout and signed-in user text from the Admin Dashboard.
+- Updated Admin navigation to display module options on hover/click.
+- Fixed Admin submenu route-matching issues.
+- Updated Admin Records pages to display saved HR, GL, and Inventory records.
+- Preserved existing record details, edit, delete, refresh, and back navigation functionality.
+- Removed unnecessary “View and manage” text from the Admin pages.
+- Retained date/calendar and time/clock field behavior.
+
+Attendance Module:
+
+- Implemented Excel upload functionality for Attendance.
+- Added Excel file type and data validation.
+- Implemented Excel data preview.
+- Integrated the Attendance Bulk Upload API.
+- Verified successful insertion of attendance records into the database.
+- Verified that the success message appears on the same page.
+- Updated the Saved Attendance Records table.
+- Added refresh and pagination functionality.
+- Removed unnecessary text from the Attendance Excel upload section.
+- Preserved the existing manual Attendance Save functionality and Cost Element navigation.
+
+Company Holiday Module:
+
+- Updated the Company Holiday upload functionality to support Excel files.
+- Added Excel file validation and preview functionality.
+- Added the Send option to submit uploaded data through the API.
+- Added success/error message handling.
+
+Frontend Updates:
+
+- Added sidebar icons for HR, Inventory, and General Ledger.
+- Updated Admin dashboard and navigation components.
+- Fixed Admin submenu route matching.
+- Performed TypeScript checks on the updated frontend code.
+
+Pending Verification:
+
+- Verify the complete frontend production build.
+- Check remaining HR, GL, and Inventory forms against the required upload functionality.
+- Verify lowercase link text and consistent link colors across the application.

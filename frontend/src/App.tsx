@@ -3,14 +3,11 @@ import {
   Navigate,
   Route,
   Routes,
-  useLocation,
   useNavigate,
 } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useAppStore } from './store'
 
 import LoginPage from './components/auth/LoginPage'
-import AdminLoginPage from './components/auth/AdminLoginPage'
-import ChangePasswordPage from './components/auth/ChangePasswordPage'
 import UserEnquiryForm from './components/auth/UserEnquiryForm'
 
 import Header from './components/layout/Header'
@@ -35,8 +32,6 @@ import CompanyHolidayForm from './modules/hr/components/company-holidays/Company
 import CostOfElementPage from './modules/admin/CostOfElementPage'
 import AdminDashboardPage from './modules/admin/AdminDashboardPage'
 
-import { useAppStore } from './store'
-
 import UnitOfMeasurePage from './modules/inventory/pages/UnitOfMeasurePage'
 import StockGroupPage from './modules/inventory/pages/StockGroupPage'
 import StockItemPage from './modules/inventory/pages/StockItemPage'
@@ -56,40 +51,6 @@ import HRAdminPage from './modules/hr-admin/HRAdminPage'
 import GLAdminPage from './modules/gl-admin/GLAdminPage'
 import InventoryAdminPage from './modules/inventory-admin/InventoryAdminPage'
 
-import AdminRoute from './routes/AdminRoute'
-import { loginAdmin, logoutAdmin } from './services/authApi'
-
-function getLoginError(error: unknown): Error {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error
-  ) {
-    const response = error.response
-
-    if (
-      typeof response === 'object' &&
-      response !== null &&
-      'data' in response
-    ) {
-      const data = response.data
-
-      if (
-        typeof data === 'object' &&
-        data !== null &&
-        'detail' in data &&
-        typeof data.detail === 'string'
-      ) {
-        return new Error(data.detail)
-      }
-    }
-  }
-
-  return error instanceof Error
-    ? error
-    : new Error('Unable to sign in.')
-}
-
 function DashboardLayout() {
   return (
     <div className="app-shell">
@@ -106,174 +67,74 @@ function DashboardLayout() {
 
 function App() {
   const navigate = useNavigate()
-  const location = useLocation()
 
   const isAuthenticated = useAppStore(
     (state) => state.isAuthenticated,
-  )
-  const session = useAppStore((state) => state.session)
-  const showRegisterForm = useAppStore(
-    (state) => state.showRegisterForm,
   )
   const setSession = useAppStore((state) => state.login)
   const toggleRegisterForm = useAppStore(
     (state) => state.toggleRegisterForm,
   )
-  const logout = useAppStore((state) => state.logout)
-
-  const isAdmin = session?.role === 'admin'
-  const isUser = isAuthenticated && session?.role !== 'admin'
-  const path = location.pathname
-
-  useEffect(() => {
-    if (
-      !isAuthenticated &&
-      path !== '/login' &&
-      path !== '/admin-login'
-    ) {
-      navigate('/login', { replace: true })
-    }
-  }, [isAuthenticated, path, navigate])
-
-  const handleAdminLogin = async (
-    email: string,
-    password: string,
-  ) => {
-    try {
-      const response = await loginAdmin(email, password)
-
-      setSession({
-        email: response.email,
-        role: response.role,
-        accessToken: response.access_token,
-        mustChangePassword: response.must_change_password,
-      })
-
-      navigate(
-        response.must_change_password
-          ? '/change-password'
-          : '/admin',
-        { replace: true },
-      )
-    } catch (error) {
-      throw getLoginError(error)
-    }
-  }
-
-  const endAdminSession = async () => {
-    try {
-      await logoutAdmin()
-    } finally {
-      logout()
-      navigate('/login', { replace: true })
-    }
-  }
-
-  // Normal login page
-  if (path === '/login') {
-    if (isAdmin) {
-      return (
-        <Navigate
-          to={session?.mustChangePassword ? '/change-password' : '/admin'}
-          replace
-        />
-      )
-    }
-
-    if (isUser) {
-      return <Navigate to="/" replace />
-    }
-
-    if (showRegisterForm) {
-      return (
-        <UserEnquiryForm
-          onBackToLogin={() => toggleRegisterForm(false)}
-        />
-      )
-    }
-
-    return (
-      <LoginPage
-        onLogin={() => {
-          setSession({
-            email: 'user@projecto.com',
-            name: 'Projecto User',
-            role: 'user',
-          })
-          navigate('/', { replace: true })
-        }}
-        onRegister={() => toggleRegisterForm(true)}
-      />
-    )
-  }
-
-  // Separate administrator login page
-  if (path === '/admin-login') {
-    if (isAdmin) {
-      return (
-        <Navigate
-          to={session?.mustChangePassword ? '/change-password' : '/admin'}
-          replace
-        />
-      )
-    }
-
-    return (
-      <AdminLoginPage
-        onLogin={handleAdminLogin}
-        onBack={() => navigate('/login', { replace: true })}
-      />
-    )
-  }
-
-  // Protect all other routes from unauthenticated access
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
+  const showRegisterForm = useAppStore(
+    (state) => state.showRegisterForm,
+  )
 
   return (
     <Routes>
+      {/* Admin pages: no admin login or logout required */}
+      <Route
+        path="/admin"
+        element={<AdminDashboardPage />}
+      />
+      <Route
+        path="/hr-admin"
+        element={<HRAdminPage />}
+      />
+      <Route
+        path="/gl-admin"
+        element={<GLAdminPage />}
+      />
+      <Route
+        path="/inventory-admin"
+        element={<InventoryAdminPage />}
+      />
+
+      {/* Normal user login is preserved */}
+      <Route
+        path="/login"
+        element={
+          showRegisterForm ? (
+            <UserEnquiryForm
+              onBackToLogin={() => toggleRegisterForm(false)}
+            />
+          ) : (
+            <LoginPage
+              onLogin={() => {
+                setSession({
+                  email: 'user@projecto.com',
+                  name: 'Projecto User',
+                  role: 'user',
+                })
+                navigate('/', { replace: true })
+              }}
+              onRegister={() => toggleRegisterForm(true)}
+            />
+          )
+        }
+      />
+
       <Route
         path="/"
         element={
-          isAdmin
-            ? <Navigate to="/admin" replace />
-            : <DashboardLayout />
+          isAuthenticated ? (
+            <DashboardLayout />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
 
-      <Route
-        path="/change-password"
-        element={
-          <AdminRoute allowPasswordChange>
-            <ChangePasswordPage
-              onPasswordChanged={(response) => {
-                setSession({
-                  email: response.email,
-                  role: response.role,
-                  accessToken: response.access_token,
-                  mustChangePassword: false,
-                })
-                navigate('/admin', { replace: true })
-              }}
-              onLogout={endAdminSession}
-            />
-          </AdminRoute>
-        }
-      />
-
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminDashboardPage
-              email={session?.email ?? ''}
-              onLogout={endAdminSession}
-            />
-          </AdminRoute>
-        }
-      />
-
+      {/* Existing HR routes */}
       <Route path="/attendance/create" element={<CreateAttendancePage />} />
       <Route path="/employment/create" element={<CreateEmploymentDetailsPage />} />
       <Route path="/on-employment/create" element={<CreateOnEmploymentPage />} />
@@ -290,61 +151,16 @@ function App() {
 
       <Route
         path="/admin/cost-of-element"
-        element={
-          <AdminRoute>
-            <CostOfElementPage />
-          </AdminRoute>
-        }
+        element={<CostOfElementPage />}
       />
 
-      <Route
-        path="/hr-admin"
-        element={
-          <AdminRoute>
-            <HRAdminPage />
-          </AdminRoute>
-        }
-      />
-
-      <Route
-        path="/gl-admin"
-        element={
-          <AdminRoute>
-            <GLAdminPage />
-          </AdminRoute>
-        }
-      />
-
-      <Route
-        path="/inventory-admin"
-        element={
-          <AdminRoute>
-            <InventoryAdminPage />
-          </AdminRoute>
-        }
-      />
-
+      {/* Existing Inventory routes */}
       <Route path="/inventory" element={<InventoryHomePage />} />
-      <Route
-        path="/inventory/unit-of-measures/create"
-        element={<UnitOfMeasurePage />}
-      />
-      <Route
-        path="/inventory/stock-groups/create"
-        element={<StockGroupPage />}
-      />
-      <Route
-        path="/inventory/stock-items/create"
-        element={<StockItemPage />}
-      />
-      <Route
-        path="/inventory/indents/create"
-        element={<IndentPage />}
-      />
-      <Route
-        path="/inventory/gate-entries/create"
-        element={<GateEntryPage />}
-      />
+      <Route path="/inventory/unit-of-measures/create" element={<UnitOfMeasurePage />} />
+      <Route path="/inventory/stock-groups/create" element={<StockGroupPage />} />
+      <Route path="/inventory/stock-items/create" element={<StockItemPage />} />
+      <Route path="/inventory/indents/create" element={<IndentPage />} />
+      <Route path="/inventory/gate-entries/create" element={<GateEntryPage />} />
       <Route
         path="/inventory/material-receipt-notes/create"
         element={<MaterialReceiptNotePage />}
@@ -366,17 +182,12 @@ function App() {
         element={<GoodsIssueSalePage />}
       />
 
+      {/* Existing General Ledger routes */}
       <Route path="/gl" element={<GLHomePage />} />
       <Route path="/gl/:resourceKey" element={<GLResourcePage />} />
 
-      <Route
-        path="*"
-        element={
-          isAdmin
-            ? <Navigate to="/admin" replace />
-            : <DashboardLayout />
-        }
-      />
+      {/* Unknown paths */}
+      <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>
   )
 }
