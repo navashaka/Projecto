@@ -13,3 +13,12 @@ export type PayrollCalculationResult = {
   total_deductions: number
   net_salary: number
 }
+
+export type PayrollSavedRecord = PayrollCalculationResult & {
+  id: number
+  basic_salary: number
+  allowances: number
+  other_income: number
+  tds: number
+  other_deductions: number
+}

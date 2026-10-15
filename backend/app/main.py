@@ -314,7 +314,7 @@ app.include_router(travelling_advance_router)
 app.include_router(salary_details_router)
 app.include_router(job_profile_router)
 app.include_router(on_employment_router)
-app.include_router(employment_router)
+app.include_router(employment_router,prefix="/api/v1")
 app.include_router(travelling_expenses_reimbursement_router)
 
 app.include_router(payroll_router)

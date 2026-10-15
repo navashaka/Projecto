@@ -398,6 +398,7 @@ function UnitOfMeasurePage() {
           </Button>
           <Button
             onClick={() => navigate('/inventory')}
+            sx={{ textTransform: 'lowercase' }}
             type="button"
             variant="outlined"
           >

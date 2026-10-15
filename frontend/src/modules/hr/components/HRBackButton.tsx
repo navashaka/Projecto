@@ -6,9 +6,10 @@ function HRBackButton() {
 
   return (
     <Button
-      onClick={() => navigate(-1)}
+      onClick={() => navigate('/hr')}
       type="button"
       variant="outlined"
+      sx={{ textTransform: 'lowercase' }}
     >
       Back
     </Button>

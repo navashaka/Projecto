@@ -8,6 +8,8 @@ import {
 	Typography,
 } from '@mui/material'
 import { useForm, useWatch } from 'react-hook-form'
+import { z } from 'zod'
+import * as XLSX from 'xlsx'
 import HRBackButton from '../HRBackButton'
 
 type ReimbursementFormData = {
@@ -32,6 +34,82 @@ type ReimbursementFormData = {
 	total_amount: number
 }
 
+const optionalText = (maxLength: number, label: string) =>
+	z.string().trim().max(maxLength, `${label} must be ${maxLength} characters or less`).optional()
+
+const optionalDate = z.string().refine((value) => {
+	if (!value) return true
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+	const [year, month, day] = value.split('-').map(Number)
+	const date = new Date(year, month - 1, day)
+	return date.getFullYear() === year &&
+		date.getMonth() === month - 1 &&
+		date.getDate() === day
+}, 'Enter a valid date').optional()
+
+const optionalAmount = (label: string) =>
+	z.number()
+		.finite(`${label} must be a valid number`)
+		.refine((value) => Math.abs(value) <= 9999999999.99, `${label} must fit Numeric(12, 2)`)
+		.refine(
+			(value) =>
+				Math.abs(value * 100 - Math.round(value * 100)) <=
+				Number.EPSILON * Math.max(1, Math.abs(value * 100)),
+			`${label} must have at most 2 decimal places`,
+		)
+		.optional()
+
+const reimbursementSchema = z.object({
+	user_id: z.number().int('User ID must be a whole number'),
+	name: optionalText(150, 'Name'),
+	employee_code: optionalText(50, 'Employee code'),
+	designation: optionalText(150, 'Designation'),
+	department: optionalText(150, 'Department'),
+	from_date: optionalDate,
+	to_date: optionalDate,
+	place_visited: optionalText(200, 'Place visited'),
+	purpose_of_visit: z.string().optional(),
+	expense_type1: optionalText(150, 'Expense type 1'),
+	expense_amount1: optionalAmount('Expense amount 1'),
+	attachment1: z.string().optional(),
+	expense_type2: optionalText(150, 'Expense type 2'),
+	expense_amount2: optionalAmount('Expense amount 2'),
+	attachment2: z.string().optional(),
+	other_expense_type: optionalText(150, 'Other expense type'),
+	other_expense_amount: optionalAmount('Other expense amount'),
+	attachment3: z.string().optional(),
+	total_amount: optionalAmount('Total amount'),
+})
+
+const reimbursementExcelHeaders = Object.keys(
+	reimbursementSchema.shape,
+) as (keyof ReimbursementFormData)[]
+const reimbursementNumericHeaders = new Set<string>([
+	'user_id',
+	'expense_amount1',
+	'expense_amount2',
+	'other_expense_amount',
+	'total_amount',
+])
+
+function normalizeExcelHeader(value: unknown) {
+	return String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+}
+
+function formatExcelDate(value: unknown): string | undefined {
+	if (value === '' || value == null) return undefined
+	if (value instanceof Date && !Number.isNaN(value.getTime())) {
+		return value.toISOString().slice(0, 10)
+	}
+	if (typeof value === 'number') {
+		const date = XLSX.SSF.parse_date_code(value)
+		if (date) {
+			return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+		}
+	}
+	return String(value).trim()
+}
+
 const getNumber = (value: unknown) => {
 	const number = Number(value)
 	return Number.isFinite(number) ? number : 0
@@ -44,6 +122,9 @@ function TravellingExpensesReimbursementForm() {
 	const [submitting, setSubmitting] = useState(false)
 	const [successMessage, setSuccessMessage] = useState('')
 	const [errorMessage, setErrorMessage] = useState('')
+	const [excelRows, setExcelRows] = useState<Record<string, unknown>[]>([])
+	const [excelErrors, setExcelErrors] = useState<string[]>([])
+	const [savingExcel, setSavingExcel] = useState(false)
 
 	const {
 		register,
@@ -141,6 +222,167 @@ function TravellingExpensesReimbursementForm() {
 		}
 	}
 
+	const handleExcelSelect = async (file?: File) => {
+		setExcelRows([])
+		setExcelErrors([])
+		setSuccessMessage('')
+		setErrorMessage('')
+		if (!file) return
+		if (!/\.(xlsx|xls)$/i.test(file.name)) {
+			setExcelErrors(['Select an Excel file (.xlsx or .xls).'])
+			return
+		}
+
+		try {
+			const workbook = XLSX.read(await file.arrayBuffer(), {
+				type: 'array',
+				cellDates: true,
+			})
+			const sheetName = workbook.SheetNames[0]
+			const sheet = sheetName ? workbook.Sheets[sheetName] : undefined
+			if (!sheet) throw new Error('Excel worksheet not found.')
+			const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+				header: 1,
+				defval: '',
+				raw: true,
+			})
+			if (rows.length < 2) throw new Error('Excel file has no data rows.')
+
+			const headers = rows[0].map(normalizeExcelHeader)
+			const duplicateHeaders = headers.filter(
+				(header, index) => header && headers.indexOf(header) !== index,
+			)
+			if (duplicateHeaders.length) {
+				throw new Error(
+					`Duplicate Excel columns: ${[...new Set(duplicateHeaders)].join(', ')}.`,
+				)
+			}
+			const allowedHeaders = new Set<string>(reimbursementExcelHeaders)
+			const missingHeaders = ['user_id'].filter(
+				(header) => !headers.includes(header),
+			)
+			const unsupportedHeaders = headers.filter(
+				(header) => header && !allowedHeaders.has(header),
+			)
+			if (missingHeaders.length || unsupportedHeaders.length) {
+				throw new Error([
+					...(missingHeaders.length
+						? [`Missing required columns: ${missingHeaders.join(', ')}`]
+						: []),
+					...(unsupportedHeaders.length
+						? [`Unsupported columns: ${unsupportedHeaders.join(', ')}`]
+						: []),
+				].join('. '))
+			}
+
+			const validRows: Record<string, unknown>[] = []
+			const validationErrors: string[] = []
+			rows.slice(1).forEach((cells, rowIndex) => {
+				if (cells.every((value) => value === '' || value == null)) return
+				const candidate: Record<string, unknown> = Object.fromEntries(
+					reimbursementExcelHeaders.map((header) => [
+						header,
+						reimbursementNumericHeaders.has(header) ||
+						header === 'from_date' ||
+						header === 'to_date'
+							? undefined
+							: '',
+					]),
+				)
+				headers.forEach((header, columnIndex) => {
+					if (!header) return
+					const value = cells[columnIndex]
+					if (header === 'from_date' || header === 'to_date') {
+						candidate[header] = formatExcelDate(value)
+					} else if (reimbursementNumericHeaders.has(header)) {
+						candidate[header] =
+							value === '' || value == null ? undefined : Number(value)
+					} else {
+						candidate[header] =
+							value == null ? '' : value
+					}
+				})
+
+				const parsed = reimbursementSchema.safeParse(candidate)
+				if (!parsed.success) {
+					validationErrors.push(
+						`Row ${rowIndex + 2}: ${parsed.error.issues
+							.map((issue) => `${issue.path.join('.') || 'row'}: ${issue.message}`)
+							.join(', ')}`,
+					)
+					return
+				}
+				validRows.push(parsed.data)
+			})
+
+			if (!validRows.length && !validationErrors.length) {
+				throw new Error('Excel file has no non-empty data rows.')
+			}
+			setExcelRows(validRows)
+			setExcelErrors(validationErrors)
+			if (validRows.length) {
+				setSuccessMessage(`${validRows.length} row(s) ready for preview.`)
+			}
+		} catch (error) {
+			setExcelRows([])
+			setExcelErrors([
+				error instanceof Error ? error.message : 'Unable to read Excel file.',
+			])
+		}
+	}
+
+	const saveExcelRows = async () => {
+		if (savingExcel || !excelRows.length || excelErrors.length) return
+		setSavingExcel(true)
+		setSuccessMessage('')
+		setErrorMessage('')
+		const failedRows: Record<string, unknown>[] = []
+		const failures: string[] = []
+		let savedCount = 0
+
+		try {
+			for (const [index, row] of excelRows.entries()) {
+				try {
+					const total = roundValue(
+						getNumber(row.expense_amount1) +
+							getNumber(row.expense_amount2) +
+							getNumber(row.other_expense_amount),
+					)
+					const response = await fetch(
+						'http://127.0.0.1:8000/travelling-expenses-reimbursement/',
+						{
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ ...row, total_amount: total }),
+						},
+					)
+					const result = await response.json().catch(() => null)
+					if (!response.ok) {
+						throw new Error(
+							result?.detail
+								? JSON.stringify(result.detail)
+								: 'Failed to submit reimbursement.',
+						)
+					}
+					savedCount += 1
+				} catch (error) {
+					failedRows.push(row)
+					failures.push(
+						`Row ${index + 2}: ${error instanceof Error ? error.message : 'Save failed.'}`,
+					)
+				}
+			}
+			setExcelRows(failedRows)
+			if (savedCount) {
+				setSuccessMessage(`${savedCount} reimbursement record(s) saved.`)
+			}
+			setExcelErrors([])
+			if (failures.length) setErrorMessage(failures.join('\n'))
+		} finally {
+			setSavingExcel(false)
+		}
+	}
+
 	return (
 		<Paper
 			component="form"
@@ -153,9 +395,6 @@ function TravellingExpensesReimbursementForm() {
 						Travelling expenses reimbursement
 					</Typography>
 
-					<Typography color="text.secondary" variant="body2">
-						Capture travel details and reimbursable expenses.
-					</Typography>
 				</div>
 
 				{successMessage && (
@@ -396,6 +635,77 @@ function TravellingExpensesReimbursementForm() {
 					</Button>
 					<HRBackButton />
 				</div>
+
+				<section className="border rounded bg-white p-3 p-md-4">
+					<Typography variant="h6" sx={{ mb: 1.5 }}>
+						Upload Excel
+					</Typography>
+					<input
+						type="file"
+						accept=".xlsx,.xls"
+						className="form-control"
+						disabled={savingExcel}
+						onChange={(event) => {
+							const file = event.target.files?.[0]
+							event.target.value = ''
+							void handleExcelSelect(file)
+						}}
+					/>
+					{excelErrors.length > 0 && (
+						<div className="alert alert-danger mt-3 mb-0">
+							{excelErrors.map((error, index) => (
+								<div key={`${index}-${error}`}>{error}</div>
+							))}
+						</div>
+					)}
+					{excelRows.length > 0 && (
+						<>
+							<Typography variant="subtitle1" sx={{ mt: 2 }}>
+								Excel Preview ({excelRows.length} rows)
+							</Typography>
+							<div className="table-responsive">
+								<table className="table table-bordered table-sm">
+									<thead>
+										<tr>
+											<th>#</th>
+											{reimbursementExcelHeaders.map((header) => (
+												<th key={header}>{header}</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										{excelRows.map((row, index) => (
+											<tr key={`${row.user_id}-${index}`}>
+												<td>{index + 1}</td>
+												{reimbursementExcelHeaders.map((header) => (
+													<td key={header}>
+														{String(
+															header === 'total_amount'
+																? roundValue(
+																		getNumber(row.expense_amount1) +
+																			getNumber(row.expense_amount2) +
+																			getNumber(row.other_expense_amount),
+																	)
+																: row[header] ?? '',
+														)}
+													</td>
+												))}
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+							<Button
+								type="button"
+								variant="contained"
+								disabled={savingExcel || excelErrors.length > 0}
+								onClick={() => void saveExcelRows()}
+							>
+								{savingExcel ? 'Saving...' : 'Save'}
+							</Button>
+						</>
+					)}
+				</section>
 			</Stack>
 		</Paper>
 	)

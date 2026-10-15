@@ -76,7 +76,7 @@ const LoginPage = ({ onLogin, onRegister }: LoginPageProps) => {
             Don&apos;t have an account?{' '}
             <button
               type="button"
-              className="btn btn-link p-0 align-baseline"
+              className="btn btn-link p-0 align-baseline text-lowercase"
               onClick={onRegister}
             >
               Register here

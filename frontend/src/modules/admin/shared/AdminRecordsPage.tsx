@@ -47,6 +47,8 @@ type AdminRecord = Record<string, unknown> & {
   id: number | string
 }
 
+const PAYROLL_PAGE_OPTION = '__payroll-page__'
+
 type AdminRecordsPageProps = {
   module: AdminModuleKey
   title: string
@@ -303,7 +305,11 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
           spacing={1.5}
           sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
         >
-          <Button variant="outlined" onClick={() => navigate('/admin')}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/admin')}
+            sx={{ textTransform: 'lowercase' }}
+          >
             ← Back to Dashboard
           </Button>
           <Typography variant="h4">{title}</Typography>
@@ -317,7 +323,12 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
           ]
             .filter((item) => item.path !== `/${module}-admin`)
             .map((item) => (
-              <Button key={item.path} onClick={() => navigate(item.path)} size="small">
+              <Button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                size="small"
+                sx={{ textTransform: 'lowercase' }}
+              >
                 {item.label}
               </Button>
             ))}
@@ -328,15 +339,29 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
               disabled={loadingResources || resources.length === 0}
               value={selectedKey}
               onChange={(event) => {
+                if (event.target.value === PAYROLL_PAGE_OPTION) {
+                  navigate('/payroll/create')
+                  return
+                }
                 setSelectedKey(event.target.value)
                 setError('')
               }}
             >
-              {resources.map((resource) => (
+              {resources.flatMap((resource) => [
                 <MenuItem key={resource.key} value={resource.key}>
                   {resource.label}
-                </MenuItem>
-              ))}
+                </MenuItem>,
+                ...(module === 'hr' && resource.key === 'salary-details'
+                  ? [
+                      <MenuItem
+                        key={PAYROLL_PAGE_OPTION}
+                        value={PAYROLL_PAGE_OPTION}
+                      >
+                        Payroll
+                      </MenuItem>,
+                    ]
+                  : []),
+              ])}
             </Select>
           </FormControl>
 

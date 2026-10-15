@@ -1,6 +1,7 @@
 import type {
   PayrollCalculationResult,
   PayrollFormData,
+  PayrollSavedRecord,
 } from '../../types/payrollTypes'
 
 const API_URL = 'http://127.0.0.1:8000/payroll'
@@ -29,7 +30,7 @@ export const calculatePayroll = async (
 
 export const createPayroll = async (
   data: PayrollFormData,
-) => {
+): Promise<PayrollSavedRecord> => {
   const response = await fetch(`${API_URL}/`, {
     method: 'POST',
     headers: {
@@ -46,5 +47,5 @@ export const createPayroll = async (
     )
   }
 
-  return result
+  return result as PayrollSavedRecord
 }

@@ -38,7 +38,7 @@ export default function AdminDashboardPage() {
 
                 <button
                   type="button"
-                  className="btn btn-primary mt-auto"
+                  className="btn btn-primary mt-auto text-lowercase"
                   onClick={() => navigate(section.href)}
                 >
                   Open {section.name}

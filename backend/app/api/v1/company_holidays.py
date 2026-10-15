@@ -1,11 +1,11 @@
-import csv
 import io
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.models.company_holiday import CompanyHoliday
 from app.schemas.company_holiday import (
     CompanyHolidayCreate,
     CompanyHolidayResponse,
@@ -22,24 +22,15 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "/",
-    response_model=CompanyHolidayResponse,
-)
+@router.post("/", response_model=CompanyHolidayResponse)
 def create_company_holiday(
     data: CompanyHolidayCreate,
     db: Session = Depends(get_db),
 ):
-    return create_company_holiday_service(
-        db,
-        data,
-    )
+    return create_company_holiday_service(db, data)
 
 
-@router.get(
-    "/",
-    response_model=list[CompanyHolidayResponse],
-)
+@router.get("/", response_model=list[CompanyHolidayResponse])
 def list_company_holidays(
     db: Session = Depends(get_db),
 ):
@@ -51,10 +42,7 @@ def delete_company_holiday(
     holiday_id: int,
     db: Session = Depends(get_db),
 ):
-    deleted = delete_company_holiday_service(
-        db,
-        holiday_id,
-    )
+    deleted = delete_company_holiday_service(db, holiday_id)
 
     if not deleted:
         raise HTTPException(
@@ -62,9 +50,7 @@ def delete_company_holiday(
             detail="Company holiday not found",
         )
 
-    return {
-        "detail": "Company holiday deleted",
-    }
+    return {"detail": "Company holiday deleted"}
 
 
 @router.post("/upload")
@@ -75,81 +61,132 @@ async def upload_company_holidays(
     if not file.filename:
         raise HTTPException(
             status_code=400,
-            detail="Please upload a CSV file",
+            detail="Please upload an Excel file",
         )
 
-    if not file.filename.lower().endswith(".csv"):
+    filename = file.filename.lower()
+
+    if not filename.endswith((".xlsx", ".xls")):
         raise HTTPException(
             status_code=400,
-            detail="Only CSV files are supported",
+            detail="Only .xlsx and .xls files are supported",
+        )
+
+    if filename.endswith(".xls"):
+        raise HTTPException(
+            status_code=400,
+            detail="Please save the file as .xlsx and upload again",
         )
 
     file_content = await file.read()
 
     try:
-        text = file_content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        raise HTTPException(
-            status_code=400,
-            detail="CSV file must be UTF-8 encoded",
+        workbook = load_workbook(
+            io.BytesIO(file_content),
+            read_only=True,
+            data_only=True,
         )
+        worksheet = workbook.active
 
-    reader = csv.DictReader(
-        io.StringIO(text)
-    )
+        rows = worksheet.iter_rows(values_only=True)
+        headers = next(rows, None)
 
-    required_columns = {
-        "holiday_date",
-        "holiday_name",
-    }
+        if not headers:
+            raise HTTPException(
+                status_code=400,
+                detail="Excel file is empty",
+            )
 
-    if not reader.fieldnames or not required_columns.issubset(
-        set(reader.fieldnames)
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "CSV must contain "
-                "holiday_date and holiday_name columns"
-            ),
-        )
+        column_names = [
+            str(value).strip().lower() if value is not None else ""
+            for value in headers
+        ]
 
-    uploaded_count = 0
+        required_columns = {"holiday_date", "holiday_name"}
 
-    try:
-        for row in reader:
+        if not required_columns.issubset(set(column_names)):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Excel must contain holiday_date and "
+                    "holiday_name columns"
+                ),
+            )
+
+        date_index = column_names.index("holiday_date")
+        name_index = column_names.index("holiday_name")
+
+        holidays = []
+
+        for row_number, row in enumerate(rows, start=2):
             holiday_date = (
-                row.get("holiday_date") or ""
-            ).strip()
-
+                row[date_index] if date_index < len(row) else None
+            )
             holiday_name = (
-                row.get("holiday_name") or ""
-            ).strip()
+                row[name_index] if name_index < len(row) else None
+            )
 
-            if not holiday_date or not holiday_name:
+            if holiday_date is None and holiday_name is None:
                 continue
 
-            data = CompanyHolidayCreate(
-                holiday_date=holiday_date,
-                holiday_name=holiday_name,
+            if holiday_date is None or holiday_name is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing holiday date or name in row {row_number}",
+                )
+
+            if isinstance(holiday_date, datetime):
+                holiday_date = holiday_date.date().isoformat()
+            elif isinstance(holiday_date, date):
+                holiday_date = holiday_date.isoformat()
+            else:
+                holiday_date = str(holiday_date).strip()
+
+            holiday_name = str(holiday_name).strip()
+
+            if not holiday_date or not holiday_name:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing holiday date or name in row {row_number}",
+                )
+
+            holidays.append(
+                CompanyHolidayCreate(
+                    holiday_date=holiday_date,
+                    holiday_name=holiday_name,
+                )
             )
 
-            create_company_holiday_service(
-                db,
-                data,
+        if not holidays:
+            raise HTTPException(
+                status_code=400,
+                detail="No valid holiday records found in Excel",
             )
 
-            uploaded_count += 1
+        uploaded_count = 0
 
+        try:
+            for holiday in holidays:
+                create_company_holiday_service(db, holiday)
+                uploaded_count += 1
+        except Exception:
+            db.rollback()
+            raise
+
+        return {
+            "message": "Company holiday list uploaded successfully",
+            "uploaded_count": uploaded_count,
+        }
+
+    except HTTPException:
+        raise
     except Exception as error:
         db.rollback()
-
         raise HTTPException(
             status_code=400,
-            detail=f"Unable to upload holiday list: {error}",
-        )
-
-    return {
-        "message": "Company holiday list uploaded successfully",
-        "uploaded_count": uploaded_count,
-    }
+            detail=f"Unable to read Excel file: {error}",
+        ) from error
+    finally:
+        if "workbook" in locals():
+            workbook.close()
+        await file.close()

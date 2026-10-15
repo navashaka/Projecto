@@ -286,6 +286,7 @@ function InventoryField({
                     href="https://ewaybillgst.gov.in/"
                     rel="noopener noreferrer"
                     size="small"
+                    sx={{ textTransform: 'lowercase' }}
                     target="_blank"
                     variant="outlined"
                   >
@@ -1501,6 +1502,7 @@ function InventoryResourceForm({
           onClick={() =>
             navigate('/inventory')
           }
+          sx={{ textTransform: 'lowercase' }}
           type="button"
           variant="outlined"
         >

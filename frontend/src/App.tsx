@@ -17,11 +17,13 @@ import RightSidebar from './components/layout/RightSidebar'
 import Footer from './components/layout/Footer'
 
 import CreateAttendancePage from './modules/hr/pages/attendance/CreateAttendancePage'
+import CreateEmployeePage from './modules/hr/pages/employees/CreateEmployeePage'
 import CreateEmploymentDetailsPage from './modules/hr/pages/employment/CreateEmploymentDetailsPage'
 import CreateOnEmploymentPage from './modules/hr/pages/on-employment/CreateOnEmploymentPage'
 import CreateSalaryDetailsPage from './modules/hr/pages/salary/CreateSalaryDetailsPage'
 import CreatePayrollPage from './modules/hr/pages/payroll/CreatePayrollPage'
 import CreateTravellingAdvancePage from './modules/hr/pages/travelling-advance/CreateTravellingAdvancePage'
+import HRHomePage from './modules/hr/pages/HRHomePage'
 
 import CreateCompanyProfilePage from './modules/auth/pages/company-profile/CreateCompanyProfilePage'
 
@@ -31,6 +33,7 @@ import CompanyHolidayForm from './modules/hr/components/company-holidays/Company
 
 import CostOfElementPage from './modules/admin/CostOfElementPage'
 import AdminDashboardPage from './modules/admin/AdminDashboardPage'
+import PaysheetPage from './modules/admin/PaysheetPage'
 
 import UnitOfMeasurePage from './modules/inventory/pages/UnitOfMeasurePage'
 import StockGroupPage from './modules/inventory/pages/StockGroupPage'
@@ -135,7 +138,9 @@ function App() {
       />
 
       {/* Existing HR routes */}
+      <Route path="/hr" element={<HRHomePage />} />
       <Route path="/attendance/create" element={<CreateAttendancePage />} />
+      <Route path="/employees/create" element={<CreateEmployeePage />} />
       <Route path="/employment/create" element={<CreateEmploymentDetailsPage />} />
       <Route path="/on-employment/create" element={<CreateOnEmploymentPage />} />
       <Route path="/salary/create" element={<CreateSalaryDetailsPage />} />
@@ -153,6 +158,7 @@ function App() {
         path="/admin/cost-of-element"
         element={<CostOfElementPage />}
       />
+      <Route path="/admin/paysheet" element={<PaysheetPage />} />
 
       {/* Existing Inventory routes */}
       <Route path="/inventory" element={<InventoryHomePage />} />

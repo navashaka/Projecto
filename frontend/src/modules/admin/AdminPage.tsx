@@ -23,7 +23,7 @@ function AdminPage() {
 								<Typography color="text.secondary" variant="body2">
 									View and manage backend records.
 								</Typography>
-								<Button onClick={() => navigate(`/admin/${resource.key}`)} variant="contained">
+								<Button onClick={() => navigate(`/admin/${resource.key}`)} sx={{ textTransform: 'lowercase' }} variant="contained">
 									Open table
 								</Button>
 							</Stack>

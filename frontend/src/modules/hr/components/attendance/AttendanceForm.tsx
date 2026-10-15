@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import HRBackButton from '../HRBackButton'
@@ -36,6 +36,19 @@ type AttendanceRecord = {
 
 const API = 'http://localhost:8000'
 const PAGE_SIZE = 5
+const excelHeaders = [
+  'employee_code',
+  'attendance_month',
+  'cl',
+  'el',
+  'pl',
+  'lop',
+  'nh',
+  'sundays',
+  'other_paid_days',
+  'net_present_days',
+  'net_payable_days',
+]
 
 function getSundaysInMonth(month: string) {
   if (!month) return 0
@@ -79,6 +92,19 @@ function displayDate(value: string | null | undefined) {
   return value.slice(0, 10)
 }
 
+function isValidDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  )
+}
+
 function AttendanceForm() {
   const navigate = useNavigate()
 
@@ -100,6 +126,7 @@ function AttendanceForm() {
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [currentPage, setCurrentPage] = useState(1)
+  const [loadingRecords, setLoadingRecords] = useState(true)
 
   const daysInMonth = useMemo(() => {
     if (!month) return 0
@@ -134,10 +161,10 @@ function AttendanceForm() {
     currentPage * PAGE_SIZE,
   )
 
-  const showMessage = (text: string, type: 'success' | 'error') => {
+  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
     setMessage(text)
     setMessageType(type)
-  }
+  }, [])
 
   const loadCompanyHolidays = async (selectedMonth: string) => {
     if (!selectedMonth) {
@@ -165,7 +192,8 @@ function AttendanceForm() {
     }
   }
 
-  const loadRecords = async () => {
+  const loadRecords = useCallback(async () => {
+    setLoadingRecords(true)
     try {
       const response = await fetch(`${API}/attendance/`)
       const result = await response.json()
@@ -184,8 +212,19 @@ function AttendanceForm() {
           : 'Unable to load attendance records',
         'error',
       )
+    } finally {
+      setLoadingRecords(false)
     }
-  }
+  }, [showMessage])
+
+  useEffect(() => {
+    void loadRecords()
+  }, [loadRecords])
+
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
+    if (currentPage > lastPage) setCurrentPage(lastPage)
+  }, [currentPage, records.length])
 
   const handleSave = async () => {
     if (!employeeCode.trim()) {
@@ -308,6 +347,15 @@ function AttendanceForm() {
         )
       }
 
+      const unexpectedHeaders = headers.filter(
+        (header) => !excelHeaders.includes(header),
+      )
+      if (unexpectedHeaders.length > 0) {
+        throw new Error(
+          `Unsupported Excel columns: ${unexpectedHeaders.join(', ')}.`,
+        )
+      }
+
       const parsed: PreviewRow[] = rawRows.map((rawRow, index) => {
         const rowNumber = index + 2
         const row: Record<string, unknown> = {}
@@ -339,7 +387,7 @@ function AttendanceForm() {
           }
         }
 
-        if (!dateValue || Number.isNaN(Date.parse(dateValue))) {
+        if (!dateValue || !isValidDate(dateValue)) {
           throw new Error(
             `Row ${rowNumber}: attendance_month must be YYYY-MM or YYYY-MM-DD.`,
           )
@@ -385,6 +433,8 @@ function AttendanceForm() {
   }
 
   const handleSendExcel = async () => {
+    if (uploading) return
+
     if (!selectedFile || previewRows.length === 0) {
       showMessage('Choose a valid Excel file first.', 'error')
       return
@@ -582,7 +632,7 @@ function AttendanceForm() {
               {attendanceId && (
                 <button
                   type="button"
-                  className="btn btn-outline-primary btn-lg px-4"
+                  className="btn btn-outline-primary btn-lg px-4 text-lowercase"
                   onClick={handleSelectCostElement}
                 >
                   Select Cost Element
@@ -607,6 +657,7 @@ function AttendanceForm() {
                   className={inputClass}
                   onChange={(event) => {
                     void handleFileChange(event.target.files?.[0])
+                    event.target.value = ''
                   }}
                   disabled={uploading}
                 />
@@ -692,12 +743,17 @@ function AttendanceForm() {
                   type="button"
                   className="btn btn-outline-primary"
                   onClick={() => void loadRecords()}
+                  disabled={loadingRecords}
                 >
-                  Refresh
+                  {loadingRecords ? 'Refreshing...' : 'Refresh'}
                 </button>
               </div>
 
-              {records.length > 0 && (
+              {loadingRecords ? (
+                <p className="text-muted mb-0">Loading attendance records...</p>
+              ) : records.length === 0 ? (
+                <p className="text-muted mb-0">No attendance records found.</p>
+              ) : (
                 <>
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">

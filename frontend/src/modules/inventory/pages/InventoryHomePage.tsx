@@ -35,6 +35,7 @@ function InventoryHomePage() {
                 <Typography variant="h6">{item.label}</Typography>
                 <Button
                   onClick={() => navigate(item.path)}
+                  sx={{ textTransform: 'lowercase' }}
                   variant="contained"
                 >
                   Open form

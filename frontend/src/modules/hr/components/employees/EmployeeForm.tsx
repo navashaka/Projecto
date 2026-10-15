@@ -1,7 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Grid, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import * as XLSX from 'xlsx'
 import apiClient from '../../../../services/apiClient'
 import HRBackButton from '../HRBackButton'
 
@@ -81,6 +83,13 @@ const employeeEnquirySchema = z.object({
 })
 
 type EmployeeEnquiryFormData = z.infer<typeof employeeEnquirySchema>
+const excelHeaders = Object.keys(
+	employeeEnquirySchema.shape,
+) as (keyof EmployeeEnquiryFormData)[]
+
+type EmployeeEnquiryPayload = {
+	[K in keyof EmployeeEnquiryFormData]: EmployeeEnquiryFormData[K] | null
+}
 
 type TextFieldConfig = {
 	name: keyof EmployeeEnquiryFormData
@@ -147,7 +156,83 @@ function fileName(value: unknown) {
 	return typeof value === 'string' ? value : ''
 }
 
+function normalizeExcelHeader(value: unknown): string {
+	const header = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+	const aliases: Record<string, keyof EmployeeEnquiryFormData> = {
+		position: 'current_position',
+		previous_employer: 'previous_employer_name',
+		previous_position: 'previous_employer_position',
+		previous_department: 'previous_employer_department',
+		previous_working_period: 'previous_employer_working_period',
+		previous_ctc: 'previous_employer_ctc',
+		responsibilities: 'previous_employer_role',
+	}
+	return aliases[header] ?? header
+}
+
+function formatExcelDate(value: unknown): string {
+	if (value instanceof Date && !Number.isNaN(value.getTime())) {
+		return value.toISOString().slice(0, 10)
+	}
+	if (typeof value === 'number') {
+		const date = XLSX.SSF.parse_date_code(value)
+		if (date) {
+			return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+		}
+	}
+	return String(value ?? '').trim()
+}
+
+function toPayload(data: EmployeeEnquiryFormData): EmployeeEnquiryPayload {
+	return {
+		candidate_name: data.candidate_name,
+		father_name: data.father_name || null,
+		date_of_birth: data.date_of_birth || null,
+		blood_group: data.blood_group || null,
+		marital_status: data.marital_status || null,
+		address: data.address || null,
+		phone: data.phone || null,
+		pan: data.pan || null,
+		aadhaar: data.aadhaar || null,
+		passport_no: data.passport_no || null,
+		personal_email: data.personal_email || null,
+		emergency_phone_1: data.emergency_phone_1 || null,
+		emergency_phone_2: data.emergency_phone_2 || null,
+		mother_tongue: data.mother_tongue || null,
+		other_languages_known: data.other_languages_known || null,
+		religion: data.religion || null,
+		nationality: data.nationality || null,
+		highest_qualification: data.highest_qualification || null,
+		year_of_pass: data.year_of_pass || null,
+		highest_qualification_document:
+			data.highest_qualification_document || null,
+		year_of_pass_document: data.year_of_pass_document || null,
+		current_employer: data.current_employer || null,
+		current_position: data.current_position || null,
+		department: data.department || null,
+		working_period: data.working_period || null,
+		role_responsibilities: data.role_responsibilities || null,
+		current_ctc: data.current_ctc || null,
+		employer_documents: data.employer_documents || null,
+		previous_employer_name: data.previous_employer_name || null,
+		previous_employer_position: data.previous_employer_position || null,
+		previous_employer_department: data.previous_employer_department || null,
+		previous_employer_working_period:
+			data.previous_employer_working_period || null,
+		previous_employer_role: data.previous_employer_role || null,
+		previous_employer_ctc: data.previous_employer_ctc || null,
+		previous_employer_documents: data.previous_employer_documents || null,
+		is_active: data.is_active ?? true,
+	}
+}
+
 function EmployeeForm() {
+	const [excelRows, setExcelRows] = useState<EmployeeEnquiryFormData[]>([])
+	const [excelErrors, setExcelErrors] = useState<string[]>([])
+	const [message, setMessage] = useState('')
+	const [messageType, setMessageType] = useState<'success' | 'error'>('success')
+	const [saving, setSaving] = useState(false)
+
 	const {
 		register,
 		handleSubmit,
@@ -195,44 +280,167 @@ function EmployeeForm() {
 	})
 
 	const onSubmit = async (data: EmployeeEnquiryFormData) => {
-		await apiClient.post('/api/v1/user-enquiries/', {
-			candidate_name: data.candidate_name,
-			father_name: data.father_name,
-			date_of_birth: data.date_of_birth,
-			blood_group: data.blood_group,
-			marital_status: data.marital_status,
-			address: data.address,
-			phone: data.phone,
-			pan: data.pan,
-			aadhaar: data.aadhaar,
-			passport_no: data.passport_no,
-			personal_email: data.personal_email,
-			emergency_phone_1: data.emergency_phone_1,
-			emergency_phone_2: data.emergency_phone_2,
-			mother_tongue: data.mother_tongue,
-			other_languages_known: data.other_languages_known,
-			religion: data.religion,
-			nationality: data.nationality,
-			highest_qualification: data.highest_qualification,
-			year_of_pass: data.year_of_pass,
-			highest_qualification_document: data.highest_qualification_document,
-			year_of_pass_document: data.year_of_pass_document,
-			current_employer: data.current_employer,
-			current_position: data.current_position,
-			department: data.department,
-			working_period: data.working_period,
-			role_responsibilities: data.role_responsibilities,
-			current_ctc: data.current_ctc,
-			employer_documents: data.employer_documents,
-			previous_employer_name: data.previous_employer_name,
-			previous_employer_position: data.previous_employer_position,
-			previous_employer_department: data.previous_employer_department,
-			previous_employer_working_period: data.previous_employer_working_period,
-			previous_employer_role: data.previous_employer_role,
-			previous_employer_ctc: data.previous_employer_ctc,
-			previous_employer_documents: data.previous_employer_documents,
-			is_active: data.is_active,
-		})
+		if (saving) return
+		setSaving(true)
+		setMessage('')
+		try {
+			await apiClient.post('/api/v1/user-enquiries/', toPayload(data))
+			setMessageType('success')
+			setMessage('Employee enquiry submitted successfully.')
+		} catch (error) {
+			const detail = (
+				error as { response?: { data?: { detail?: string } } }
+			).response?.data?.detail
+			setMessageType('error')
+			setMessage(detail ?? 'Unable to submit employee enquiry.')
+		} finally {
+			setSaving(false)
+		}
+	}
+
+	const handleExcelSelect = async (file?: File) => {
+		setExcelRows([])
+		setExcelErrors([])
+		setMessage('')
+		if (!file) return
+		if (!/\.(xlsx|xls)$/i.test(file.name)) {
+			setExcelErrors(['Select an Excel file (.xlsx or .xls).'])
+			return
+		}
+
+		try {
+			const workbook = XLSX.read(await file.arrayBuffer(), {
+				type: 'array',
+				cellDates: true,
+			})
+			const sheetName = workbook.SheetNames[0]
+			const sheet = sheetName ? workbook.Sheets[sheetName] : undefined
+			if (!sheet) throw new Error('Excel worksheet not found.')
+
+			const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+				header: 1,
+				defval: '',
+				raw: true,
+			})
+			if (rows.length < 2) throw new Error('Excel file has no data rows.')
+
+			const headers = rows[0].map(normalizeExcelHeader)
+			const duplicateHeaders = headers.filter(
+				(header, index) => header && headers.indexOf(header) !== index,
+			)
+			if (duplicateHeaders.length) {
+				throw new Error(
+					`Duplicate Excel columns: ${[...new Set(duplicateHeaders)].join(', ')}.`,
+				)
+			}
+
+			const requiredHeaders = ['candidate_name']
+			const missingHeaders = requiredHeaders.filter(
+				(header) => !headers.includes(header),
+			)
+			const unsupportedHeaders = headers.filter(
+				(header) =>
+					header &&
+					!excelHeaders.some((supported) => supported === header),
+			)
+			if (missingHeaders.length || unsupportedHeaders.length) {
+				throw new Error([
+					...(missingHeaders.length
+						? [`Missing required columns: ${missingHeaders.join(', ')}`]
+						: []),
+					...(unsupportedHeaders.length
+						? [`Unsupported columns: ${unsupportedHeaders.join(', ')}`]
+						: []),
+				].join('. '))
+			}
+
+			const validRows: EmployeeEnquiryFormData[] = []
+			const validationErrors: string[] = []
+			rows.slice(1).forEach((cells, rowIndex) => {
+				if (cells.every((value) => value === '' || value == null)) return
+
+				const candidate: Record<string, unknown> = {
+					...Object.fromEntries(
+						excelHeaders.map((header) => [
+							header,
+							header === 'is_active' ? true : '',
+						]),
+					),
+				}
+				headers.forEach((header, columnIndex) => {
+					if (!header) return
+					const value = cells[columnIndex]
+					if (header === 'date_of_birth') {
+						candidate[header] = formatExcelDate(value)
+					} else if (header === 'is_active') {
+						if (value === true || value === false) {
+							candidate[header] = value
+						} else {
+							const normalized = String(value).trim().toLowerCase()
+							candidate[header] =
+								normalized === 'true' || normalized === '1' ||
+								normalized === 'active'
+						}
+					} else {
+						candidate[header] = value == null ? '' : String(value).trim()
+					}
+				})
+
+				const parsed = employeeEnquirySchema.safeParse(candidate)
+				if (!parsed.success) {
+					validationErrors.push(
+						`Row ${rowIndex + 2}: ${parsed.error.issues
+							.map((issue) => `${issue.path.join('.') || 'row'}: ${issue.message}`)
+							.join(', ')}`,
+					)
+					return
+				}
+				validRows.push(parsed.data)
+			})
+
+			if (!validRows.length && !validationErrors.length) {
+				throw new Error('Excel file has no non-empty data rows.')
+			}
+			setExcelRows(validRows)
+			setExcelErrors(validationErrors)
+		} catch (error) {
+			setExcelRows([])
+			setExcelErrors([
+				error instanceof Error ? error.message : 'Unable to read Excel file.',
+			])
+		}
+	}
+
+	const saveExcelRows = async () => {
+		if (saving || !excelRows.length || excelErrors.length) return
+		setSaving(true)
+		setMessage('')
+		const failedRows: EmployeeEnquiryFormData[] = []
+		const failures: string[] = []
+		let savedCount = 0
+		try {
+			for (const [index, row] of excelRows.entries()) {
+				try {
+					await apiClient.post('/api/v1/user-enquiries/', toPayload(row))
+					savedCount += 1
+				} catch (error) {
+					failedRows.push(row)
+					const detail = (
+						error as { response?: { data?: { detail?: string } } }
+					).response?.data?.detail
+					failures.push(`Row ${index + 2}: ${detail ?? 'Save failed.'}`)
+				}
+			}
+			setExcelRows(failedRows)
+			setMessageType(failures.length ? 'error' : 'success')
+			setMessage(
+				failures.length
+					? `${savedCount} saved. ${failures.join('; ')}`
+					: `${savedCount} employee enquiries saved successfully.`,
+			)
+		} finally {
+			setSaving(false)
+		}
 	}
 
 	return (
@@ -244,10 +452,13 @@ function EmployeeForm() {
 			<Stack spacing={3}>
 				<div>
 					<Typography variant="h5">Employee Enquiry</Typography>
-					<Typography color="text.secondary" variant="body2">
-						Capture candidate and employment information.
-					</Typography>
 				</div>
+
+				{message && (
+					<div className={`alert alert-${messageType === 'success' ? 'success' : 'danger'}`}>
+						{message}
+					</div>
+				)}
 
 				<Stack spacing={2}>
 					<Typography variant="h6">Personal information</Typography>
@@ -462,11 +673,73 @@ function EmployeeForm() {
 					<Button
 						type="submit"
 						variant="contained"
+						disabled={saving}
 					>
-						Submit enquiry
+						{saving ? 'Submitting...' : 'Submit enquiry'}
 					</Button>
 					<HRBackButton />
 				</div>
+
+				<Stack spacing={2}>
+					<Typography variant="h6">Upload Excel</Typography>
+					<input
+						type="file"
+						accept=".xlsx,.xls"
+						className="form-control"
+						disabled={saving}
+						onChange={(event) => {
+							const file = event.target.files?.[0]
+							event.target.value = ''
+							void handleExcelSelect(file)
+						}}
+					/>
+					{excelErrors.length > 0 && (
+						<div className="alert alert-danger mb-0">
+							{excelErrors.map((error, index) => (
+								<div key={`${index}-${error}`}>{error}</div>
+							))}
+						</div>
+					)}
+					{excelRows.length > 0 && (
+						<>
+							<Typography variant="subtitle1">
+								Excel Preview ({excelRows.length} rows)
+							</Typography>
+							<div className="table-responsive">
+								<table className="table table-bordered table-sm">
+									<thead>
+										<tr>
+											<th>#</th>
+											{excelHeaders.map((header) => (
+												<th key={header}>{header}</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										{excelRows.map((row, index) => (
+											<tr key={`${row.candidate_name}-${index}`}>
+												<td>{index + 1}</td>
+												{excelHeaders.map((header) => (
+													<td key={header}>
+														{String(row[header] ?? '')}
+													</td>
+												))}
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+							<Button
+								type="button"
+								variant="contained"
+								disabled={saving || excelErrors.length > 0}
+								onClick={() => void saveExcelRows()}
+							>
+								{saving ? 'Saving...' : 'Save'}
+							</Button>
+						</>
+					)}
+				</Stack>
 			</Stack>
 		</Paper>
 	)

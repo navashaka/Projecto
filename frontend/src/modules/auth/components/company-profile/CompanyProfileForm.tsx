@@ -627,6 +627,7 @@ const CompanyProfileForm: React.FC = () => {
               type="button"
               variant="outlined"
               onClick={() => navigate(-1)}
+              sx={{ textTransform: 'lowercase' }}
             >
               Back
             </Button>

@@ -239,8 +239,8 @@ function AdminResourcePage() {
 
 				<Button
 					onClick={() => navigate('/admin')}
-					sx={{ mt: 2 }}
 					variant="contained"
+					sx={{ mt: 2, textTransform: 'lowercase' }}
 				>
 					Back to admin
 				</Button>
@@ -452,6 +452,7 @@ function AdminResourcePage() {
 					<Button
 						onClick={() => navigate('/admin')}
 						variant="outlined"
+						sx={{ textTransform: 'lowercase' }}
 					>
 						All tables
 					</Button>

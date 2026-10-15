@@ -1,0 +1,76 @@
+Projecto – Daily Work Report
+Date: 15-10-2026
+
+Admin Module
+
+- Updated the Admin Dashboard page.
+- Added HR Admin, GL Admin, and Inventory Admin navigation cards.
+- Removed unnecessary logout and signed-in user text from the Admin Dashboard.
+- Updated Admin navigation to display module options on hover/click.
+- Fixed Admin submenu route-matching issues.
+- Updated Admin Records pages to display saved HR, GL, and Inventory records.
+- Preserved existing record details, edit, delete, refresh, and back navigation functionality.
+- Removed unnecessary "View and manage" text from Admin pages.
+- Retained date/calendar and time/clock field behavior.
+
+Attendance Module
+
+- Implemented Excel upload functionality for Attendance.
+- Added Excel file type and data validation.
+- Implemented Excel data preview.
+- Integrated the Attendance Bulk Upload API.
+- Verified successful insertion of attendance records into the database.
+- Verified that the success message appears on the same page.
+- Updated the saved Attendance Records table.
+- Added refresh and pagination functionality.
+- Removed unnecessary text from the Attendance Excel upload section.
+- Preserved existing manual Attendance save functionality.
+
+Company Holidays – Excel Upload
+
+- Worked on Excel upload functionality for Company Holidays.
+- Addressed Excel file type validation.
+- Worked on Excel data preview and database save functionality.
+- Investigated the file upload API's "multipart/form-data" and 422 error.
+- End-to-end verification of upload and saved records is pending.
+
+Backend Setup
+
+- Activated the Python virtual environment.
+- Worked on starting the FastAPI backend using Uvicorn.
+- Corrected the application import path to "app.main:app".
+
+Inventory – Unit of Measure
+
+- Investigated the Network Error appearing on the Unit of Measure page.
+- Checked failed XHR requests in the browser's Network tab.
+- Identified "net::ERR_CONNECTION_REFUSED".
+- Identified "inventoryActions.ts:10" as the request initiation location.
+- Backend connectivity and API URL/port verification are pending.
+- Testing UOM dropdown loading, Create New UOM, and Save is pending.
+
+HR Module – Back and Home Navigation
+
+- Investigated the issue where clicking Back from HR forms navigates to the HR Admin records page.
+- Inspected the existing Inventory navigation pattern.
+- Identified that Inventory forms navigate directly to "/inventory".
+- Identified that the shared HR Back button currently uses "navigate(-1)".
+- Identified that "/hr-admin" displays the HR Admin records page, not the desired HR Home page.
+- Prepared instructions to inspect existing routes and implement a dedicated HR Home page if one does not exist.
+- Defined the requirement that Back from every HR form should return to HR Home.
+- Specified a top-right Home icon on every HR form.
+- Specified that Home icon clicks must also return to HR Home.
+- Required the same behavior for Employees, Attendance, Leave, Departments, Designations, Salary Details, Payroll, and all other HR forms.
+- Emphasized preserving existing APIs, database logic, form submissions, and other modules.
+
+Pending Works
+
+- Fix the Inventory Unit of Measure Network Error and verify backend connectivity.
+- Test UOM dropdown loading, Create New UOM, and Save.
+- Verify the correct HR Home route.
+- Implement and test Back and Home navigation across all HR forms.
+- Verify Company Holidays Excel upload, preview, database insertion, and saved records.
+- Run the frontend build and check for TypeScript or build errors.
+- Retest modified features and ensure existing Admin, HR, GL, Inventory, and Attendance functionality remains unaffected.
+
+Status: Pending items require verification in the running application before they can be marked completed.

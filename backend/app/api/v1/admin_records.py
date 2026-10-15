@@ -66,6 +66,7 @@ from app.modules.inventory.models import (
     InventoryStockItem,
     InventoryUnitOfMeasure,
 )
+from app.modules.hr.payroll.models import Payroll
 
 
 RESOURCE_MODELS: dict[
@@ -84,6 +85,7 @@ RESOURCE_MODELS: dict[
         "job-profiles": ("Job Profiles", JobProfile),
         "on-employment": ("On Employment", OnEmployment),
         "salary-details": ("Salary Details", SalaryDetails),
+        "payroll": ("Payroll", Payroll),
         "paysheets": ("Paysheets", Paysheet),
         "travelling-advances": ("Travelling Advances", TravellingAdvance),
         "travelling-expenses-reimbursements": (

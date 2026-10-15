@@ -35,6 +35,7 @@ function GLHomePage() {
                 <Typography variant="h6">{resource.label}</Typography>
                 <Button
                   onClick={() => navigate(`/gl/${resource.key}`)}
+                  sx={{ textTransform: 'lowercase' }}
                   variant="contained"
                 >
                   Open

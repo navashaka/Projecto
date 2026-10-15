@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import * as XLSX from 'xlsx'
 import HRBackButton from '../HRBackButton'
 
 const optionalText = (max: number, label: string) =>
@@ -145,6 +146,89 @@ type OnEmploymentFormData = z.infer<
 	typeof onEmploymentSchema
 >
 
+const ON_EMPLOYMENT_API_URL = 'http://localhost:8000/on-employment/'
+
+const onEmploymentExcelHeaders = Object.keys(
+	onEmploymentSchema.shape,
+) as (keyof OnEmploymentFormData)[]
+
+async function submitOnEmploymentRow(data: OnEmploymentFormData) {
+	let response: Response
+	try {
+		response = await fetch(ON_EMPLOYMENT_API_URL, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(data),
+		})
+	} catch (error) {
+		const cause = error instanceof Error
+			? `${error.name}: ${error.message}`
+			: String(error)
+		const origin = typeof window === 'undefined' ? 'unknown origin' : window.location.origin
+		throw new Error(
+			`Network request to ${ON_EMPLOYMENT_API_URL} from ${origin} failed (${cause}). Check that the backend is reachable and its CORS configuration allows this origin.`,
+		)
+	}
+
+	let responseBody: string
+	try {
+		responseBody = await response.text()
+	} catch (error) {
+		const cause = error instanceof Error
+			? `${error.name}: ${error.message}`
+			: String(error)
+		const origin = typeof window === 'undefined' ? 'unknown origin' : window.location.origin
+		throw new Error(
+			`Network error reading response from ${ON_EMPLOYMENT_API_URL} for ${origin} (${cause}). Check backend availability and CORS configuration.`,
+		)
+	}
+	let responseData: unknown = null
+	if (responseBody) {
+		try {
+			responseData = JSON.parse(responseBody)
+		} catch {
+			responseData = responseBody
+		}
+	}
+
+	if (!response.ok) {
+		const detail =
+			typeof responseData === 'object' && responseData !== null && 'detail' in responseData
+				? responseData.detail
+				: responseData
+		const message = typeof detail === 'string'
+			? detail
+			: detail == null
+				? responseBody || response.statusText
+				: JSON.stringify(detail)
+		throw new Error(`HTTP ${response.status}: ${message || 'Request failed.'}`)
+	}
+}
+
+function formatExcelDate(value: unknown): string | undefined {
+	if (value === '' || value == null) return undefined
+
+	if (value instanceof Date && !Number.isNaN(value.getTime())) {
+		return value.toISOString().slice(0, 10)
+	}
+
+	if (typeof value === 'number') {
+		const date = XLSX.SSF.parse_date_code(value)
+		if (date) {
+			return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+		}
+	}
+
+	return String(value).trim()
+}
+
+function normalizeExcelHeader(value: unknown): string {
+	return String(value ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/[\s-]+/g, '_')
+}
+
 const textFields = [
 	['employee_code', 'Employee code'],
 	['designation', 'Designation'],
@@ -212,11 +296,68 @@ const contributionFields = [
 	['total_ctc', 'Total CTC'],
 ] as const
 
+const onEmploymentNumericHeaders = new Set<string>([
+	'employee_refno_id',
+	...salaryFields.map(([name]) => name),
+	...deductionFields.map(([name]) => name),
+	...contributionFields.map(([name]) => name),
+])
+
 const roundValue = (value: number) =>
 	Math.round(value)
 
 const getValue = (value: number | undefined) =>
 	value ?? 0
+
+function calculateOnEmploymentRow(
+	row: OnEmploymentFormData,
+): OnEmploymentFormData {
+	const basic = getValue(row.basic)
+	const gross = roundValue(
+		basic +
+			getValue(row.allowance1) +
+			getValue(row.allowance2) +
+			getValue(row.allowance3) +
+			getValue(row.allowance4) +
+			getValue(row.allowance5) +
+			getValue(row.allowance6) +
+			getValue(row.other_allowance),
+	)
+	const epf = roundValue(basic * 0.12)
+	const esi = gross <= 21000 ? roundValue(gross * 0.0075) : 0
+	const totalDeductions = roundValue(
+		epf +
+			esi +
+			getValue(row.tds) +
+			getValue(row.canteen_deduction) +
+			getValue(row.advance_deduction) +
+			getValue(row.loan_emi) +
+			getValue(row.other_deduction),
+	)
+	const employerEpf = roundValue(basic * 0.0367)
+	const employerEsi = gross <= 21000 ? roundValue(gross * 0.0325) : 0
+
+	return {
+		...row,
+		gross,
+		epf_deduction: epf,
+		esi_insurance_deduction: esi,
+		total_deductions: totalDeductions,
+		net_salary: roundValue(gross - totalDeductions),
+		epf_employer_share: employerEpf,
+		esi_employer_share: employerEsi,
+		total_ctc: roundValue(
+			gross +
+				employerEpf +
+				employerEsi +
+				getValue(row.insurance_employer_share) +
+				getValue(row.transport_allowance) +
+				getValue(row.canteen_allowance) +
+				getValue(row.bonus) +
+				getValue(row.other_employer_contribution),
+		),
+	}
+}
 
 function OnEmploymentForm() {
 	const [successMessage, setSuccessMessage] =
@@ -224,6 +365,10 @@ function OnEmploymentForm() {
 	const [apiError, setApiError] = useState('')
 	const [isSubmitting, setIsSubmitting] =
 		useState(false)
+	const [excelRows, setExcelRows] = useState<OnEmploymentFormData[]>([])
+	const [excelRowNumbers, setExcelRowNumbers] = useState<number[]>([])
+	const [excelErrors, setExcelErrors] = useState<string[]>([])
+	const [isSavingExcel, setIsSavingExcel] = useState(false)
 
 	const {
 		register,
@@ -453,36 +598,7 @@ function OnEmploymentForm() {
 		setIsSubmitting(true)
 
 		try {
-			const response = await fetch(
-				'http://127.0.0.1:8000/on-employment/',
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type':
-							'application/json',
-					},
-					body: JSON.stringify(data),
-				},
-			)
-
-			const responseData =
-				await response
-					.json()
-					.catch(() => null)
-
-			if (!response.ok) {
-				const message =
-					responseData?.detail
-						? typeof responseData.detail ===
-							'string'
-							? responseData.detail
-							: JSON.stringify(
-									responseData.detail,
-								)
-						: 'Failed to submit On Employment details.'
-
-				throw new Error(message)
-			}
+			await submitOnEmploymentRow(data)
 
 			setSuccessMessage(
 				'Submitted successfully!',
@@ -495,6 +611,170 @@ function OnEmploymentForm() {
 			)
 		} finally {
 			setIsSubmitting(false)
+		}
+	}
+
+	const handleExcelSelect = async (file?: File) => {
+		setExcelRows([])
+		setExcelRowNumbers([])
+		setExcelErrors([])
+		setSuccessMessage('')
+		setApiError('')
+
+		if (!file) return
+		if (!/\.(xlsx|xls)$/i.test(file.name)) {
+			setExcelErrors(['Select an Excel file (.xlsx or .xls).'])
+			return
+		}
+
+		try {
+			const workbook = XLSX.read(await file.arrayBuffer(), {
+				type: 'array',
+				cellDates: true,
+			})
+			const sheetName = workbook.SheetNames[0]
+			const sheet = sheetName ? workbook.Sheets[sheetName] : undefined
+			if (!sheet) throw new Error('Excel worksheet not found.')
+
+			const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+				header: 1,
+				defval: '',
+				raw: true,
+			})
+			if (rows.length < 2) {
+				throw new Error('Excel file has no data rows.')
+			}
+
+			const headers = rows[0].map(normalizeExcelHeader)
+			const duplicated = headers.filter(
+				(header, index) => header && headers.indexOf(header) !== index,
+			)
+			if (duplicated.length) {
+				throw new Error(
+					`Duplicate Excel columns: ${[...new Set(duplicated)].join(', ')}.`,
+				)
+			}
+
+			const supportedHeaders = new Set<string>(onEmploymentExcelHeaders)
+			const missingHeaders = ['employee_refno_id'].filter(
+				(header) => !headers.includes(header),
+			)
+			const unsupportedHeaders = headers.filter(
+				(header) => header && !supportedHeaders.has(header),
+			)
+			if (missingHeaders.length || unsupportedHeaders.length) {
+				throw new Error(
+					[
+						...(missingHeaders.length
+							? [`Missing required columns: ${missingHeaders.join(', ')}`]
+							: []),
+						...(unsupportedHeaders.length
+							? [`Unsupported columns: ${unsupportedHeaders.join(', ')}`]
+							: []),
+					].join('. '),
+				)
+			}
+
+			const validationErrors: string[] = []
+			const validRows: OnEmploymentFormData[] = []
+			const validRowNumbers: number[] = []
+			rows.slice(1).forEach((cells, rowIndex) => {
+				if (cells.every((value) => value === '' || value == null)) return
+
+				const candidate: Record<string, unknown> = {}
+				headers.forEach((header, columnIndex) => {
+					if (!header) return
+					const value = cells[columnIndex]
+
+					if (header === 'health_insurance_date') {
+						candidate[header] = formatExcelDate(value)
+					} else if (onEmploymentNumericHeaders.has(header)) {
+						candidate[header] =
+							value === '' || value == null ? undefined : Number(value)
+					} else {
+						candidate[header] =
+							value == null ? '' : value
+					}
+				})
+
+				const parsed = onEmploymentSchema.safeParse(candidate)
+				if (!parsed.success) {
+					validationErrors.push(
+						`Row ${rowIndex + 2}: ${parsed.error.issues
+							.map((issue) =>
+								`${issue.path.join('.') || 'row'}: ${issue.message}`,
+							)
+							.join(', ')}`,
+					)
+					return
+				}
+
+				validRows.push(calculateOnEmploymentRow(parsed.data))
+				validRowNumbers.push(rowIndex + 2)
+			})
+
+			if (!validRows.length && !validationErrors.length) {
+				throw new Error('Excel file has no non-empty data rows.')
+			}
+
+			setExcelRows(validRows)
+			setExcelRowNumbers(validRowNumbers)
+			setExcelErrors(validationErrors)
+			if (validRows.length) {
+				setSuccessMessage(`${validRows.length} row(s) ready for preview.`)
+			}
+		} catch (error) {
+			setExcelRows([])
+			setExcelRowNumbers([])
+			setExcelErrors([
+				error instanceof Error
+					? error.message
+					: 'Unable to read Excel file.',
+			])
+		}
+	}
+
+	const saveExcelRows = async () => {
+		if (isSavingExcel || !excelRows.length || excelErrors.length) return
+
+		setIsSavingExcel(true)
+		setSuccessMessage('')
+		setApiError('')
+		const failedRows: OnEmploymentFormData[] = []
+		const failedRowNumbers: number[] = []
+		const failures: string[] = []
+		const successfulRowNumbers: number[] = []
+		let savedCount = 0
+
+		try {
+			for (const [index, row] of excelRows.entries()) {
+				const sourceRowNumber = excelRowNumbers[index] ?? index + 2
+				try {
+					await submitOnEmploymentRow(row)
+					savedCount += 1
+					successfulRowNumbers.push(sourceRowNumber)
+				} catch (error) {
+					failedRows.push(row)
+					failedRowNumbers.push(sourceRowNumber)
+					failures.push(
+						`Row ${sourceRowNumber}: ${
+							error instanceof Error ? error.message : 'Save failed.'
+						}`,
+					)
+				}
+			}
+
+			setExcelRows(failedRows)
+			setExcelRowNumbers(failedRowNumbers)
+			if (savedCount) {
+				setSuccessMessage(
+					`${savedCount} On Employment record(s) saved from Excel row(s): ${successfulRowNumbers.join(', ')}.`,
+				)
+			}
+			setExcelErrors([])
+			if (failures.length) setApiError(failures.join('\n'))
+		} finally {
+			setIsSavingExcel(false)
 		}
 	}
 
@@ -513,12 +793,6 @@ function OnEmploymentForm() {
 								On Employment Details
 							</h1>
 
-							<p className="text-muted mb-0">
-								Capture employee employment,
-								banking, salary, deduction
-								and employer contribution
-								details.
-							</p>
 						</div>
 
 						{successMessage && (
@@ -556,6 +830,7 @@ function OnEmploymentForm() {
 
 										<input
 											type="number"
+											placeholder="Enter employee reference ID"
 											className={
 												errors.employee_refno_id
 													? 'form-control is-invalid'
@@ -594,6 +869,13 @@ function OnEmploymentForm() {
 												<input
 													type="text"
 													className="form-control"
+													placeholder={
+														name === 'account_no'
+															? 'Enter bank account number'
+															: name === 'ifsc'
+																? 'Enter IFSC code'
+																: `Enter ${label.toLowerCase()}`
+													}
 													{...register(
 														name as any,
 													)}
@@ -623,6 +905,7 @@ function OnEmploymentForm() {
 
 										<input
 											type="email"
+											placeholder="Enter work email"
 											className={
 												errors.work_email
 													? 'form-control is-invalid'
@@ -678,6 +961,11 @@ function OnEmploymentForm() {
 
 													<input
 														type="number"
+														placeholder={
+															calculated
+																? 'Calculated automatically'
+																: `Enter ${label.toLowerCase()}`
+														}
 														step={
 															integer
 																? '1'
@@ -744,6 +1032,11 @@ function OnEmploymentForm() {
 
 													<input
 														type="number"
+														placeholder={
+															calculated
+																? 'Calculated automatically'
+																: `Enter ${label.toLowerCase()}`
+														}
 														step="0.01"
 														readOnly={
 															calculated
@@ -805,6 +1098,11 @@ function OnEmploymentForm() {
 
 													<input
 														type="number"
+														placeholder={
+															calculated
+																? 'Calculated automatically'
+																: `Enter ${label.toLowerCase()}`
+														}
 														step="0.01"
 														readOnly={
 															calculated
@@ -854,6 +1152,69 @@ function OnEmploymentForm() {
 							</div>
 
 						</form>
+
+						<div className="border rounded bg-white p-3 p-md-4 mt-3">
+							<h2 className="h5 mb-3">Upload Excel</h2>
+							<input
+								type="file"
+								accept=".xlsx,.xls"
+								className="form-control"
+								disabled={isSavingExcel}
+								onChange={(event) => {
+									const file = event.target.files?.[0]
+									event.target.value = ''
+									void handleExcelSelect(file)
+								}}
+							/>
+
+							{excelErrors.length > 0 && (
+								<div className="alert alert-danger mt-3 mb-0">
+									{excelErrors.map((error, index) => (
+										<div key={`${index}-${error}`}>{error}</div>
+									))}
+								</div>
+							)}
+
+							{excelRows.length > 0 && (
+								<>
+									<h3 className="h6 mt-3">
+										Excel Preview ({excelRows.length} rows)
+									</h3>
+									<div className="table-responsive">
+										<table className="table table-bordered table-sm">
+											<thead>
+												<tr>
+													<th>#</th>
+													{onEmploymentExcelHeaders.map((header) => (
+														<th key={header}>{header}</th>
+													))}
+												</tr>
+											</thead>
+											<tbody>
+												{excelRows.map((row, index) => (
+													<tr key={`${row.employee_refno_id}-${index}`}>
+														<td>{excelRowNumbers[index]}</td>
+														{onEmploymentExcelHeaders.map((header) => (
+															<td key={header}>
+																{String(row[header] ?? '')}
+															</td>
+														))}
+													</tr>
+												))}
+											</tbody>
+										</table>
+									</div>
+									<button
+										type="button"
+										className="btn btn-primary"
+										disabled={isSavingExcel || excelErrors.length > 0}
+										onClick={() => void saveExcelRows()}
+									>
+										{isSavingExcel ? 'Saving...' : 'Save'}
+									</button>
+								</>
+							)}
+						</div>
 					</div>
 				</div>
 			</div>

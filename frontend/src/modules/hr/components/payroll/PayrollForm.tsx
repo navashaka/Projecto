@@ -1,21 +1,50 @@
 import { useState } from 'react'
+import { z } from 'zod'
+import * as XLSX from 'xlsx'
 import {
   Alert,
   Button,
   Grid,
   Paper,
+  Snackbar,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
 
-import { calculatePayroll } from '../../actions/payroll/payrollMutations'
+import {
+  calculatePayroll,
+  createPayroll,
+} from '../../actions/payroll/payrollMutations'
 import type {
   PayrollCalculationResult,
   PayrollFormData,
 } from '../../types/payrollTypes'
 import { formatPayrollCurrency } from '../../utils/payrollDisplayUtils'
 import HRBackButton from '../HRBackButton'
+
+const payrollExcelSchema = z.object({
+  basic_salary: z.number().finite().min(0, 'Must be zero or greater'),
+  allowances: z.number().finite().min(0, 'Must be zero or greater'),
+  other_income: z.number().finite().min(0, 'Must be zero or greater'),
+  tds: z.number().finite().min(0, 'Must be zero or greater'),
+  other_deductions: z.number().finite().min(0, 'Must be zero or greater'),
+})
+
+const payrollExcelHeaders = Object.keys(
+  payrollExcelSchema.shape,
+) as (keyof PayrollFormData)[]
+
+type PayrollExcelRow = {
+  rowNumber: number
+  data: PayrollFormData
+  result?: PayrollCalculationResult
+  error?: string
+}
+
+function normalizeExcelHeader(value: unknown) {
+  return String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+}
 
 function PayrollForm() {
   const [formData, setFormData] = useState<PayrollFormData>({
@@ -32,6 +61,10 @@ function PayrollForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [excelRows, setExcelRows] = useState<PayrollExcelRow[]>([])
+  const [excelError, setExcelError] = useState('')
+  const [excelLoading, setExcelLoading] = useState(false)
+  const [excelSaveSuccess, setExcelSaveSuccess] = useState('')
 
   const handleChange = (
     field: keyof PayrollFormData,
@@ -47,6 +80,144 @@ function PayrollForm() {
     value: number,
   ): string | number => {
     return value === 0 ? '' : value
+  }
+
+  const handleExcelSelect = async (file?: File) => {
+    setExcelRows([])
+    setExcelError('')
+    if (!file) return
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      setExcelError('Select an Excel file (.xlsx or .xls).')
+      return
+    }
+
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), {
+        type: 'array',
+        cellDates: true,
+      })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = sheetName ? workbook.Sheets[sheetName] : undefined
+      if (!sheet) throw new Error('Excel worksheet not found.')
+
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        defval: '',
+        raw: true,
+      })
+      if (rows.length < 2) throw new Error('Excel file has no data rows.')
+
+      const headers = rows[0].map(normalizeExcelHeader)
+      const duplicateHeaders = headers.filter(
+        (header, index) => header && headers.indexOf(header) !== index,
+      )
+      if (duplicateHeaders.length) {
+        throw new Error(
+          `Duplicate Excel columns: ${[...new Set(duplicateHeaders)].join(', ')}.`,
+        )
+      }
+
+      const missingHeaders = ['basic_salary'].filter(
+        (header) => !headers.includes(header),
+      )
+      const unsupportedHeaders = headers.filter(
+        (header) => header && !payrollExcelHeaders.some((supported) => supported === header),
+      )
+      if (missingHeaders.length || unsupportedHeaders.length) {
+        throw new Error([
+          ...(missingHeaders.length
+            ? [`Missing required columns: ${missingHeaders.join(', ')}`]
+            : []),
+          ...(unsupportedHeaders.length
+            ? [`Unsupported columns: ${unsupportedHeaders.join(', ')}`]
+            : []),
+        ].join('. '))
+      }
+
+      const parsedRows: PayrollExcelRow[] = []
+      const rowErrors: string[] = []
+      rows.slice(1).forEach((cells, index) => {
+        if (cells.every((value) => value === '' || value == null)) return
+        const candidate = Object.fromEntries(
+          payrollExcelHeaders.map((header) => {
+            const columnIndex = headers.indexOf(header)
+            const value = columnIndex < 0 ? '' : cells[columnIndex]
+            return [
+              header,
+              value === '' || value == null ? 0 : Number(value),
+            ]
+          }),
+        )
+        const parsed = payrollExcelSchema.safeParse(candidate)
+        if (!parsed.success) {
+          rowErrors.push(
+            `Row ${index + 2}: ${parsed.error.issues
+              .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+              .join(', ')}`,
+          )
+          return
+        }
+        parsedRows.push({
+          rowNumber: index + 2,
+          data: parsed.data,
+        })
+      })
+
+      if (!parsedRows.length && !rowErrors.length) {
+        throw new Error('Excel file has no non-empty data rows.')
+      }
+      setExcelRows(parsedRows)
+      setExcelError(rowErrors.join('\n'))
+    } catch (error) {
+      setExcelRows([])
+      setExcelError(
+        error instanceof Error ? error.message : 'Unable to read Excel file.',
+      )
+    }
+  }
+
+  const saveExcelRows = async () => {
+    const rowsToSave = excelRows.filter((row) => !row.result)
+    if (excelLoading || !rowsToSave.length || excelError) return
+    setExcelLoading(true)
+    setExcelError('')
+    setExcelSaveSuccess('')
+    try {
+      const resultsByRow = new Map(
+        excelRows
+          .filter((row) => row.result)
+          .map((row) => [row.rowNumber, row]),
+      )
+      const savedRows: number[] = []
+      for (const row of rowsToSave) {
+        try {
+          const saved = await createPayroll(row.data)
+          savedRows.push(row.rowNumber)
+          resultsByRow.set(row.rowNumber, {
+            ...row,
+            result: saved,
+            error: undefined,
+          })
+        } catch (error) {
+          resultsByRow.set(row.rowNumber, {
+            ...row,
+            error: error instanceof Error
+              ? error.message
+              : 'Payroll calculation failed.',
+          })
+        }
+      }
+      setExcelRows(
+        excelRows.map((row) => resultsByRow.get(row.rowNumber) ?? row),
+      )
+      if (savedRows.length) {
+        setExcelSaveSuccess(
+          `Payroll saved successfully for Excel row${savedRows.length === 1 ? '' : 's'} ${savedRows.join(', ')}.`,
+        )
+      }
+    } finally {
+      setExcelLoading(false)
+    }
   }
 
   const handleSubmit = async (
@@ -86,17 +257,23 @@ function PayrollForm() {
       }}
     >
       <Stack spacing={3}>
+        <Snackbar
+          open={Boolean(excelSaveSuccess)}
+          autoHideDuration={6000}
+          onClose={() => setExcelSaveSuccess('')}
+        >
+          <Alert
+            severity="success"
+            onClose={() => setExcelSaveSuccess('')}
+          >
+            {excelSaveSuccess}
+          </Alert>
+        </Snackbar>
         <div>
           <Typography variant="h5">
             Payroll
           </Typography>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-          >
-            Enter salary details and calculate payroll.
-          </Typography>
         </div>
 
         {success && (
@@ -322,6 +499,75 @@ function PayrollForm() {
             </Grid>
           </>
         )}
+
+        <Stack spacing={2}>
+          <Typography variant="h6">Upload Excel</Typography>
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            className="form-control"
+            disabled={excelLoading}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              void handleExcelSelect(file)
+            }}
+          />
+          {excelError && (
+            <Alert severity="error" sx={{ whiteSpace: 'pre-line' }}>
+              {excelError}
+            </Alert>
+          )}
+          {excelRows.length > 0 && (
+            <>
+              <Typography variant="subtitle1">
+                Excel Preview ({excelRows.length} rows)
+              </Typography>
+              <div className="table-responsive">
+                <table className="table table-bordered table-sm">
+                  <thead>
+                    <tr>
+                      <th>Row</th>
+                      {payrollExcelHeaders.map((header) => (
+                        <th key={header}>{header}</th>
+                      ))}
+                      <th>Net Salary</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {excelRows.map((row) => (
+                      <tr key={row.rowNumber}>
+                        <td>{row.rowNumber}</td>
+                        {payrollExcelHeaders.map((header) => (
+                          <td key={header}>{row.data[header]}</td>
+                        ))}
+                        <td>
+                          {row.result
+                            ? formatPayrollCurrency(row.result.net_salary)
+                            : ''}
+                        </td>
+                        <td>{row.error ?? (row.result ? 'Calculated' : 'Ready')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Button
+                type="button"
+                variant="contained"
+                disabled={
+                  excelLoading ||
+                  Boolean(excelError) ||
+                  !excelRows.some((row) => !row.result)
+                }
+                onClick={() => void saveExcelRows()}
+              >
+                {excelLoading ? 'Saving...' : 'Save'}
+              </Button>
+            </>
+          )}
+        </Stack>
       </Stack>
     </Paper>
   )

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PayrollCalculateRequest(BaseModel):
@@ -20,3 +20,14 @@ class PayrollCalculationResponse(BaseModel):
     employee_esi: Decimal
     total_deductions: Decimal
     net_salary: Decimal
+
+
+class PayrollCreateResponse(PayrollCalculationResponse):
+    id: int
+    basic_salary: Decimal
+    allowances: Decimal
+    other_income: Decimal
+    tds: Decimal
+    other_deductions: Decimal
+
+    model_config = ConfigDict(from_attributes=True)

@@ -418,7 +418,11 @@ function GLResourcePage() {
     return (
       <Paper sx={{ p: 4 }}>
         <Typography variant="h5">GL resource not found</Typography>
-        <Button onClick={() => navigate('/gl')} sx={{ mt: 2 }} variant="contained">
+        <Button
+          onClick={() => navigate('/gl')}
+          sx={{ mt: 2, textTransform: 'lowercase' }}
+          variant="contained"
+        >
           Back to GL
         </Button>
       </Paper>
@@ -1321,7 +1325,11 @@ function GLResourcePage() {
           <Typography variant="h4">{resource.label}</Typography>
         </div>
         <Stack direction="row" spacing={1}>
-          <Button onClick={() => navigate('/gl')} variant="outlined">
+          <Button
+            onClick={() => navigate('/gl')}
+            sx={{ textTransform: 'lowercase' }}
+            variant="outlined"
+          >
             GL Home
           </Button>
           <Button onClick={openAdd} variant="contained">
