@@ -3,6 +3,7 @@ import {
   Button,
   CircularProgress,
   FormControl,
+  FormHelperText,
   Grid,
   IconButton,
   InputLabel,
@@ -34,6 +35,7 @@ function UnitOfMeasurePage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [selectedUnitId, setSelectedUnitId] = useState('')
   const [newUomMode, setNewUomMode] = useState(false)
@@ -43,18 +45,19 @@ function UnitOfMeasurePage() {
 
   const loadUnits = useCallback(async () => {
     setLoading(true)
+    setLoadError('')
     setErrorMessage('')
 
     try {
       const data = await getInventoryCollection(unitOfMeasureEndpoint)
       setRecords(data)
     } catch (error) {
-      setErrorMessage(
-        formatInventoryError(
-          error,
-          'Unable to load units of measure from the backend.',
-        ),
+      const message = formatInventoryError(
+        error,
+        'Unable to load units of measure from the backend.',
       )
+      setLoadError(message)
+      setErrorMessage(message)
     } finally {
       setLoading(false)
     }
@@ -196,8 +199,10 @@ function UnitOfMeasurePage() {
                   <MenuItem value="">
                     {loading
                       ? 'Loading UOM names...'
-                      : records.length === 0
-                        ? 'No UOM names available'
+                      : loadError
+                        ? 'Unable to load UOM names'
+                        : records.length === 0
+                          ? 'No UOM names available'
                         : 'Select name'}
                   </MenuItem>
                   {records.map((record, index) => (
@@ -218,6 +223,21 @@ function UnitOfMeasurePage() {
                     </MenuItem>
                   ))}
                 </Select>
+                {loading && (
+                  <FormHelperText>
+                    Loading units of measure...
+                  </FormHelperText>
+                )}
+                {loadError && (
+                  <FormHelperText error>
+                    Unable to load UOM names: {loadError}
+                  </FormHelperText>
+                )}
+                {!loading && !loadError && records.length === 0 && (
+                  <FormHelperText>
+                    No records returned from {unitOfMeasureEndpoint}.
+                  </FormHelperText>
+                )}
               </FormControl>
             </Grid>
 

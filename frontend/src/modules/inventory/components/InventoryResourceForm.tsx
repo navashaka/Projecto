@@ -15,10 +15,17 @@ import {
   Select,
   Snackbar,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import * as XLSX from 'xlsx'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Controller,
@@ -34,6 +41,7 @@ import {
 } from '../schemas/inventorySchemas'
 import type {
   InventoryFieldDefinition,
+  InventoryFieldValue,
   InventoryFieldOption,
   InventoryFormValues,
   InventoryRecord,
@@ -56,6 +64,11 @@ interface InventoryFieldsProps {
   fields: InventoryFieldDefinition[]
   control: Control<InventoryFormValues>
   options: Record<string, InventoryRecord[]>
+  endpointErrors: Record<string, string>
+  onOptionSelected?: (
+    field: InventoryFieldDefinition,
+    value: number | string,
+  ) => void
   disabled: boolean
   loading: boolean
   prefix?: `items.${number}.`
@@ -64,6 +77,146 @@ interface InventoryFieldsProps {
   isMaterialReceiptNote?: boolean
   isDeliveryChallan?: boolean
   isDeliveryChallanInward?: boolean
+}
+
+type ExcelMessageType = 'error' | 'info' | 'success'
+type InventoryExcelRow = Record<string, string | number | boolean>
+
+function normalizeExcelHeader(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+}
+
+function formatInventoryExcelDate(
+  value: unknown,
+  field: InventoryFieldDefinition,
+): string {
+  if (field.kind === 'date') {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+    }
+    if (typeof value === 'number') {
+      const date = XLSX.SSF.parse_date_code(value)
+      if (date) {
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+      }
+    }
+
+    const text = String(value ?? '').trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      return text
+    }
+    throw new Error(`${field.label} must use YYYY-MM-DD format.`)
+  }
+
+  if (field.kind === 'datetime-local') {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}T${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}:${String(value.getSeconds()).padStart(2, '0')}`
+    }
+    if (typeof value === 'number') {
+      const date = XLSX.SSF.parse_date_code(value)
+      if (date) {
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T${String(date.H).padStart(2, '0')}:${String(date.M).padStart(2, '0')}:${String(Math.floor(date.S)).padStart(2, '0')}`
+      }
+    }
+
+    const text = String(value ?? '').trim().replace(' ', 'T')
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(text)) {
+      return text
+    }
+    throw new Error(`${field.label} must be a valid date and time.`)
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}:${String(value.getSeconds()).padStart(2, '0')}`
+  }
+  if (typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value)
+    if (date) {
+      return `${String(date.H).padStart(2, '0')}:${String(date.M).padStart(2, '0')}:${String(Math.floor(date.S)).padStart(2, '0')}`
+    }
+  }
+
+  const text = String(value ?? '').trim()
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(text)) {
+    return text.length === 5 ? `${text}:00` : text
+  }
+  throw new Error(`${field.label} must use HH:mm or HH:mm:ss format.`)
+}
+
+function parseInventoryExcelValue(
+  value: unknown,
+  field: InventoryFieldDefinition,
+  rowNumber: number,
+): InventoryFieldValue {
+  if (value === undefined || value === null || value === '') {
+    if (field.required) {
+      throw new Error(`Row ${rowNumber}: ${field.name} is required.`)
+    }
+    return undefined
+  }
+
+  if (field.kind === 'boolean') {
+    if (typeof value === 'boolean') return value
+    const normalized = String(value).trim().toLowerCase()
+    if (['true', 'yes', '1'].includes(normalized)) return true
+    if (['false', 'no', '0'].includes(normalized)) return false
+    throw new Error(
+      `Row ${rowNumber}: ${field.name} must be TRUE/FALSE, YES/NO, or 1/0.`,
+    )
+  }
+
+  if (
+    field.kind === 'date' ||
+    field.kind === 'datetime-local' ||
+    field.kind === 'time'
+  ) {
+    try {
+      return formatInventoryExcelDate(value, field)
+    } catch (error) {
+      throw new Error(
+        `Row ${rowNumber}: ${error instanceof Error ? error.message : `Invalid ${field.name}.`}`,
+      )
+    }
+  }
+
+  if (field.kind === 'number' || (field.kind === 'select' && field.optionsEndpoint)) {
+    const number = Number(value)
+    if (!Number.isFinite(number)) {
+      throw new Error(`Row ${rowNumber}: ${field.name} must be a valid number.`)
+    }
+    if (field.step === 1 && !Number.isInteger(number)) {
+      throw new Error(`Row ${rowNumber}: ${field.name} must be a whole number.`)
+    }
+    if (field.kind === 'select' && (!Number.isInteger(number) || number < 1)) {
+      throw new Error(`Row ${rowNumber}: ${field.name} must be a valid record ID.`)
+    }
+    return number
+  }
+
+  const text = String(value).trim()
+  if (field.required && !text) {
+    throw new Error(`Row ${rowNumber}: ${field.name} is required.`)
+  }
+  if (field.maxLength !== undefined && text.length > field.maxLength) {
+    throw new Error(
+      `Row ${rowNumber}: ${field.name} must be ${field.maxLength} characters or fewer.`,
+    )
+  }
+  if (
+    field.kind === 'select' &&
+    field.choices &&
+    !field.choices.some((choice) => choice.value === text)
+  ) {
+    throw new Error(
+      `Row ${rowNumber}: ${field.name} must be one of ${field.choices
+        .map((choice) => choice.value)
+        .join(', ')}.`,
+    )
+  }
+  return text
 }
 
 function getFieldOptions(
@@ -105,6 +258,8 @@ function InventoryField({
   field,
   name,
   options,
+  endpointErrors,
+  onOptionSelected,
   disabled,
   loading,
   control,
@@ -117,6 +272,11 @@ function InventoryField({
   field: InventoryFieldDefinition
   name: Path<InventoryFormValues>
   options: InventoryFieldOption[]
+  endpointErrors: Record<string, string>
+  onOptionSelected?: (
+    field: InventoryFieldDefinition,
+    value: number | string,
+  ) => void
   disabled: boolean
   loading: boolean
   control: Control<InventoryFormValues>
@@ -146,6 +306,9 @@ function InventoryField({
           const noOptions =
             !field.choices &&
             values.length === 0
+          const optionError = field.optionsEndpoint
+            ? endpointErrors[field.optionsEndpoint]
+            : undefined
 
           return (
             <FormControl
@@ -182,6 +345,10 @@ function InventoryField({
                   )
 
                   controlField.onChange(
+                    selected?.value ?? '',
+                  )
+                  onOptionSelected?.(
+                    field,
                     selected?.value ?? '',
                   )
                 }}
@@ -221,7 +388,9 @@ function InventoryField({
                   <MenuItem disabled value="">
                     {loading
                       ? 'Loading options...'
-                      : 'No backend records available'}
+                      : optionError
+                        ? 'Unable to load options.'
+                        : 'No backend records available'}
                   </MenuItem>
                 )}
 
@@ -242,11 +411,13 @@ function InventoryField({
               )}
 
               {noOptions && !fieldState.error && (
-                <FormHelperText>
+                <FormHelperText error={Boolean(optionError)}>
                   {loading
                     ? 'Loading live options...'
-                    : field.optionsEndpoint
-                      ? `No options returned from ${field.optionsEndpoint}.`
+                    : optionError
+                      ? `Unable to load options from ${field.optionsEndpoint}: ${optionError}`
+                      : field.optionsEndpoint
+                        ? `No options returned from ${field.optionsEndpoint}.`
                       : 'No choices are configured.'}
                 </FormHelperText>
               )}
@@ -432,6 +603,8 @@ function InventoryFields({
   fields,
   control,
   options,
+  endpointErrors,
+  onOptionSelected,
   disabled,
   loading,
   prefix,
@@ -468,6 +641,8 @@ function InventoryFields({
                 field,
                 options,
               )}
+              endpointErrors={endpointErrors}
+              onOptionSelected={onOptionSelected}
               isGateEntry={isGateEntry}
               isMaterialReceiptNote={
                 isMaterialReceiptNote
@@ -490,6 +665,7 @@ function InventoryResourceForm({
   const {
     records,
     options,
+    endpointErrors,
     loading,
     dataError,
     retryLoad,
@@ -521,6 +697,41 @@ function InventoryResourceForm({
   ] = useState('')
 
   const [
+    excelFile,
+    setExcelFile,
+  ] = useState<File | null>(null)
+
+  const [
+    excelPreviewRows,
+    setExcelPreviewRows,
+  ] = useState<InventoryExcelRow[]>([])
+
+  const [
+    excelPreviewColumns,
+    setExcelPreviewColumns,
+  ] = useState<string[]>([])
+
+  const [
+    excelUploading,
+    setExcelUploading,
+  ] = useState(false)
+
+  const [
+    excelMessage,
+    setExcelMessage,
+  ] = useState('')
+
+  const [
+    excelMessageType,
+    setExcelMessageType,
+  ] = useState<ExcelMessageType>('info')
+
+  const [
+    excelTarget,
+    setExcelTarget,
+  ] = useState<'record' | 'item'>('record')
+
+  const [
     completedItemCount,
     setCompletedItemCount,
   ] = useState(0)
@@ -533,6 +744,16 @@ function InventoryResourceForm({
   const [
     selectedUomId,
     setSelectedUomId,
+  ] = useState('')
+
+  const [
+    selectedIndentId,
+    setSelectedIndentId,
+  ] = useState('')
+
+  const [
+    selectedGateEntryId,
+    setSelectedGateEntryId,
   ] = useState('')
 
   const [
@@ -599,6 +820,29 @@ function InventoryResourceForm({
   const itemFields =
     resource.items?.fields ?? []
 
+  const excelFields =
+    excelTarget === 'item' && resource.items
+      ? resource.items.fields
+      : resource.fields
+
+  const excelEndpoint =
+    excelTarget === 'item' && resource.items
+      ? resource.items.endpoint
+      : resource.endpoint
+
+  const excelTargetLabel =
+    excelTarget === 'item' && resource.items
+      ? `${resource.label} item`
+      : resource.label
+
+  useEffect(() => {
+    setExcelFile(null)
+    setExcelPreviewRows([])
+    setExcelPreviewColumns([])
+    setExcelMessage('')
+    setExcelTarget('record')
+  }, [resource.key])
+
   const itemDefaults =
     createDefaultFormValues(
       itemFields,
@@ -629,6 +873,154 @@ function InventoryResourceForm({
     control: itemControl,
     name: 'items',
   })
+
+  const handleHeaderOptionSelected = (
+    field: InventoryFieldDefinition,
+    value: number | string,
+  ) => {
+    if (isGoodsIssue && field.name === 'indent_id') {
+      const indentId = String(value)
+      setSelectedIndentId(indentId)
+      const indent = options['/inventory/indents']?.find(
+        (record) => String(record.id) === indentId,
+      )
+
+      setHeaderValue(
+        'indent_date',
+        typeof indent?.indent_date === 'string'
+          ? indent.indent_date.slice(0, 10)
+          : '',
+        { shouldValidate: true },
+      )
+      setHeaderValue(
+        'department_id',
+        typeof indent?.department_id === 'number'
+          ? indent.department_id
+          : '',
+        { shouldValidate: true },
+      )
+
+      const indentItems = (options['/inventory/indent-items'] ?? [])
+        .filter((record) => String(record.indent_id) === indentId)
+      resetItems({
+        items: indentItems.map((record) => ({
+          ...createBlankItem(itemFields),
+          stock_item_id:
+            typeof record.stock_item_id === 'number'
+              ? record.stock_item_id
+              : '',
+          quantity:
+            typeof record.quantity === 'number'
+              ? record.quantity
+              : Number(record.quantity ?? 0),
+        })),
+      })
+      return
+    }
+
+    if (isMaterialReceiptNote && field.name === 'gate_entry_id') {
+      const gateEntryId = String(value)
+      setSelectedGateEntryId(gateEntryId)
+      const gateEntry = options['/inventory/gate-entries']?.find(
+        (record) => String(record.id) === gateEntryId,
+      )
+
+      setHeaderValue(
+        'mrn_date',
+        typeof gateEntry?.entry_date === 'string'
+          ? gateEntry.entry_date.slice(0, 10)
+          : '',
+        { shouldValidate: true },
+      )
+      setHeaderValue(
+        'mrn_time',
+        typeof gateEntry?.entry_time === 'string'
+          ? gateEntry.entry_time.slice(0, 8)
+          : '',
+        { shouldValidate: true },
+      )
+      setHeaderValue(
+        'vendor_invoice_no',
+        typeof gateEntry?.vendor_invoice_no === 'string'
+          ? gateEntry.vendor_invoice_no
+          : '',
+        { shouldValidate: true },
+      )
+      setHeaderValue(
+        'vendor_invoice_date',
+        typeof gateEntry?.vendor_invoice_date === 'string'
+          ? gateEntry.vendor_invoice_date.slice(0, 10)
+          : '',
+        { shouldValidate: true },
+      )
+      setHeaderValue(
+        'vendor_name',
+        typeof gateEntry?.vendor_name === 'string'
+          ? gateEntry.vendor_name
+          : '',
+        { shouldValidate: true },
+      )
+      setHeaderValue(
+        'vendor_address',
+        typeof gateEntry?.vendor_address === 'string'
+          ? gateEntry.vendor_address
+          : '',
+        { shouldValidate: true },
+      )
+
+      const gateEntryItems = (options['/inventory/gate-entry-items'] ?? [])
+        .filter((record) => String(record.gate_entry_id) === gateEntryId)
+      resetItems({
+        items: gateEntryItems.map((record) => ({
+          ...createBlankItem(itemFields),
+          gate_entry_item_id:
+            typeof record.id === 'number' ? record.id : '',
+          stock_item_id:
+            typeof record.stock_item_id === 'number'
+              ? record.stock_item_id
+              : '',
+          quantity:
+            typeof record.quantity === 'number'
+              ? record.quantity
+              : Number(record.quantity ?? 0),
+          rate:
+            typeof record.rate === 'number'
+              ? record.rate
+              : Number(record.rate ?? 0),
+        })),
+      })
+    }
+  }
+
+  const itemOptions = { ...options }
+  if (isGoodsIssue) {
+    const indentStockItemIds = new Set(
+      (options['/inventory/indent-items'] ?? [])
+        .filter((record) => String(record.indent_id) === selectedIndentId)
+        .map((record) => String(record.stock_item_id)),
+    )
+    itemOptions['/inventory/stock-items'] = (
+      options['/inventory/stock-items'] ?? []
+    ).filter((record) => indentStockItemIds.has(String(record.id)))
+  }
+  if (isMaterialReceiptNote) {
+    const gateEntryStockItemIds = new Set(
+      (options['/inventory/gate-entry-items'] ?? [])
+        .filter(
+          (record) =>
+            String(record.gate_entry_id) === selectedGateEntryId,
+        )
+        .map((record) => String(record.stock_item_id)),
+    )
+    itemOptions['/inventory/stock-items'] = (
+      options['/inventory/stock-items'] ?? []
+    ).filter((record) => gateEntryStockItemIds.has(String(record.id)))
+    itemOptions['/inventory/gate-entry-items'] = (
+      options['/inventory/gate-entry-items'] ?? []
+    ).filter(
+      (record) => String(record.gate_entry_id) === selectedGateEntryId,
+    )
+  }
 
   const onCreateHeader = async (
     values: InventoryFormValues,
@@ -896,6 +1288,168 @@ function InventoryResourceForm({
     }
   }
 
+  const handleExcelFileChange = async (file?: File) => {
+    setExcelFile(null)
+    setExcelPreviewRows([])
+    setExcelPreviewColumns([])
+    setExcelMessage('')
+
+    if (!file) return
+
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (!['xlsx', 'xls'].includes(extension ?? '')) {
+      setExcelMessageType('error')
+      setExcelMessage('Excel files only: please choose .xlsx or .xls.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setExcelMessageType('error')
+      setExcelMessage('File is too large. Maximum size is 10 MB.')
+      return
+    }
+
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), {
+        type: 'array',
+        cellDates: true,
+      })
+      const sheetName = workbook.SheetNames[0]
+      if (!sheetName) {
+        throw new Error('The Excel file has no worksheet.')
+      }
+
+      const matrix = XLSX.utils.sheet_to_json<unknown[]>(
+        workbook.Sheets[sheetName],
+        { header: 1, defval: '', raw: true, blankrows: false },
+      )
+      const headerRow = matrix[0]
+      if (!headerRow) {
+        throw new Error('The selected worksheet has no data.')
+      }
+
+      const headers = headerRow.map(normalizeExcelHeader)
+      while (headers.length > 0 && !headers[headers.length - 1]) {
+        headers.pop()
+      }
+      if (headers.length === 0 || headers.some((header) => !header)) {
+        throw new Error('Every Excel column must have a column header.')
+      }
+      if (new Set(headers).size !== headers.length) {
+        throw new Error('The Excel file contains duplicate column headers.')
+      }
+
+      const allowedFields = new Set(excelFields.map((field) => field.name))
+      const unsupportedHeaders = headers.filter(
+        (header) => !allowedFields.has(header),
+      )
+      if (unsupportedHeaders.length > 0) {
+        throw new Error(
+          `Unsupported Excel columns: ${unsupportedHeaders.join(', ')}.`,
+        )
+      }
+
+      const missingHeaders = excelFields
+        .filter((field) => field.required && !headers.includes(field.name))
+        .map((field) => field.name)
+      if (missingHeaders.length > 0) {
+        throw new Error(
+          `Missing required Excel columns: ${missingHeaders.join(', ')}.`,
+        )
+      }
+
+      const parsedRows: InventoryExcelRow[] = []
+      for (const [index, cells] of matrix.slice(1).entries()) {
+        if (cells.every((cell) => cell === '' || cell === null || cell === undefined)) {
+          continue
+        }
+        if (
+          cells
+            .slice(headers.length)
+            .some((cell) => cell !== '' && cell !== null && cell !== undefined)
+        ) {
+          throw new Error(`Row ${index + 2}: a value has no matching column header.`)
+        }
+
+        const rowNumber = index + 2
+        const values: InventoryExcelRow = {}
+        for (const field of excelFields) {
+          const columnIndex = headers.indexOf(field.name)
+          const value = parseInventoryExcelValue(
+            columnIndex < 0 ? '' : cells[columnIndex],
+            field,
+            rowNumber,
+          )
+          if (value !== undefined && value !== null && value !== '') {
+            values[field.name] = value
+          }
+        }
+
+        if (Object.keys(values).length === 0) {
+          throw new Error(`Row ${rowNumber}: enter at least one field value.`)
+        }
+        parsedRows.push(values)
+      }
+
+      if (parsedRows.length === 0) {
+        throw new Error('The selected worksheet has no data rows.')
+      }
+
+      setExcelFile(file)
+      setExcelPreviewRows(parsedRows)
+      setExcelPreviewColumns(headers)
+      setExcelMessageType('info')
+      setExcelMessage(`${parsedRows.length} Excel rows ready to preview.`)
+    } catch (fileError) {
+      setExcelMessageType('error')
+      setExcelMessage(
+        fileError instanceof Error
+          ? fileError.message
+          : 'Unable to read the Excel file.',
+      )
+    }
+  }
+
+  const handleExcelUpload = async () => {
+    if (!excelFile || excelPreviewRows.length === 0) {
+      setExcelMessageType('error')
+      setExcelMessage('Choose a valid Excel file first.')
+      return
+    }
+
+    setExcelUploading(true)
+    setExcelMessage('')
+    let savedCount = 0
+    try {
+      for (const row of excelPreviewRows) {
+        await createInventoryRecord(
+          excelEndpoint,
+          buildInventoryPayload(excelFields, row),
+        )
+        savedCount += 1
+      }
+
+      await retryLoad()
+      setExcelFile(null)
+      setExcelPreviewRows([])
+      setExcelPreviewColumns([])
+      setExcelMessageType('success')
+      setExcelMessage(`${savedCount} ${excelTargetLabel} records saved successfully.`)
+    } catch (uploadError) {
+      if (savedCount > 0) {
+        await retryLoad()
+      }
+      setExcelMessageType('error')
+      setExcelMessage(
+        `${savedCount} of ${excelPreviewRows.length} rows were saved. Row ${savedCount + 2}: ${formatInventoryError(
+          uploadError,
+          `Unable to upload ${excelTargetLabel.toLowerCase()} records.`,
+        )}`,
+      )
+    } finally {
+      setExcelUploading(false)
+    }
+  }
+
   return (
     <Stack spacing={3}>
       <Paper
@@ -1039,8 +1593,7 @@ function InventoryResourceForm({
                           disabled
                           value="__empty"
                         >
-                          No UOM records
-                          available
+                          No UOM records available
                         </MenuItem>
                       )}
                   </Select>
@@ -1164,6 +1717,8 @@ function InventoryResourceForm({
                 fields={resource.fields}
                 loading={loading}
                 options={options}
+                endpointErrors={endpointErrors}
+                onOptionSelected={handleHeaderOptionSelected}
                 isGoodsIssue={isGoodsIssue}
                 isGateEntry={
                   isGateEntry
@@ -1339,7 +1894,8 @@ function InventoryResourceForm({
                         }
                         fields={itemFields}
                         loading={loading}
-                        options={options}
+                        options={itemOptions}
+                        endpointErrors={endpointErrors}
                         prefix={`items.${rowIndex}.`}
                         isGateEntry={
                           isGateEntry
@@ -1509,6 +2065,151 @@ function InventoryResourceForm({
           Back
         </Button>
       </Stack>
+
+      <Paper
+        component="section"
+        sx={{
+          p: {
+            xs: 2,
+            md: 4,
+          },
+        }}
+      >
+        <Stack spacing={2}>
+          <div>
+            <Typography variant="h5">
+              Upload Data
+            </Typography>
+          </div>
+
+          {resource.items && (
+            <Stack
+              direction={{
+                xs: 'column',
+                sm: 'row',
+              }}
+              spacing={1}
+            >
+              <Button
+                disabled={excelUploading}
+                onClick={() => {
+                  setExcelTarget('record')
+                  setExcelFile(null)
+                  setExcelPreviewRows([])
+                  setExcelPreviewColumns([])
+                  setExcelMessage('')
+                }}
+                variant={excelTarget === 'record' ? 'contained' : 'outlined'}
+              >
+                {resource.label} records
+              </Button>
+              <Button
+                disabled={excelUploading}
+                onClick={() => {
+                  setExcelTarget('item')
+                  setExcelFile(null)
+                  setExcelPreviewRows([])
+                  setExcelPreviewColumns([])
+                  setExcelMessage('')
+                }}
+                variant={excelTarget === 'item' ? 'contained' : 'outlined'}
+              >
+                {resource.label} line items
+              </Button>
+            </Stack>
+          )}
+
+          {excelMessage && (
+            <Alert severity={excelMessageType}>
+              {excelMessage}
+            </Alert>
+          )}
+
+          <div>
+            <Typography
+              component="label"
+              htmlFor={`inventory-excel-file-${resource.key}`}
+              variant="body2"
+            >
+              Select Excel file
+            </Typography>
+            <input
+              accept=".xlsx,.xls"
+              disabled={excelUploading}
+              id={`inventory-excel-file-${resource.key}`}
+              onChange={(event) => {
+                void handleExcelFileChange(event.target.files?.[0])
+                event.target.value = ''
+              }}
+              style={{
+                display: 'block',
+                marginTop: 8,
+              }}
+              type="file"
+            />
+          </div>
+
+          {excelFile && (
+            <Typography variant="body2">
+              Selected: <strong>{excelFile.name}</strong>
+            </Typography>
+          )}
+
+          {excelPreviewRows.length > 0 && (
+            <>
+              <Typography variant="h6">
+                Excel Preview
+              </Typography>
+              <TableContainer
+                component={Paper}
+                variant="outlined"
+              >
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      {excelPreviewColumns.map((column) => (
+                        <TableCell key={column}>
+                          {excelFields.find(
+                            (field) => field.name === column,
+                          )?.name ?? column}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {excelPreviewRows.slice(0, 10).map((row, index) => (
+                      <TableRow key={`excel-row-${index}`}>
+                        {excelPreviewColumns.map((column) => (
+                          <TableCell key={column}>
+                            {String(row[column] ?? '')}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {excelPreviewRows.length > 10 && (
+                <Typography
+                  color="text.secondary"
+                  variant="body2"
+                >
+                  Showing first 10 of {excelPreviewRows.length} rows in preview.
+                </Typography>
+              )}
+              <div>
+                <Button
+                  disabled={excelUploading}
+                  onClick={() => void handleExcelUpload()}
+                  variant="contained"
+                >
+                  {excelUploading ? 'Uploading...' : 'Save'}
+                </Button>
+              </div>
+            </>
+          )}
+        </Stack>
+      </Paper>
 
       <Snackbar
         autoHideDuration={6000}

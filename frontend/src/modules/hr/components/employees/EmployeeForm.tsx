@@ -239,6 +239,7 @@ function EmployeeForm() {
 		formState: { errors },
 	} = useForm<EmployeeEnquiryFormData>({
 		resolver: zodResolver(employeeEnquirySchema),
+		mode: 'onChange',
 		defaultValues: {
 			candidate_name: '',
 			father_name: '',

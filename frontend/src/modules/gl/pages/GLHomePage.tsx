@@ -21,7 +21,7 @@ function GLHomePage() {
         <Tooltip title="Home">
           <IconButton
             aria-label="Go to application home"
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/')}
           >
             <Home size={20} />
           </IconButton>

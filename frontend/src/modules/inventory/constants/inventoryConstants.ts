@@ -896,6 +896,7 @@ const inventoryResources: InventoryResourceDefinition[] = [
     key: 'goods-issues',
     label: 'Goods Issue',
     endpoint: `${inventoryPrefix}/goods-issues`,
+    relatedEndpoints: [`${inventoryPrefix}/indent-items`],
     fields: [
       select(
         'indent_id',

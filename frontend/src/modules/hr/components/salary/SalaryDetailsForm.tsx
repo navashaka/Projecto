@@ -55,7 +55,10 @@ const optionalInteger = (label: string) =>
   z.number().int(`${label} must be a whole number`).optional()
 
 const salaryDetailsSchema = z.object({
-  user_id: z.number().int('User ID must be a whole number'),
+  user_id: z
+    .number()
+    .int('User ID must be a whole number')
+    .positive('User ID must be positive'),
   effective_date: z
     .string()
     .min(1, 'Effective date is required')
@@ -200,6 +203,7 @@ function SalaryDetailsForm() {
     formState: { errors, isSubmitting },
   } = useForm<SalaryDetailsFormData>({
     resolver: zodResolver(salaryDetailsSchema),
+    mode: 'onChange',
     defaultValues: emptyValues,
   })
 

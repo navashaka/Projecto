@@ -53,8 +53,8 @@ function CostOfElementPage() {
 
 		const days = Number(workedDays)
 
-		if (!days || days <= 0) {
-			alert('Please enter valid Worked Days')
+		if (!Number.isFinite(days) || !Number.isInteger(days) || days <= 0) {
+			alert('Please enter a positive whole number for Worked Days')
 			return
 		}
 
@@ -261,6 +261,11 @@ function CostOfElementPage() {
 									event.target.value,
 								)
 							}
+							slotProps={{
+								htmlInput: {
+									maxLength: 150,
+								},
+							}}
 							fullWidth
 						/>
 					</Grid>
@@ -283,6 +288,7 @@ function CostOfElementPage() {
 							slotProps={{
 								htmlInput: {
 									min: 1,
+									step: 1,
 								},
 							}}
 							fullWidth

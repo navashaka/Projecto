@@ -26,6 +26,9 @@ export function useInventoryResource(resource: InventoryResourceDefinition) {
   const [options, setOptions] = useState<
     Record<string, InventoryRecord[]>
   >({})
+  const [endpointErrors, setEndpointErrors] = useState<
+    Record<string, string>
+  >({})
   const [loading, setLoading] = useState(true)
   const [dataError, setDataError] = useState('')
 
@@ -77,9 +80,12 @@ export function useInventoryResource(resource: InventoryResourceDefinition) {
   const loadAll = useCallback(async () => {
     const optionEndpoints = [
       ...new Set(
-        getOptionFields(resource).flatMap((field) =>
-          field.optionsEndpoint ? [field.optionsEndpoint] : [],
-        ),
+        [
+          ...getOptionFields(resource).flatMap((field) =>
+            field.optionsEndpoint ? [field.optionsEndpoint] : [],
+          ),
+          ...(resource.relatedEndpoints ?? []),
+        ],
       ),
     ]
     const collectionEndpoints = [
@@ -90,64 +96,53 @@ export function useInventoryResource(resource: InventoryResourceDefinition) {
       ...new Set([...collectionEndpoints, ...optionEndpoints]),
     ]
 
-    try {
-      const results = await Promise.allSettled(
-        endpoints.map((endpoint) => getInventoryCollection(endpoint)),
-      )
-      const resultByEndpoint = new Map(
-        endpoints.map((endpoint, index) => [endpoint, results[index]]),
-      )
+    const results = await Promise.allSettled(
+      endpoints.map((endpoint) => getInventoryCollection(endpoint)),
+    )
+    const resultByEndpoint = new Map(
+      endpoints.map((endpoint, index) => [endpoint, results[index]]),
+    )
 
-      const resourceResult = resultByEndpoint.get(resource.endpoint)
-      if (!resourceResult || resourceResult.status === 'rejected') {
-        throw resourceResult?.reason ??
-          new Error(`Unable to load ${resource.endpoint}.`)
-      }
-
+    const resourceResult = resultByEndpoint.get(resource.endpoint)
+    if (resourceResult?.status === 'fulfilled') {
       setRecords(resourceResult.value)
-      const nextOptions: Record<string, InventoryRecord[]> = {}
-      const optionErrors: string[] = []
-
-      if (resource.items) {
-        const itemResult = resultByEndpoint.get(resource.items.endpoint)
-        if (itemResult?.status === 'fulfilled') {
-          setItemRecords(itemResult.value)
-        } else {
-          optionErrors.push(
-            `${resource.items.endpoint}: ${formatInventoryError(
-              itemResult?.reason,
-              'Unable to load item records.',
-            )}`,
-          )
-        }
-      }
-
-      optionEndpoints.forEach((endpoint) => {
-        const result = resultByEndpoint.get(endpoint)
-        if (result?.status === 'fulfilled') {
-          nextOptions[endpoint] = result.value
-        } else {
-          optionErrors.push(
-            `${endpoint}: ${formatInventoryError(
-              result?.reason,
-              'Unable to load referenced records.',
-            )}`,
-          )
-        }
-      })
-
-      setOptions(nextOptions)
-      setDataError(optionErrors.join('; '))
-    } catch (error) {
-      setDataError(
-        formatInventoryError(
-          error,
-          `Unable to load ${resource.label.toLowerCase()} data.`,
-        ),
-      )
-    } finally {
-      setLoading(false)
     }
+
+    const nextOptions: Record<string, InventoryRecord[]> = {}
+    const nextEndpointErrors: Record<string, string> = {}
+
+    if (resource.items) {
+      const itemResult = resultByEndpoint.get(resource.items.endpoint)
+      if (itemResult?.status === 'fulfilled') {
+        setItemRecords(itemResult.value)
+      }
+    }
+
+    optionEndpoints.forEach((endpoint) => {
+      const result = resultByEndpoint.get(endpoint)
+      if (result?.status === 'fulfilled') {
+        nextOptions[endpoint] = result.value
+      }
+    })
+
+    endpoints.forEach((endpoint) => {
+      const result = resultByEndpoint.get(endpoint)
+      if (result?.status === 'rejected') {
+        nextEndpointErrors[endpoint] = formatInventoryError(
+          result.reason,
+          `Unable to load records from ${endpoint}.`,
+        )
+      }
+    })
+
+    setOptions(nextOptions)
+    setEndpointErrors(nextEndpointErrors)
+    setDataError(
+      Object.entries(nextEndpointErrors)
+        .map(([endpoint, error]) => `${endpoint}: ${error}`)
+        .join('; '),
+    )
+    setLoading(false)
   }, [resource])
 
   const retryLoad = useCallback(async () => {
@@ -160,10 +155,29 @@ export function useInventoryResource(resource: InventoryResourceDefinition) {
     void Promise.resolve().then(loadAll)
   }, [loadAll])
 
+  useEffect(() => {
+    if (
+      resource.key !== 'material-receipt-notes' &&
+      resource.key !== 'goods-issues'
+    ) {
+      return
+    }
+
+    const refreshOptions = () => {
+      void loadAll()
+    }
+
+    window.addEventListener('focus', refreshOptions)
+    return () => {
+      window.removeEventListener('focus', refreshOptions)
+    }
+  }, [loadAll, resource.key])
+
   return {
     records,
     itemRecords,
     options,
+    endpointErrors,
     loading,
     dataError,
     reloadRecords,

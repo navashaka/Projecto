@@ -24,12 +24,58 @@ interface Country {
   region?: string | null;
 }
 
-const CompanyProfileForm: React.FC = () => {
+type CompanyProfileFormProps = {
+  onBackToLogin?: () => void;
+};
+
+const indianStates = [
+  "ANDAMAN AND NICOBAR ISLANDS",
+  "ANDHRA PRADESH",
+  "ARUNACHAL PRADESH",
+  "ASSAM",
+  "BIHAR",
+  "CHANDIGARH",
+  "CHHATTISGARH",
+  "DELHI",
+  "GOA",
+  "GUJARAT",
+  "HARYANA",
+  "HIMACHAL PRADESH",
+  "JAMMU AND KASHMIR",
+  "JHARKHAND",
+  "KARNATAKA",
+  "KERALA",
+  "LADAKH",
+  "LAKSHADWEEP",
+  "MADHYA PRADESH",
+  "MAHARASHTRA",
+  "MANIPUR",
+  "MEGHALAYA",
+  "MIZORAM",
+  "NAGALAND",
+  "ODISHA",
+  "PUDUCHERRY",
+  "PUNJAB",
+  "RAJASTHAN",
+  "SIKKIM",
+  "TAMIL NADU",
+  "TELANGANA",
+  "THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU",
+  "TRIPURA",
+  "UTTAR PRADESH",
+  "UTTARAKHAND",
+  "WEST BENGAL",
+];
+
+const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({
+  onBackToLogin,
+}) => {
   const navigate = useNavigate();
   const [countries, setCountries] = useState<Country[]>([]);
   const [pincodes, setPincodes] = useState<string[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [excelFileName, setExcelFileName] = useState("");
 
   const [formData, setFormData] = useState({
     organizationName: "",
@@ -248,7 +294,7 @@ const CompanyProfileForm: React.FC = () => {
           mb: 3,
         }}
       >
-        Company Profile
+        Customer Registration Form
       </Typography>
 
       <Paper
@@ -267,7 +313,7 @@ const CompanyProfileForm: React.FC = () => {
               mb: 2,
             }}
           >
-            Profile
+            Organization Profile
           </Typography>
 
           <Grid container spacing={2}>
@@ -321,7 +367,7 @@ const CompanyProfileForm: React.FC = () => {
               mb: 2,
             }}
           >
-            Address
+            Registered/Corporate Office Address
           </Typography>
 
           <Grid container spacing={2}>
@@ -330,7 +376,7 @@ const CompanyProfileForm: React.FC = () => {
                 fullWidth
                 multiline
                 minRows={2}
-                label="Address of Corporate Office / Registered Office"
+                label="Address of Corporate Office / Registered office"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
@@ -340,7 +386,7 @@ const CompanyProfileForm: React.FC = () => {
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="Door No / House No / Flat No / Survey No / Floor No"
+                label="Door No./House No./ Flat No. / Survey No. / Floor No."
                 name="doorNo"
                 value={formData.doorNo}
                 onChange={handleChange}
@@ -350,7 +396,7 @@ const CompanyProfileForm: React.FC = () => {
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="Name of Building"
+                label="Name of the Building"
                 name="buildingName"
                 value={formData.buildingName}
                 onChange={handleChange}
@@ -398,12 +444,31 @@ const CompanyProfileForm: React.FC = () => {
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
+              <Autocomplete
+                freeSolo
                 fullWidth
-                label="State"
-                name="state"
+                options={indianStates}
                 value={formData.state}
-                onChange={handleChange}
+                onInputChange={(_event, value, reason) => {
+                  if (reason === "input" || reason === "clear") {
+                    setFormData((previous) => ({
+                      ...previous,
+                      state: value,
+                    }));
+                  }
+                }}
+                onChange={(_event, value) => {
+                  setFormData((previous) => ({
+                    ...previous,
+                    state: value || "",
+                  }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="State"
+                  />
+                )}
               />
             </Grid>
 
@@ -440,7 +505,6 @@ const CompanyProfileForm: React.FC = () => {
                   <TextField
                     {...params}
                     label="PIN Code"
-                    required
                   />
                 )}
               />
@@ -460,7 +524,6 @@ const CompanyProfileForm: React.FC = () => {
                   <TextField
                     {...params}
                     label="Country"
-                    required
                   />
                 )}
               />
@@ -475,7 +538,7 @@ const CompanyProfileForm: React.FC = () => {
               mb: 2,
             }}
           >
-            Banks & Accounts
+            Banks & Accounts at Corporate office / Registered office
           </Typography>
 
           <Grid container spacing={2}>
@@ -507,7 +570,7 @@ const CompanyProfileForm: React.FC = () => {
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="Primary Bank Account No."
+                label="Primary Bank Account Number"
                 name="primaryAccountNo"
                 value={formData.primaryAccountNo}
                 onChange={handleChange}
@@ -527,7 +590,7 @@ const CompanyProfileForm: React.FC = () => {
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="Secondary Bank Account No."
+                label="Secondary Bank Account Number"
                 name="secondaryAccountNo"
                 value={formData.secondaryAccountNo}
                 onChange={handleChange}
@@ -566,7 +629,7 @@ const CompanyProfileForm: React.FC = () => {
               mb: 2,
             }}
           >
-            Business
+            Type of Business
           </Typography>
 
           <Box>
@@ -615,6 +678,32 @@ const CompanyProfileForm: React.FC = () => {
             />
           </Box>
 
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
+              mt: 4,
+              mb: 2,
+            }}
+          >
+            Excel Upload
+          </Typography>
+
+          <Box sx={{ mb: 2 }}>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(event) => {
+                setExcelFileName(event.target.files?.[0]?.name || "");
+              }}
+            />
+            {excelFileName && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Selected file: {excelFileName}
+              </Typography>
+            )}
+          </Box>
+
           <Box
             sx={{
               display: "flex",
@@ -626,7 +715,9 @@ const CompanyProfileForm: React.FC = () => {
             <Button
               type="button"
               variant="outlined"
-              onClick={() => navigate(-1)}
+              onClick={() =>
+                onBackToLogin ? onBackToLogin() : navigate(-1)
+              }
               sx={{ textTransform: 'lowercase' }}
             >
               Back

@@ -25,6 +25,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import * as XLSX from 'xlsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import apiClient from '../../../services/apiClient'
@@ -41,6 +42,7 @@ type FormValue = string | boolean
 type FormValues = Record<string, FormValue>
 type OptionCollections = Record<string, GLRecord[]>
 type Payload = Record<string, string | number | boolean | null>
+type ExcelMessageType = 'error' | 'info' | 'success'
 
 const frontendDefaultGroupPrefix = 'frontend-default:gl-group:'
 
@@ -330,11 +332,106 @@ function formatCellValue(
   return String(value)
 }
 
+function normalizeExcelHeader(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+}
+
+function formatExcelDate(value: unknown, field: GLFieldDefinition): string {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+  }
+
+  if (typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value)
+    if (date) {
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+    }
+  }
+
+  const text = String(value ?? '').trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const [year, month, day] = text.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    if (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    ) {
+      return text
+    }
+  }
+
+  throw new Error(`${field.label} must be a valid date in YYYY-MM-DD format.`)
+}
+
+function parseGLExcelValue(
+  value: unknown,
+  field: GLFieldDefinition,
+  rowNumber: number,
+): FormValue {
+  if (value === undefined || value === null || value === '') {
+    if (field.required) {
+      throw new Error(`Row ${rowNumber}: ${field.name} is required.`)
+    }
+    return field.kind === 'boolean' ? false : ''
+  }
+
+  if (field.kind === 'boolean') {
+    if (typeof value === 'boolean') return value
+    const normalized = String(value).trim().toLowerCase()
+    if (['true', 'yes', '1'].includes(normalized)) return true
+    if (['false', 'no', '0'].includes(normalized)) return false
+    throw new Error(
+      `Row ${rowNumber}: ${field.name} must be TRUE/FALSE, YES/NO, or 1/0.`,
+    )
+  }
+
+  if (field.kind === 'date') {
+    try {
+      return formatExcelDate(value, field)
+    } catch (error) {
+      throw new Error(
+        `Row ${rowNumber}: ${error instanceof Error ? error.message : `Invalid ${field.name}.`}`,
+      )
+    }
+  }
+
+  const text = String(value).trim()
+  if (field.required && !text) {
+    throw new Error(`Row ${rowNumber}: ${field.name} is required.`)
+  }
+
+  if (field.kind === 'number') {
+    const number = Number(value)
+    if (!Number.isFinite(number)) {
+      throw new Error(`Row ${rowNumber}: ${field.name} must be a valid number.`)
+    }
+    if (field.step === 1 && !Number.isInteger(number)) {
+      throw new Error(`Row ${rowNumber}: ${field.name} must be a whole number.`)
+    }
+    return String(number)
+  }
+
+  if (field.kind === 'select') {
+    const number = Number(value)
+    if (!Number.isInteger(number) || number < 1) {
+      throw new Error(`Row ${rowNumber}: ${field.name} must be a valid record ID.`)
+    }
+    return String(number)
+  }
+
+  return text
+}
+
 function getInputValue(record: GLRecord, field: GLFieldDefinition): FormValue {
   const value = record[field.name]
   if (field.kind === 'boolean') {
     return value === true
   }
+
   if (field.kind === 'date' && typeof value === 'string') {
     return value.slice(0, 10)
   }
@@ -361,6 +458,13 @@ function GLResourcePage() {
   const [error, setError] = useState('')
   const [formError, setFormError] = useState('')
   const [success, setSuccess] = useState('')
+  const [excelFile, setExcelFile] = useState<File | null>(null)
+  const [excelPreviewRows, setExcelPreviewRows] = useState<FormValues[]>([])
+  const [excelUploading, setExcelUploading] = useState(false)
+  const [excelMessage, setExcelMessage] = useState('')
+  const [excelMessageType, setExcelMessageType] =
+    useState<ExcelMessageType>('info')
+  const excelInputRef = useRef<HTMLInputElement | null>(null)
 
   const optionEndpoints = useMemo(
     () => {
@@ -413,6 +517,184 @@ function GLResourcePage() {
   useEffect(() => {
     void Promise.resolve().then(loadRecords)
   }, [loadRecords])
+
+  useEffect(() => {
+    setExcelFile(null)
+    setExcelPreviewRows([])
+    setExcelMessage('')
+    if (excelInputRef.current) {
+      excelInputRef.current.value = ''
+    }
+  }, [resource?.key])
+
+  const handleExcelFileChange = async (file?: File) => {
+    setExcelFile(null)
+    setExcelPreviewRows([])
+    setExcelMessage('')
+
+    if (!file || !resource) return
+
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (!['xlsx', 'xls'].includes(extension ?? '')) {
+      setExcelMessageType('error')
+      setExcelMessage('Excel files only: please choose .xlsx or .xls.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setExcelMessageType('error')
+      setExcelMessage('File is too large. Maximum size is 10 MB.')
+      return
+    }
+
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), {
+        type: 'array',
+        cellDates: true,
+      })
+      const sheetName = workbook.SheetNames[0]
+      if (!sheetName) {
+        throw new Error('The Excel file has no worksheet.')
+      }
+
+      const matrix = XLSX.utils.sheet_to_json<unknown[]>(
+        workbook.Sheets[sheetName],
+        { header: 1, defval: '', raw: true, blankrows: false },
+      )
+      const headerRow = matrix[0]
+      if (!headerRow) {
+        throw new Error('The selected worksheet has no data.')
+      }
+
+      const headers = headerRow.map(normalizeExcelHeader)
+      while (headers.length > 0 && !headers[headers.length - 1]) {
+        headers.pop()
+      }
+      if (headers.length === 0 || headers.some((header) => !header)) {
+        throw new Error('Every Excel column must have a column header.')
+      }
+      if (new Set(headers).size !== headers.length) {
+        throw new Error('The Excel file contains duplicate column headers.')
+      }
+
+      const allowedFields = new Set(resource.fields.map((field) => field.name))
+      const unsupportedHeaders = headers.filter(
+        (header) => !allowedFields.has(header),
+      )
+      if (unsupportedHeaders.length > 0) {
+        throw new Error(
+          `Unsupported Excel columns: ${unsupportedHeaders.join(', ')}.`,
+        )
+      }
+
+      const missingHeaders = resource.fields
+        .filter((field) => field.required && !headers.includes(field.name))
+        .map((field) => field.name)
+      if (missingHeaders.length > 0) {
+        throw new Error(
+          `Missing required Excel columns: ${missingHeaders.join(', ')}.`,
+        )
+      }
+
+      const rows: FormValues[] = []
+      for (const [index, cells] of matrix.slice(1).entries()) {
+        if (cells.every((cell) => cell === '' || cell === null || cell === undefined)) {
+          continue
+        }
+        if (
+          cells
+            .slice(headers.length)
+            .some((cell) => cell !== '' && cell !== null && cell !== undefined)
+        ) {
+          throw new Error(`Row ${index + 2}: a value has no matching column header.`)
+        }
+
+        const rowNumber = index + 2
+        const values: FormValues = {}
+        for (const field of resource.fields) {
+          const columnIndex = headers.indexOf(field.name)
+          values[field.name] = parseGLExcelValue(
+            columnIndex < 0 ? '' : cells[columnIndex],
+            field,
+            rowNumber,
+          )
+        }
+
+        const validation = buildPayload(
+          resource,
+          values,
+          resource.key === 'bank-accounts',
+        )
+        if (!validation.payload) {
+          throw new Error(`Row ${rowNumber}: ${validation.error ?? 'Invalid data.'}`)
+        }
+        rows.push(values)
+      }
+
+      if (rows.length === 0) {
+        throw new Error('The selected worksheet has no data rows.')
+      }
+
+      setExcelFile(file)
+      setExcelPreviewRows(rows)
+      setExcelMessageType('info')
+      setExcelMessage(`${rows.length} Excel rows ready to preview.`)
+    } catch (fileError) {
+      setExcelMessageType('error')
+      setExcelMessage(
+        fileError instanceof Error
+          ? fileError.message
+          : 'Unable to read the Excel file.',
+      )
+    }
+  }
+
+  const handleExcelUpload = async () => {
+    if (!resource || !excelFile || excelPreviewRows.length === 0) {
+      setExcelMessageType('error')
+      setExcelMessage('Choose a valid Excel file first.')
+      return
+    }
+
+    setExcelUploading(true)
+    setExcelMessage('')
+    let savedCount = 0
+    try {
+      for (const [index, values] of excelPreviewRows.entries()) {
+        const result = buildPayload(
+          resource,
+          values,
+          resource.key === 'bank-accounts',
+        )
+        if (!result.payload) {
+          throw new Error(`Row ${index + 2}: ${result.error ?? 'Invalid data.'}`)
+        }
+        await apiClient.post(resource.endpoint, result.payload)
+        savedCount += 1
+      }
+
+      await loadRecords()
+      setExcelFile(null)
+      setExcelPreviewRows([])
+      if (excelInputRef.current) {
+        excelInputRef.current.value = ''
+      }
+      setExcelMessageType('success')
+      setExcelMessage(`${savedCount} ${resource.label} records saved successfully.`)
+    } catch (uploadError) {
+      if (savedCount > 0) {
+        await loadRecords()
+      }
+      setExcelMessageType('error')
+      setExcelMessage(
+        `${savedCount} of ${excelPreviewRows.length} rows were saved. Row ${savedCount + 2}: ${getErrorMessage(
+          uploadError,
+          `Unable to upload ${resource.label.toLowerCase()} records.`,
+        )}`,
+      )
+    } finally {
+      setExcelUploading(false)
+    }
+  }
 
   if (!resource) {
     return (
@@ -1400,6 +1682,84 @@ function GLResourcePage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Paper component="section" sx={{ p: { xs: 2, md: 3 } }}>
+        <Stack spacing={2}>
+          <div>
+            <Typography variant="h5">Upload Data</Typography>
+          </div>
+
+          {excelMessage && (
+            <Alert severity={excelMessageType}>{excelMessage}</Alert>
+          )}
+
+          <div>
+            <Typography component="label" htmlFor="gl-excel-file" variant="body2">
+              Select Excel file
+            </Typography>
+            <input
+              accept=".xlsx,.xls"
+              disabled={excelUploading}
+              id="gl-excel-file"
+              onChange={(event) => {
+                void handleExcelFileChange(event.target.files?.[0])
+                event.target.value = ''
+              }}
+              ref={excelInputRef}
+              style={{ display: 'block', marginTop: 8 }}
+              type="file"
+            />
+          </div>
+
+          {excelFile && (
+            <Typography variant="body2">
+              Selected: <strong>{excelFile.name}</strong>
+            </Typography>
+          )}
+
+          {excelPreviewRows.length > 0 && (
+            <>
+              <Typography variant="h6">Excel Preview</Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      {resource.fields.map((field) => (
+                        <TableCell key={field.name}>{field.name}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {excelPreviewRows.slice(0, 10).map((row, index) => (
+                      <TableRow key={`excel-row-${index}`}>
+                        {resource.fields.map((field) => (
+                          <TableCell key={field.name}>
+                            {String(row[field.name] ?? '')}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {excelPreviewRows.length > 10 && (
+                <Typography color="text.secondary" variant="body2">
+                  Showing first 10 of {excelPreviewRows.length} rows in preview.
+                </Typography>
+              )}
+              <div>
+                <Button
+                  disabled={excelUploading}
+                  onClick={() => void handleExcelUpload()}
+                  variant="contained"
+                >
+                  {excelUploading ? 'Uploading...' : 'Save'}
+                </Button>
+              </div>
+            </>
+          )}
+        </Stack>
+      </Paper>
 
       <Dialog
         fullWidth

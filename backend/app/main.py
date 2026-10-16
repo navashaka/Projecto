@@ -295,12 +295,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup() -> None:
-    non_inventory_tables = [
-        table
-        for table in Base.metadata.tables.values()
-        if not table.name.startswith("inventory_")
-    ]
-    Base.metadata.create_all(bind=engine, tables=non_inventory_tables)
+    Base.metadata.create_all(bind=engine)
 
 
 app.include_router(users_router)

@@ -1,0 +1,34 @@
+16-10-2026
+
+GL Module:
+
+- Worked on adding Excel upload functionality to GL forms and pages.
+- Worked on keeping the Excel upload section at the bottom of the forms, following the existing HR module pattern.
+- Updated Excel upload button labels from "Save excel records" to "Save".
+- Updated the next-upload button label to "Upload data".
+- Removed the unnecessary line from the Excel upload section.
+- Worked on updating the Home icon navigation to return to the main page instead of the Admin Dashboard.
+- Preserved existing functionality while working on the GL module changes.
+
+Inventory Module:
+
+- Worked on adding Excel upload functionality to Inventory forms and pages, following the HR module pattern.
+- Updated Excel upload button labels and removed unnecessary text as requested.
+- Worked on updating the Home icon navigation to return to the main page.
+- Investigated Inventory dropdown loading issues.
+- Added the provided Unit of Measure (UOM) values to the database.
+- Added the provided Stock Group values to the database.
+- Updated InventoryResourceForm.tsx to improve dropdown lookup handling.
+- Updated useInventoryResource.ts to refresh lookup data when the browser window regains focus.
+- Updated UnitOfMeasurePage.tsx for UOM lookup handling.
+- Investigated the MRN – Gate Entry dropdown integration.
+- Investigated the Goods Issue – Consumption – Indent dropdown integration.
+- Verified the Gate Entry, Gate Entry Items, Indents, and Indent Items APIs.
+- Checked the frontend field mappings and related item-loading logic.
+- Confirmed that the Gate Entry and Indent APIs return HTTP 200 with empty arrays because genuine transaction records are not available in the database.
+- Confirmed that Stock Items are currently unavailable in the database, which affects valid transaction detail records.
+- Opened the Material Receipt Note and Goods Issue pages in the browser for verification.
+- Ran the frontend build successfully.
+- Ran Git diff checks on the relevant changes.
+- Did not create dummy transaction records or modify the database schema.
+- Final end-to-end testing with genuine data is pending and will be performed by Madam.

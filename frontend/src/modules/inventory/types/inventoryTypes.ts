@@ -71,6 +71,7 @@ export interface InventoryResourceDefinition {
   key: InventoryResourceKey
   label: string
   endpoint: string
+  relatedEndpoints?: string[]
   fields: InventoryFieldDefinition[]
   displayColumns: Array<{ field: string; label: string }>
   items?: InventoryItemsDefinition

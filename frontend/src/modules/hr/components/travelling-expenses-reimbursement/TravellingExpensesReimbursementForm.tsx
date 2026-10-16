@@ -8,31 +8,10 @@ import {
 	Typography,
 } from '@mui/material'
 import { useForm, useWatch } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import * as XLSX from 'xlsx'
 import HRBackButton from '../HRBackButton'
-
-type ReimbursementFormData = {
-	user_id: number
-	name: string
-	employee_code: string
-	designation: string
-	department: string
-	from_date: string
-	to_date: string
-	place_visited: string
-	purpose_of_visit: string
-	expense_type1: string
-	expense_amount1?: number
-	attachment1: string
-	expense_type2: string
-	expense_amount2?: number
-	attachment2: string
-	other_expense_type: string
-	other_expense_amount?: number
-	attachment3: string
-	total_amount: number
-}
 
 const optionalText = (maxLength: number, label: string) =>
 	z.string().trim().max(maxLength, `${label} must be ${maxLength} characters or less`).optional()
@@ -60,7 +39,7 @@ const optionalAmount = (label: string) =>
 		.optional()
 
 const reimbursementSchema = z.object({
-	user_id: z.number().int('User ID must be a whole number'),
+	user_id: z.number().int('User ID must be a whole number').positive('User ID must be positive'),
 	name: optionalText(150, 'Name'),
 	employee_code: optionalText(50, 'Employee code'),
 	designation: optionalText(150, 'Designation'),
@@ -80,6 +59,8 @@ const reimbursementSchema = z.object({
 	attachment3: z.string().optional(),
 	total_amount: optionalAmount('Total amount'),
 })
+
+type ReimbursementFormData = z.infer<typeof reimbursementSchema>
 
 const reimbursementExcelHeaders = Object.keys(
 	reimbursementSchema.shape,
@@ -131,9 +112,12 @@ function TravellingExpensesReimbursementForm() {
 		control,
 		handleSubmit,
 		setValue,
+		formState: { errors },
 	} = useForm<ReimbursementFormData>({
+		resolver: zodResolver(reimbursementSchema),
+		mode: 'onChange',
 		defaultValues: {
-			user_id: 1,
+			user_id: undefined as unknown as number,
 			name: '',
 			employee_code: '',
 			designation: '',
@@ -154,6 +138,14 @@ function TravellingExpensesReimbursementForm() {
 			total_amount: 0,
 		},
 	})
+
+	const validationProps = (name: keyof ReimbursementFormData) => {
+		const message = errors[name]?.message
+		return {
+			error: Boolean(message),
+			helperText: typeof message === 'string' ? message : undefined,
+		}
+	}
 
 	const expenseAmount1 = useWatch({
 		control,
@@ -429,6 +421,7 @@ function TravellingExpensesReimbursementForm() {
 							{...register('user_id', {
 								valueAsNumber: true,
 							})}
+							{...validationProps('user_id')}
 							label="User ID"
 							type="number"
 							required
@@ -439,6 +432,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('name')}
+							{...validationProps('name')}
 							label="Name"
 							fullWidth
 						/>
@@ -447,6 +441,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('employee_code')}
+							{...validationProps('employee_code')}
 							label="Employee code"
 							fullWidth
 						/>
@@ -455,6 +450,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('designation')}
+							{...validationProps('designation')}
 							label="Designation"
 							fullWidth
 						/>
@@ -463,6 +459,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('department')}
+							{...validationProps('department')}
 							label="Department"
 							fullWidth
 						/>
@@ -471,6 +468,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('from_date')}
+							{...validationProps('from_date')}
 							label="From date"
 							type="date"
 							slotProps={{
@@ -483,6 +481,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('to_date')}
+							{...validationProps('to_date')}
 							label="To date"
 							type="date"
 							slotProps={{
@@ -495,6 +494,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('place_visited')}
+							{...validationProps('place_visited')}
 							label="Place visited"
 							fullWidth
 						/>
@@ -503,6 +503,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12 }}>
 						<TextField
 							{...register('purpose_of_visit')}
+							{...validationProps('purpose_of_visit')}
 							label="Purpose of visit"
 							multiline
 							minRows={3}
@@ -513,6 +514,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('expense_type1')}
+							{...validationProps('expense_type1')}
 							label="Expense type 1"
 							fullWidth
 						/>
@@ -526,6 +528,7 @@ function TravellingExpensesReimbursementForm() {
 										? undefined
 										: Number(value),
 							})}
+							{...validationProps('expense_amount1')}
 							label="Expense amount 1"
 							type="number"
 							slotProps={{
@@ -538,6 +541,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('attachment1')}
+							{...validationProps('attachment1')}
 							label="Attachment 1"
 							fullWidth
 						/>
@@ -546,6 +550,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('expense_type2')}
+							{...validationProps('expense_type2')}
 							label="Expense type 2"
 							fullWidth
 						/>
@@ -559,6 +564,7 @@ function TravellingExpensesReimbursementForm() {
 										? undefined
 										: Number(value),
 							})}
+							{...validationProps('expense_amount2')}
 							label="Expense amount 2"
 							type="number"
 							slotProps={{
@@ -571,6 +577,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('attachment2')}
+							{...validationProps('attachment2')}
 							label="Attachment 2"
 							fullWidth
 						/>
@@ -579,6 +586,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('other_expense_type')}
+							{...validationProps('other_expense_type')}
 							label="Other expense type"
 							fullWidth
 						/>
@@ -592,6 +600,7 @@ function TravellingExpensesReimbursementForm() {
 										? undefined
 										: Number(value),
 							})}
+							{...validationProps('other_expense_amount')}
 							label="Other expense amount"
 							type="number"
 							slotProps={{
@@ -604,6 +613,7 @@ function TravellingExpensesReimbursementForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('attachment3')}
+							{...validationProps('attachment3')}
 							label="Attachment 3"
 							fullWidth
 						/>

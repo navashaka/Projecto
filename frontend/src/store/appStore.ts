@@ -52,7 +52,7 @@ export const useAppStore = create<AppState>()(
       adminSession: null,
 
       activeModule: 'dashboard',
-      showRegisterForm: false,
+      showRegisterForm: true,
       leftSidebarCollapsed: false,
       rightSidebarCollapsed: false,
       headerCollapsed: false,
@@ -127,6 +127,11 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'projecto-app-store',
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState as Partial<AppState>),
+        showRegisterForm: currentState.showRegisterForm,
+      }),
     },
   ),
 )

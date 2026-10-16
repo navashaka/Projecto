@@ -8,7 +8,6 @@ import {
 import { useAppStore } from './store'
 
 import LoginPage from './components/auth/LoginPage'
-import UserEnquiryForm from './components/auth/UserEnquiryForm'
 
 import Header from './components/layout/Header'
 import LeftSidebar from './components/layout/LeftSidebar'
@@ -25,6 +24,7 @@ import CreatePayrollPage from './modules/hr/pages/payroll/CreatePayrollPage'
 import CreateTravellingAdvancePage from './modules/hr/pages/travelling-advance/CreateTravellingAdvancePage'
 import HRHomePage from './modules/hr/pages/HRHomePage'
 
+import CompanyProfileForm from './modules/auth/components/company-profile/CompanyProfileForm'
 import CreateCompanyProfilePage from './modules/auth/pages/company-profile/CreateCompanyProfilePage'
 
 import JobProfileForm from './modules/hr/components/job-profile/JobProfileForm'
@@ -107,7 +107,7 @@ function App() {
         path="/login"
         element={
           showRegisterForm ? (
-            <UserEnquiryForm
+            <CompanyProfileForm
               onBackToLogin={() => toggleRegisterForm(false)}
             />
           ) : (

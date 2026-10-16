@@ -116,6 +116,10 @@ function AttendanceForm() {
   const [lop, setLop] = useState('0')
   const [otherPaidLeaves, setOtherPaidLeaves] = useState('0')
   const [nationalHolidays, setNationalHolidays] = useState(0)
+  const [holidayError, setHolidayError] = useState('')
+  const [holidayLoading, setHolidayLoading] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
+  const [touched, setTouched] = useState({ employeeCode: false, month: false })
   const [saving, setSaving] = useState(false)
   const [attendanceId, setAttendanceId] = useState<number | null>(null)
 
@@ -154,6 +158,13 @@ function AttendanceForm() {
     () => netPresentDays + (Number(otherPaidLeaves) || 0),
     [netPresentDays, otherPaidLeaves],
   )
+  const leaveDayFields = [
+    { label: 'Casual Leave (CL)', value: cl, setter: setCl },
+    { label: 'Earned Leave (EL)', value: el, setter: setEl },
+    { label: 'Paid Leave (PL)', value: pl, setter: setPl },
+    { label: 'Loss of Pay (LOP)', value: lop, setter: setLop },
+    { label: 'Other Paid Days', value: otherPaidLeaves, setter: setOtherPaidLeaves },
+  ]
 
   const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
   const paginatedRecords = records.slice(
@@ -167,11 +178,13 @@ function AttendanceForm() {
   }, [])
 
   const loadCompanyHolidays = async (selectedMonth: string) => {
+    setHolidayError('')
     if (!selectedMonth) {
       setNationalHolidays(0)
       return
     }
 
+    setHolidayLoading(true)
     try {
       const response = await fetch(`${API}/company-holidays/`)
       const result = await response.json()
@@ -189,6 +202,13 @@ function AttendanceForm() {
     } catch (error) {
       console.error(error)
       setNationalHolidays(0)
+      setHolidayError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to load company holidays',
+      )
+    } finally {
+      setHolidayLoading(false)
     }
   }
 
@@ -227,6 +247,8 @@ function AttendanceForm() {
   }, [currentPage, records.length])
 
   const handleSave = async () => {
+    setShowValidation(true)
+
     if (!employeeCode.trim()) {
       showMessage('Please enter Employee Code.', 'error')
       return
@@ -234,6 +256,26 @@ function AttendanceForm() {
 
     if (!month) {
       showMessage('Please select Attendance Month.', 'error')
+      return
+    }
+
+    const invalidLeaveDay = leaveDayFields.find(
+      ({ value }) =>
+        value !== '' && (!Number.isInteger(Number(value)) || Number(value) < 0),
+    )
+    if (invalidLeaveDay) {
+      showMessage(
+        `${invalidLeaveDay.label} must be a non-negative whole number.`,
+        'error',
+      )
+      return
+    }
+
+    if (holidayLoading || holidayError) {
+      showMessage(
+        holidayError || 'Wait for company holidays to finish loading.',
+        'error',
+      )
       return
     }
 
@@ -532,27 +574,47 @@ function AttendanceForm() {
               <h2 className="h4 mb-3">Attendance Information</h2>
               <div className="row g-3">
                 <div className="col-md-6">
-                  <label className="form-label">Employee Code</label>
+                  <label className="form-label" htmlFor="attendance-employee-code">Employee Code</label>
                   <input
+                    id="attendance-employee-code"
                     type="text"
                     value={employeeCode}
-                    onChange={(event) => setEmployeeCode(event.target.value)}
+                    onChange={(event) => {
+                      setEmployeeCode(event.target.value)
+                      setMessage('')
+                    }}
+                    onBlur={() => setTouched((previous) => ({ ...previous, employeeCode: true }))}
                     className={inputClass}
                     placeholder="Enter employee code"
+                    aria-invalid={(showValidation || touched.employeeCode) && !employeeCode.trim()}
                   />
+                  {(showValidation || touched.employeeCode) && !employeeCode.trim() && (
+                    <div className="text-danger small mt-1">Employee Code is required.</div>
+                  )}
                 </div>
 
                 <div className="col-md-6">
-                  <label className="form-label">Attendance Month</label>
+                  <label className="form-label" htmlFor="attendance-month">Attendance Month</label>
                   <input
+                    id="attendance-month"
                     type="month"
                     value={month}
                     onChange={(event) => {
                       setMonth(event.target.value)
                       void loadCompanyHolidays(event.target.value)
                     }}
+                    onBlur={() => setTouched((previous) => ({ ...previous, month: true }))}
                     className={inputClass}
+                    aria-invalid={(showValidation || touched.month) && !month}
                   />
+                  {(showValidation || touched.month) && !month && (
+                    <div className="text-danger small mt-1">Attendance Month is required.</div>
+                  )}
+                  {holidayError && (
+                    <div className="text-danger small mt-1" role="alert">
+                      {holidayError}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -560,26 +622,23 @@ function AttendanceForm() {
             <div className="border rounded bg-white p-3 p-md-4 mb-3">
               <h2 className="h4 mb-3">Leave Details</h2>
               <div className="row g-3">
-                {[
-                  { label: 'Casual Leave (CL)', value: cl, setter: setCl },
-                  { label: 'Earned Leave (EL)', value: el, setter: setEl },
-                  { label: 'Paid Leave (PL)', value: pl, setter: setPl },
-                  { label: 'Loss of Pay (LOP)', value: lop, setter: setLop },
-                  {
-                    label: 'Other Paid Days',
-                    value: otherPaidLeaves,
-                    setter: setOtherPaidLeaves,
-                  },
-                ].map((field) => (
+                {leaveDayFields.map((field) => (
                   <div className="col-md-3" key={field.label}>
                     <label className="form-label">{field.label}</label>
                     <input
                       type="number"
                       min="0"
+                      step="1"
                       value={field.value}
                       onChange={(event) => field.setter(event.target.value)}
                       className={inputClass}
                     />
+                    {field.value !== '' &&
+                      (!Number.isInteger(Number(field.value)) || Number(field.value) < 0) && (
+                        <div className="text-danger small mt-1" role="alert">
+                          Enter a non-negative whole number.
+                        </div>
+                      )}
                   </div>
                 ))}
 

@@ -182,6 +182,7 @@ export default function CreateEmploymentDetailsPage() {
     formState: { errors },
   } = useForm<EmploymentFormData>({
     resolver: zodResolver(employmentSchema),
+    mode: "onChange",
     defaultValues: emptyValues,
   });
 

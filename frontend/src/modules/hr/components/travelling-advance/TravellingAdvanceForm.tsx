@@ -8,27 +8,10 @@ import {
 	Typography,
 } from '@mui/material'
 import { useForm, useWatch } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import * as XLSX from 'xlsx'
 import HRBackButton from '../HRBackButton'
-
-type TravellingAdvanceFormData = {
-	user_id: number
-	employee_code: string
-	designation: string
-	department: string
-	from_date: string
-	to_date: string
-	place_visited: string
-	purpose_of_visit: string
-	type_of_expense: string
-	expense_amount?: number
-	additional_expense_type: string
-	additional_expense_amount?: number
-	other_expense_type: string
-	other_expense_amount?: number
-	total_advance: number
-}
 
 const optionalText = (maxLength: number, label: string) =>
 	z.string().trim().max(maxLength, `${label} must be ${maxLength} characters or less`).optional()
@@ -56,7 +39,7 @@ const optionalAmount = (label: string) =>
 		.optional()
 
 const travellingAdvanceSchema = z.object({
-	user_id: z.number().int('User ID must be a whole number'),
+	user_id: z.number().int('User ID must be a whole number').positive('User ID must be positive'),
 	employee_code: optionalText(50, 'Employee code'),
 	designation: optionalText(150, 'Designation'),
 	department: optionalText(150, 'Department'),
@@ -72,6 +55,8 @@ const travellingAdvanceSchema = z.object({
 	other_expense_amount: optionalAmount('Other expense amount'),
 	total_advance: optionalAmount('Total advance'),
 })
+
+type TravellingAdvanceFormData = z.infer<typeof travellingAdvanceSchema>
 
 const travellingAdvanceExcelHeaders = Object.keys(
 	travellingAdvanceSchema.shape,
@@ -123,9 +108,12 @@ function TravellingAdvanceForm() {
 		control,
 		handleSubmit,
 		setValue,
+		formState: { errors },
 	} = useForm<TravellingAdvanceFormData>({
+		resolver: zodResolver(travellingAdvanceSchema),
+		mode: 'onChange',
 		defaultValues: {
-			user_id: 1,
+			user_id: undefined as unknown as number,
 			employee_code: '',
 			designation: '',
 			department: '',
@@ -142,6 +130,14 @@ function TravellingAdvanceForm() {
 			total_advance: 0,
 		},
 	})
+
+	const validationProps = (name: keyof TravellingAdvanceFormData) => {
+		const message = errors[name]?.message
+		return {
+			error: Boolean(message),
+			helperText: typeof message === 'string' ? message : undefined,
+		}
+	}
 
 	const expenseAmount = useWatch({
 		control,
@@ -417,6 +413,7 @@ function TravellingAdvanceForm() {
 							{...register('user_id', {
 								valueAsNumber: true,
 							})}
+							{...validationProps('user_id')}
 							label="User ID"
 							type="number"
 							required
@@ -427,6 +424,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('employee_code')}
+							{...validationProps('employee_code')}
 							label="Employee code"
 							fullWidth
 						/>
@@ -435,6 +433,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('designation')}
+							{...validationProps('designation')}
 							label="Designation"
 							fullWidth
 						/>
@@ -443,6 +442,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('department')}
+							{...validationProps('department')}
 							label="Department"
 							fullWidth
 						/>
@@ -451,6 +451,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('from_date')}
+							{...validationProps('from_date')}
 							label="From date"
 							type="date"
 							slotProps={{
@@ -463,6 +464,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('to_date')}
+							{...validationProps('to_date')}
 							label="To date"
 							type="date"
 							slotProps={{
@@ -475,6 +477,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('place_visited')}
+							{...validationProps('place_visited')}
 							label="Place visited"
 							fullWidth
 						/>
@@ -483,6 +486,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('type_of_expense')}
+							{...validationProps('type_of_expense')}
 							label="Type of expense"
 							fullWidth
 						/>
@@ -491,6 +495,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12 }}>
 						<TextField
 							{...register('purpose_of_visit')}
+							{...validationProps('purpose_of_visit')}
 							label="Purpose of visit"
 							multiline
 							minRows={3}
@@ -506,6 +511,7 @@ function TravellingAdvanceForm() {
 										? undefined
 										: Number(value),
 							})}
+							{...validationProps('expense_amount')}
 							label="Expense amount"
 							type="number"
 							slotProps={{
@@ -518,6 +524,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('additional_expense_type')}
+							{...validationProps('additional_expense_type')}
 							label="Additional expense type"
 							fullWidth
 						/>
@@ -531,6 +538,7 @@ function TravellingAdvanceForm() {
 										? undefined
 										: Number(value),
 							})}
+							{...validationProps('additional_expense_amount')}
 							label="Additional expense amount"
 							type="number"
 							slotProps={{
@@ -543,6 +551,7 @@ function TravellingAdvanceForm() {
 					<Grid size={{ xs: 12, sm: 6 }}>
 						<TextField
 							{...register('other_expense_type')}
+							{...validationProps('other_expense_type')}
 							label="Other expense type"
 							fullWidth
 						/>
@@ -556,6 +565,7 @@ function TravellingAdvanceForm() {
 										? undefined
 										: Number(value),
 							})}
+							{...validationProps('other_expense_amount')}
 							label="Other expense amount"
 							type="number"
 							slotProps={{

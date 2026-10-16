@@ -53,7 +53,8 @@ const optionalInteger = (label: string) =>
 const onEmploymentSchema = z.object({
 	employee_refno_id: z
 		.number()
-		.int('Employee reference ID must be a whole number'),
+		.int('Employee reference ID must be a whole number')
+		.positive('Employee reference ID must be positive'),
 
 	employee_code: optionalText(50, 'Employee code'),
 	designation: optionalText(150, 'Designation'),
@@ -378,7 +379,7 @@ function OnEmploymentForm() {
 		formState: { errors },
 	} = useForm<OnEmploymentFormData>({
 		resolver: zodResolver(onEmploymentSchema),
-
+		mode: 'onChange',
 		defaultValues: {
 			employee_refno_id: undefined,
 
@@ -434,6 +435,11 @@ function OnEmploymentForm() {
 			total_ctc: undefined,
 		},
 	})
+
+	const fieldError = (name: keyof OnEmploymentFormData) => {
+		const message = errors[name]?.message
+		return typeof message === 'string' ? message : undefined
+	}
 
 	const values = useWatch({ control })
 
@@ -868,7 +874,7 @@ function OnEmploymentForm() {
 
 												<input
 													type="text"
-													className="form-control"
+													className={`form-control${fieldError(name) ? ' is-invalid' : ''}`}
 													placeholder={
 														name === 'account_no'
 															? 'Enter bank account number'
@@ -880,6 +886,11 @@ function OnEmploymentForm() {
 														name as any,
 													)}
 												/>
+												{fieldError(name) && (
+													<div className="invalid-feedback d-block">
+														{fieldError(name)}
+													</div>
+												)}
 											</div>
 										),
 									)}
@@ -891,11 +902,16 @@ function OnEmploymentForm() {
 
 										<input
 											type="date"
-											className="form-control"
+											className={`form-control${fieldError('health_insurance_date') ? ' is-invalid' : ''}`}
 											{...register(
 												'health_insurance_date',
 											)}
 										/>
+										{fieldError('health_insurance_date') && (
+											<div className="invalid-feedback d-block">
+												{fieldError('health_insurance_date')}
+											</div>
+										)}
 									</div>
 
 									<div className="col-12 col-md-6 col-lg-4">
@@ -974,11 +990,7 @@ function OnEmploymentForm() {
 														readOnly={
 															calculated
 														}
-														className={
-															calculated
-																? 'form-control bg-light'
-																: 'form-control'
-														}
+														className={`${calculated ? 'form-control bg-light' : 'form-control'}${fieldError(name as keyof OnEmploymentFormData) ? ' is-invalid' : ''}`}
 														{...register(
 															name as any,
 															{
@@ -995,6 +1007,11 @@ function OnEmploymentForm() {
 															},
 														)}
 													/>
+													{fieldError(name as keyof OnEmploymentFormData) && (
+														<div className="invalid-feedback d-block">
+															{fieldError(name as keyof OnEmploymentFormData)}
+														</div>
+													)}
 												</div>
 											)
 										},
@@ -1041,11 +1058,7 @@ function OnEmploymentForm() {
 														readOnly={
 															calculated
 														}
-														className={
-															calculated
-																? 'form-control bg-light'
-																: 'form-control'
-														}
+														className={`${calculated ? 'form-control bg-light' : 'form-control'}${fieldError(name as keyof OnEmploymentFormData) ? ' is-invalid' : ''}`}
 														{...register(
 															name as any,
 															{
@@ -1062,6 +1075,11 @@ function OnEmploymentForm() {
 															},
 														)}
 													/>
+													{fieldError(name as keyof OnEmploymentFormData) && (
+														<div className="invalid-feedback d-block">
+															{fieldError(name as keyof OnEmploymentFormData)}
+														</div>
+													)}
 												</div>
 											)
 										},
@@ -1107,11 +1125,7 @@ function OnEmploymentForm() {
 														readOnly={
 															calculated
 														}
-														className={
-															calculated
-																? 'form-control bg-light'
-																: 'form-control'
-														}
+														className={`${calculated ? 'form-control bg-light' : 'form-control'}${fieldError(name as keyof OnEmploymentFormData) ? ' is-invalid' : ''}`}
 														{...register(
 															name as any,
 															{
@@ -1128,6 +1142,11 @@ function OnEmploymentForm() {
 															},
 														)}
 													/>
+													{fieldError(name as keyof OnEmploymentFormData) && (
+														<div className="invalid-feedback d-block">
+															{fieldError(name as keyof OnEmploymentFormData)}
+														</div>
+													)}
 												</div>
 											)
 										},

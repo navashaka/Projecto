@@ -399,6 +399,24 @@ function AdminResourcePage() {
 		}
 	}
 
+	const getFieldError = (field: AdminField) => {
+		const value = formValues[field.name]
+		if (
+			field.required &&
+			(value === '' || value === undefined)
+		) {
+			return `${field.label} is required.`
+		}
+		if (
+			field.kind === 'number' &&
+			typeof value === 'number' &&
+			Number.isNaN(value)
+		) {
+			return 'Numeric fields must contain valid numbers.'
+		}
+		return ''
+	}
+
 	const deleteRecord = async (
 		record: AdminRecord,
 	) => {
@@ -629,6 +647,8 @@ function AdminResourcePage() {
 									salaryCalculatedFields.has(
 										field.name,
 									)
+								const validationError =
+									getFieldError(field)
 
 								return (
 									<Grid
@@ -642,6 +662,8 @@ function AdminResourcePage() {
 									>
 										<TextField
 											fullWidth
+											error={Boolean(validationError)}
+											helperText={validationError}
 											label={
 												field.label
 											}

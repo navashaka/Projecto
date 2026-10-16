@@ -37,12 +37,41 @@ export default function ChangePasswordPage({
   const [logoutError, setLogoutError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const newPasswordError = (() => {
+    if (!newPassword) return ''
+    if (newPassword === currentPassword) {
+      return 'New password must be different from the current password.'
+    }
+    if (newPassword.length < 12) {
+      return 'New password must be at least 12 characters long.'
+    }
+    if (
+      !/[a-z]/.test(newPassword)
+      || !/[A-Z]/.test(newPassword)
+      || !/[0-9]/.test(newPassword)
+    ) {
+      return 'New password must include lowercase and uppercase letters and at least one number.'
+    }
+    if (/\s/.test(newPassword)) {
+      return 'New password must not contain whitespace.'
+    }
+    return ''
+  })()
+  const confirmationError =
+    confirmNewPassword && confirmNewPassword !== newPassword
+      ? 'New password and confirmation do not match.'
+      : ''
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
     setSuccess('')
-    if (newPassword !== confirmNewPassword) {
-      setError('New password and confirmation do not match.')
+    if (confirmationError) {
+      setError(confirmationError)
+      return
+    }
+    if (newPasswordError) {
+      setError(newPasswordError)
       return
     }
     setSubmitting(true)
@@ -79,6 +108,7 @@ export default function ChangePasswordPage({
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
+                maxLength={1024}
                 required
               />
             </div>
@@ -92,8 +122,14 @@ export default function ChangePasswordPage({
                 minLength={12}
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
+                maxLength={1024}
                 required
               />
+              {newPasswordError && (
+                <div className="form-text text-danger" role="alert">
+                  {newPasswordError}
+                </div>
+              )}
             </div>
             <div className="col-12">
               <label className="form-label" htmlFor="confirm-new-password">Confirm New Password</label>
@@ -105,8 +141,14 @@ export default function ChangePasswordPage({
                 minLength={12}
                 value={confirmNewPassword}
                 onChange={(event) => setConfirmNewPassword(event.target.value)}
+                maxLength={1024}
                 required
               />
+              {confirmationError && (
+                <div className="form-text text-danger" role="alert">
+                  {confirmationError}
+                </div>
+              )}
             </div>
             {error && (
               <div className="col-12">

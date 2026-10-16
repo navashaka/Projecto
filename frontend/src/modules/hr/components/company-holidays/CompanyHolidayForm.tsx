@@ -24,6 +24,7 @@ function CompanyHolidayForm() {
 
   const [holidayDate, setHolidayDate] = useState('')
   const [holidayName, setHolidayName] = useState('')
+  const [holidayNameTouched, setHolidayNameTouched] = useState(false)
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [preview, setPreview] = useState<PreviewHoliday[]>([])
   const [currentPage, setCurrentPage] = useState(1)
@@ -53,6 +54,12 @@ function CompanyHolidayForm() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setHolidayNameTouched(true)
+    if (!holidayName.trim()) {
+      setErrorMessage('Holiday name is required.')
+      return
+    }
+
     setLoading(true)
     setSuccessMessage('')
     setErrorMessage('')
@@ -66,6 +73,7 @@ function CompanyHolidayForm() {
       setSuccessMessage('Holiday added successfully!')
       setHolidayDate('')
       setHolidayName('')
+      setHolidayNameTouched(false)
       await loadHolidays()
     } catch (error) {
       const err = error as {
@@ -194,6 +202,9 @@ function CompanyHolidayForm() {
 
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !name) {
           throw new Error(`Invalid holiday date or name in row ${index + 1}`)
+        }
+        if (name.length > 150) {
+          throw new Error(`Holiday name exceeds 150 characters in row ${index + 1}`)
         }
 
         const [year, month, day] = date.split('-').map(Number)
@@ -340,10 +351,16 @@ function CompanyHolidayForm() {
                       className="form-control"
                       value={holidayName}
                       onChange={(event) => setHolidayName(event.target.value)}
+                      onBlur={() => setHolidayNameTouched(true)}
                       maxLength={150}
                       placeholder="Enter holiday name"
                       required
                     />
+                    {holidayNameTouched && !holidayName.trim() && (
+                      <div className="text-danger small mt-1" role="alert">
+                        Holiday name is required.
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12 d-flex justify-content-end gap-2">
