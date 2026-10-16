@@ -31,4 +31,4 @@ Inventory Module:
 - Ran the frontend build successfully.
 - Ran Git diff checks on the relevant changes.
 - Did not create dummy transaction records or modify the database schema.
-- Final end-to-end testing with genuine data is pending and will be performed by Madam.
+- Final end-to-end testing with genuine data is pending .
