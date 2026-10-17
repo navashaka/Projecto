@@ -19,37 +19,37 @@ type ComponentRow = {
 }
 
 const allowanceComponents = [
-    'Basic',
     'Allowance 1',
     'Allowance 2',
     'Allowance 3',
     'Allowance 4',
     'Allowance 5',
     'Allowance 6',
-    'Other Allowance',
     'Arrears',
+    'Basic',
+    'Other Allowance',
 ]
 
 const deductionComponents = [
+    'Advance',
+    'Canteen Deduction',
     'EPF - Employee Share',
     'ESI - Employee Share',
     'Insurance - Employee Share',
-    'TDS',
-    'Canteen Deduction',
-    'Advance',
     'Loan EMI',
     'Other Deduction',
+    'TDS',
 ]
 
 const employerComponents = [
+    'Bonus',
+    'Canteen Allowance',
     'EPF - Employer Share',
     'EPS - Employer Share',
     'ESI - Employer Share',
     'Insurance - Employer Share',
-    'Transport Allowance',
-    'Canteen Allowance',
-    'Bonus',
     'Other Employer Contribution',
+    'Transport Allowance',
 ]
 
 const defaultPercentage = (component: string): number => {

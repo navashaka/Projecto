@@ -6,11 +6,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
   Grid,
   MenuItem,
   Paper,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -22,8 +20,9 @@ import {
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import apiClient from '../../../services/apiClient'
+import AdminPageNavigation from './AdminPageNavigation'
+import AdminResourceSelect from './AdminResourceSelect'
 
 type AdminModuleKey = 'hr' | 'gl' | 'inventory'
 
@@ -46,8 +45,6 @@ type AdminResource = {
 type AdminRecord = Record<string, unknown> & {
   id: number | string
 }
-
-const PAYROLL_PAGE_OPTION = '__payroll-page__'
 
 type AdminRecordsPageProps = {
   module: AdminModuleKey
@@ -100,8 +97,6 @@ function toPayloadValue(field: AdminField, value: string): unknown {
 }
 
 function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
-  const navigate = useNavigate()
-
   const [resources, setResources] = useState<AdminResource[]>([])
   const [selectedKey, setSelectedKey] = useState('')
   const [records, setRecords] = useState<AdminRecord[]>([])
@@ -118,6 +113,32 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
     () => resources.find((resource) => resource.key === selectedKey),
     [resources, selectedKey],
   )
+  const resourceOptions = useMemo(() => {
+    const seenKeys = new Set<string>()
+    const seenLabels = new Set<string>()
+
+    const filteredResources = resources.flatMap((resource) => {
+      const normalizedLabel = resource.label.trim().toLowerCase()
+      if (
+        (seenKeys.has(resource.key) ||
+          seenLabels.has(normalizedLabel) ||
+          (module === 'hr' &&
+            normalizedLabel === 'payroll' &&
+            resource.key !== 'payroll'))
+      ) {
+        return []
+      }
+      seenKeys.add(resource.key)
+      seenLabels.add(normalizedLabel)
+      return [{ key: resource.key, label: resource.label }]
+    })
+    return filteredResources.sort((left, right) =>
+      left.label.localeCompare(right.label, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      }),
+    )
+  }, [module, resources])
 
   const loadRecords = useCallback(async (resource: AdminResource) => {
     setLoadingRecords(true)
@@ -292,86 +313,46 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
 
   return (
     <Stack spacing={3}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{
-          alignItems: { xs: 'stretch', sm: 'center' },
-          justifyContent: 'space-between',
-        }}
-      >
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1.5}
-          sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
+      <Stack spacing={2}>
+        <Typography
+          variant="h4"
+          sx={{
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+          }}
         >
-          <Button
-            variant="outlined"
-            onClick={() => navigate('/admin')}
-            sx={{ textTransform: 'lowercase' }}
-          >
-            ← Back to Dashboard
-          </Button>
-          <Typography variant="h4">{title}</Typography>
-        </Stack>
-
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          {[
-            { label: 'HR Admin', path: '/hr-admin' },
-            { label: 'GL Admin', path: '/gl-admin' },
-            { label: 'Inventory Admin', path: '/inventory-admin' },
-          ]
-            .filter((item) => item.path !== `/${module}-admin`)
-            .map((item) => (
-              <Button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                size="small"
-                sx={{ textTransform: 'lowercase' }}
-              >
-                {item.label}
-              </Button>
-            ))}
-
-          <FormControl size="small" sx={{ minWidth: 240 }}>
-            <Select
-              aria-label={`${title} record type`}
+          {title}
+        </Typography>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            rowGap: 1,
+          }}
+        >
+          <AdminPageNavigation homePath="/admin" />
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <AdminResourceSelect
               disabled={loadingResources || resources.length === 0}
-              value={selectedKey}
-              onChange={(event) => {
-                if (event.target.value === PAYROLL_PAGE_OPTION) {
-                  navigate('/payroll/create')
-                  return
-                }
-                setSelectedKey(event.target.value)
+              label={`${title} record type`}
+              onChange={(key) => {
+                setSelectedKey(key)
                 setError('')
               }}
+              options={resourceOptions}
+              value={selectedKey}
+            />
+            <Button
+              disabled={!selectedResource || loadingRecords}
+              onClick={() => selectedResource && void loadRecords(selectedResource)}
+              variant="outlined"
             >
-              {resources.flatMap((resource) => [
-                <MenuItem key={resource.key} value={resource.key}>
-                  {resource.label}
-                </MenuItem>,
-                ...(module === 'hr' && resource.key === 'salary-details'
-                  ? [
-                      <MenuItem
-                        key={PAYROLL_PAGE_OPTION}
-                        value={PAYROLL_PAGE_OPTION}
-                      >
-                        Payroll
-                      </MenuItem>,
-                    ]
-                  : []),
-              ])}
-            </Select>
-          </FormControl>
-
-          <Button
-            disabled={!selectedResource || loadingRecords}
-            onClick={() => selectedResource && void loadRecords(selectedResource)}
-            variant="outlined"
-          >
-            Refresh
-          </Button>
+              Refresh
+            </Button>
+          </Stack>
         </Stack>
       </Stack>
 
@@ -598,21 +579,29 @@ function AdminRecordsPage({ module, title }: AdminRecordsPageProps) {
                     }}
                   >
                     {field.kind === 'boolean' && (
-                      <MenuItem value="true">Yes</MenuItem>
-                    )}
-                    {field.kind === 'boolean' && (
                       <MenuItem value="false">No</MenuItem>
                     )}
                     {field.nullable &&
                       (field.kind === 'boolean' || field.kind === 'select') && (
                         <MenuItem value="">Not set</MenuItem>
                       )}
+                    {field.kind === 'boolean' && (
+                      <MenuItem value="true">Yes</MenuItem>
+                    )}
                     {field.kind === 'select' &&
-                      field.options?.map((option) => (
+                      field.options
+                        ?.slice()
+                        .sort((left, right) =>
+                          left.localeCompare(right, undefined, {
+                            numeric: true,
+                            sensitivity: 'base',
+                          }),
+                        )
+                        .map((option) => (
                         <MenuItem key={option} value={option}>
                           {option}
                         </MenuItem>
-                      ))}
+                        ))}
                   </TextField>
                 </Grid>
               ))}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { sortOptionsByLabel } from "../../../../utils/sortOptions";
 import {
   Autocomplete,
   Box,
@@ -26,6 +27,7 @@ interface Country {
 
 type CompanyProfileFormProps = {
   onBackToLogin?: () => void;
+  onRegistrationSuccess?: () => void;
 };
 
 const indianStates = [
@@ -69,6 +71,7 @@ const indianStates = [
 
 const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({
   onBackToLogin,
+  onRegistrationSuccess,
 }) => {
   const navigate = useNavigate();
   const [countries, setCountries] = useState<Country[]>([]);
@@ -278,6 +281,7 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({
       console.log("Company Profile Saved:", data);
 
       alert("Company Profile saved successfully!");
+      onRegistrationSuccess?.();
     } catch (error) {
       console.error("Company Profile Error:", error);
 
@@ -447,7 +451,7 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({
               <Autocomplete
                 freeSolo
                 fullWidth
-                options={indianStates}
+                options={sortOptionsByLabel(indianStates, (state) => state)}
                 value={formData.state}
                 onInputChange={(_event, value, reason) => {
                   if (reason === "input" || reason === "clear") {
@@ -475,7 +479,7 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({
             <Grid size={{ xs: 12, md: 6 }}>
               <Autocomplete
                 fullWidth
-                options={pincodes}
+                options={sortOptionsByLabel(pincodes, (pincode) => pincode)}
                 value={
                   formData.pinCode
                     ? formData.pinCode
@@ -513,7 +517,7 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({
             <Grid size={{ xs: 12, md: 6 }}>
               <Autocomplete
                 fullWidth
-                options={countries}
+                options={sortOptionsByLabel(countries, (country) => country.country)}
                 value={selectedCountry}
                 onChange={handleCountryChange}
                 getOptionLabel={(option) => option.country}
@@ -552,8 +556,8 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({
                 onChange={handleChange}
               >
                 <MenuItem value="Current">Current</MenuItem>
-                <MenuItem value="OD">OD</MenuItem>
                 <MenuItem value="OCC">OCC</MenuItem>
+                <MenuItem value="OD">OD</MenuItem>
               </TextField>
             </Grid>
 

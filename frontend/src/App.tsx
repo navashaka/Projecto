@@ -17,6 +17,7 @@ import Footer from './components/layout/Footer'
 
 import CreateAttendancePage from './modules/hr/pages/attendance/CreateAttendancePage'
 import CreateEmployeePage from './modules/hr/pages/employees/CreateEmployeePage'
+import UserEnquiryPage from './modules/hr/pages/UserEnquiryPage'
 import CreateEmploymentDetailsPage from './modules/hr/pages/employment/CreateEmploymentDetailsPage'
 import CreateOnEmploymentPage from './modules/hr/pages/on-employment/CreateOnEmploymentPage'
 import CreateSalaryDetailsPage from './modules/hr/pages/salary/CreateSalaryDetailsPage'
@@ -24,7 +25,6 @@ import CreatePayrollPage from './modules/hr/pages/payroll/CreatePayrollPage'
 import CreateTravellingAdvancePage from './modules/hr/pages/travelling-advance/CreateTravellingAdvancePage'
 import HRHomePage from './modules/hr/pages/HRHomePage'
 
-import CompanyProfileForm from './modules/auth/components/company-profile/CompanyProfileForm'
 import CreateCompanyProfilePage from './modules/auth/pages/company-profile/CreateCompanyProfilePage'
 
 import JobProfileForm from './modules/hr/components/job-profile/JobProfileForm'
@@ -50,9 +50,17 @@ import InventoryHomePage from './modules/inventory/pages/InventoryHomePage'
 import GLHomePage from './modules/gl/pages/GLHomePage'
 import GLResourcePage from './modules/gl/components/GLResourcePage'
 
+import ARHomePage from './modules/ar/components/ARHomePage'
+import CustomerPage from './modules/ar/pages/CustomerPage'
+import QuotationPage from './modules/ar/pages/QuotationPage'
+import ProformaInvoicePage from './modules/ar/pages/ProformaInvoicePage'
+import InvoicePage from './modules/ar/pages/InvoicePage'
+import TaxInvoicePage from './modules/ar/pages/TaxInvoicePage'
+
 import HRAdminPage from './modules/hr-admin/HRAdminPage'
 import GLAdminPage from './modules/gl-admin/GLAdminPage'
 import InventoryAdminPage from './modules/inventory-admin/InventoryAdminPage'
+import ARAdminPage from './modules/ar-admin/ARAdminPage'
 
 function DashboardLayout() {
   return (
@@ -75,13 +83,6 @@ function App() {
     (state) => state.isAuthenticated,
   )
   const setSession = useAppStore((state) => state.login)
-  const toggleRegisterForm = useAppStore(
-    (state) => state.toggleRegisterForm,
-  )
-  const showRegisterForm = useAppStore(
-    (state) => state.showRegisterForm,
-  )
-
   return (
     <Routes>
       {/* Admin pages: no admin login or logout required */}
@@ -101,28 +102,23 @@ function App() {
         path="/inventory-admin"
         element={<InventoryAdminPage />}
       />
+      <Route path="/ar-admin" element={<ARAdminPage />} />
 
       {/* Normal user login is preserved */}
       <Route
         path="/login"
         element={
-          showRegisterForm ? (
-            <CompanyProfileForm
-              onBackToLogin={() => toggleRegisterForm(false)}
-            />
-          ) : (
-            <LoginPage
-              onLogin={() => {
-                setSession({
-                  email: 'user@projecto.com',
-                  name: 'Projecto User',
-                  role: 'user',
-                })
-                navigate('/', { replace: true })
-              }}
-              onRegister={() => toggleRegisterForm(true)}
-            />
-          )
+          <LoginPage
+            onLogin={() => {
+              setSession({
+                email: 'user@projecto.com',
+                name: 'Projecto User',
+                role: 'user',
+              })
+              navigate('/', { replace: true })
+            }}
+            onRegister={() => navigate('/company-profile/create')}
+          />
         }
       />
 
@@ -139,8 +135,10 @@ function App() {
 
       {/* Existing HR routes */}
       <Route path="/hr" element={<HRHomePage />} />
+      <Route path="/hr/user-enquiry" element={<UserEnquiryPage />} />
       <Route path="/attendance/create" element={<CreateAttendancePage />} />
       <Route path="/employees/create" element={<CreateEmployeePage />} />
+      <Route path="/user-enquiry/create" element={<UserEnquiryPage />} />
       <Route path="/employment/create" element={<CreateEmploymentDetailsPage />} />
       <Route path="/on-employment/create" element={<CreateOnEmploymentPage />} />
       <Route path="/salary/create" element={<CreateSalaryDetailsPage />} />
@@ -191,6 +189,14 @@ function App() {
       {/* Existing General Ledger routes */}
       <Route path="/gl" element={<GLHomePage />} />
       <Route path="/gl/:resourceKey" element={<GLResourcePage />} />
+
+      {/* Accounts Receivable routes */}
+      <Route path="/ar" element={<ARHomePage />} />
+      <Route path="/ar/customers" element={<CustomerPage />} />
+      <Route path="/ar/quotations" element={<QuotationPage />} />
+      <Route path="/ar/proforma-invoices" element={<ProformaInvoicePage />} />
+      <Route path="/ar/invoices" element={<InvoicePage />} />
+      <Route path="/ar/tax-invoices" element={<TaxInvoicePage />} />
 
       {/* Unknown paths */}
       <Route path="*" element={<Navigate to="/admin" replace />} />

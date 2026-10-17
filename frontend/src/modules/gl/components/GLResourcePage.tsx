@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import apiClient from '../../../services/apiClient'
 import { useAppStore } from '../../../store'
+import { sortOptionsByLabel } from '../../../utils/sortOptions'
 import { glGroupDefaults } from '../constants/glGroupDefaults'
 import { glResourceMap } from '../constants/glResources'
 import type {
@@ -262,7 +263,7 @@ function getFieldOptions(
   )
 
   if (field.optionEndpoint !== '/gl-groups/') {
-    return saved
+    return sortOptionsByLabel(saved, (option) => option.label)
   }
 
   const savedGroupNames = new Set<string>()
@@ -282,7 +283,7 @@ function getFieldOptions(
       label: group,
     }))
 
-  return [...defaults, ...uniqueSavedGroups]
+  return sortOptionsByLabel([...defaults, ...uniqueSavedGroups], (option) => option.label)
 }
 
 function formatCellValue(
@@ -1466,7 +1467,11 @@ function GLResourcePage() {
                   value={values.__cheque_range_id ?? ''}
                 >
                   <MenuItem value="">Select a cheque range</MenuItem>
-                  {bankChequeRanges.map((chequeRange) => (
+                  {sortOptionsByLabel(
+                    bankChequeRanges,
+                    (chequeRange) =>
+                      `${String(chequeRange.from_number ?? '')} - ${String(chequeRange.to_number ?? '')}`,
+                  ).map((chequeRange) => (
                     <MenuItem
                       key={String(chequeRange.id)}
                       value={String(chequeRange.id)}
@@ -1550,7 +1555,11 @@ function GLResourcePage() {
                     value={values.__od_limit_id ?? ''}
                   >
                     <MenuItem value="">Select an OD Limit</MenuItem>
-                    {bankOdLimits.map((odLimit) => (
+                    {sortOptionsByLabel(
+                      bankOdLimits,
+                      (odLimit) =>
+                        `${String(odLimit.od_limit ?? '-')} / ${String(odLimit.rate_of_interest ?? '-')}% / ${String(odLimit.effective_date ?? '-')}`,
+                    ).map((odLimit) => (
                       <MenuItem
                         key={String(odLimit.id)}
                         value={String(odLimit.id)}

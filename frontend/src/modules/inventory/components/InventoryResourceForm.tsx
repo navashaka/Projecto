@@ -55,6 +55,7 @@ import {
   getRecordLabel,
 } from '../utils/inventoryFormUtils'
 import { useInventoryResource } from '../hooks/useInventoryResource'
+import { sortOptionsByLabel } from '../../../utils/sortOptions'
 
 interface InventoryResourceFormProps {
   resource: InventoryResourceDefinition
@@ -251,6 +252,11 @@ function getFieldOptions(
         },
       ]
     },
+  ).sort((left, right) =>
+    left.label.localeCompare(right.label, undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    }),
   )
 }
 
@@ -296,12 +302,15 @@ function InventoryField({
             isDeliveryChallanInward || isGoodsIssueStatus
           const labelId = `${name.replaceAll('.', '-')}-label`
 
-          const values = field.choices
-            ? field.choices.map((choice) => ({
-                value: choice.value,
-                label: choice.label,
-              }))
-            : options
+          const values = sortOptionsByLabel(
+            field.choices
+              ? field.choices.map((choice) => ({
+                  value: choice.value,
+                  label: choice.label,
+                }))
+              : options,
+            (option) => option.label,
+          )
 
           const noOptions =
             !field.choices &&
@@ -1561,7 +1570,7 @@ function InventoryResourceForm({
                       Select existing UOM
                     </MenuItem>
 
-                    {records.map(
+                    {sortOptionsByLabel(records, getUomOptionLabel).map(
                       (
                         record,
                         index,

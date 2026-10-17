@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import * as XLSX from 'xlsx'
 
 import { submitUserEnquiry } from '../../actions/dbActions'
 
 type UserEnquiryFormProps = {
-  onBackToLogin: () => void
+  onBackToHR: () => void
 }
 
 type PreviousEmployment = {
@@ -207,13 +208,69 @@ const enquirySchema = z
   })
 
 type EnquiryFormValues = z.infer<typeof enquirySchema>
+type EnquiryField = keyof EnquiryFormValues
+
+const enquiryFields: EnquiryField[] = [
+  'employmentType',
+  'candidateName',
+  'fatherName',
+  'dob',
+  'bloodGroup',
+  'maritalStatus',
+  'religion',
+  'nationality',
+  'motherTongue',
+  'languagesKnown',
+  'address',
+  'phone',
+  'personalEmail',
+  'pan',
+  'aadhar',
+  'passportNo',
+  'emergencyPhone1',
+  'emergencyPhone2',
+  'highestQualification',
+  'yearOfPass',
+  'currentEmployer',
+  'position',
+  'department',
+  'workingPeriod',
+  'currentCtc',
+  'currentResponsibilities',
+  'previousEmployer',
+  'previousPosition',
+  'previousDepartment',
+  'previousWorkingPeriod',
+  'previousCtc',
+  'previousResponsibilities',
+]
+
+function normalizeExcelHeader(value: unknown): string {
+  return String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+function excelCellToString(value: unknown, field: EnquiryField): string {
+  if (field === 'dob' && typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value)
+    if (!date) throw new Error('Date of birth must be a valid Excel date.')
+    return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    if (field === 'dob') {
+      return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+    }
+    return value.toISOString()
+  }
+  return String(value ?? '').trim()
+}
 
 const UserEnquiryForm = ({
-  onBackToLogin
+  onBackToHR
 }: UserEnquiryFormProps) => {
   const {
     register,
     handleSubmit,
+    getValues,
     watch,
     reset,
     formState: { errors }
@@ -239,6 +296,8 @@ const UserEnquiryForm = ({
     additionalPreviousEmployments,
     setAdditionalPreviousEmployments
   ] = useState<PreviousEmployment[]>([])
+  const [excelMessage, setExcelMessage] = useState('')
+  const [excelError, setExcelError] = useState('')
 
   const addPreviousCompany = () => {
     setAdditionalPreviousEmployments((current) => [
@@ -299,6 +358,72 @@ const UserEnquiryForm = ({
     errors[fieldName]
       ? 'form-control is-invalid'
       : 'form-control'
+
+  const handleExcelUpload = async (file?: File) => {
+    setExcelMessage('')
+    setExcelError('')
+    if (!file) return
+
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      setExcelError('Select an Excel file (.xlsx or .xls).')
+      return
+    }
+
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), {
+        type: 'array',
+        cellDates: true,
+      })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = sheetName ? workbook.Sheets[sheetName] : undefined
+      if (!sheet) throw new Error('Excel worksheet not found.')
+
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        defval: '',
+        raw: true,
+      })
+      if (rows.length < 2) throw new Error('Excel file has no candidate data row.')
+
+      const headers = rows[0].map(normalizeExcelHeader)
+      if (headers.some((header) => !header)) {
+        throw new Error('Every Excel column must have a header.')
+      }
+      if (new Set(headers).size !== headers.length) {
+        throw new Error('Excel file contains duplicate column headers.')
+      }
+
+      const fieldByHeader = new Map(
+        enquiryFields.map((field) => [normalizeExcelHeader(field), field]),
+      )
+      const unsupportedHeaders = headers.filter((header) => !fieldByHeader.has(header))
+      if (unsupportedHeaders.length) {
+        throw new Error(`Unsupported Excel columns: ${unsupportedHeaders.join(', ')}.`)
+      }
+
+      const candidateRow = rows.slice(1).find((row) =>
+        row.some((value) => value !== '' && value !== null && value !== undefined),
+      )
+      if (!candidateRow) throw new Error('Excel file has no candidate data row.')
+
+      const importedValues: Partial<EnquiryFormValues> = {}
+      headers.forEach((header, index) => {
+        const field = fieldByHeader.get(header)
+        const cell = candidateRow[index]
+        if (field && cell !== '' && cell !== null && cell !== undefined) {
+          importedValues[field] = excelCellToString(cell, field)
+        }
+      })
+      if (Object.keys(importedValues).length === 0) {
+        throw new Error('The first candidate row does not contain any form values.')
+      }
+
+      reset({ ...getValues(), ...importedValues })
+      setExcelMessage('Candidate data loaded into the form. Review it and submit the enquiry.')
+    } catch (error) {
+      setExcelError(error instanceof Error ? error.message : 'Unable to read the Excel file.')
+    }
+  }
 
   const onSubmit = async (
     data: EnquiryFormValues
@@ -367,13 +492,6 @@ const UserEnquiryForm = ({
                 </h1>
               </div>
 
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={onBackToLogin}
-              >
-                Back to Login
-              </button>
             </div>
 
             <form
@@ -469,10 +587,10 @@ const UserEnquiryForm = ({
 
                       <option value="A+">A+</option>
                       <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
                       <option value="AB+">AB+</option>
                       <option value="AB-">AB-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
                       <option value="O+">O+</option>
                       <option value="O-">O-</option>
                     </select>
@@ -500,16 +618,16 @@ const UserEnquiryForm = ({
                         Select
                       </option>
 
-                      <option value="Single">
-                        Single
+                      <option value="Divorced">
+                        Divorced
                       </option>
 
                       <option value="Married">
                         Married
                       </option>
 
-                      <option value="Divorced">
-                        Divorced
+                      <option value="Single">
+                        Single
                       </option>
 
                       <option value="Widowed">
@@ -616,12 +734,12 @@ const UserEnquiryForm = ({
                         Select Employment Type
                       </option>
 
-                      <option value="Fresher">
-                        Fresher
-                      </option>
-
                       <option value="Experienced">
                         Experienced
+                      </option>
+
+                      <option value="Fresher">
+                        Fresher
                       </option>
                     </select>
 
@@ -1389,7 +1507,38 @@ const UserEnquiryForm = ({
 
               {/* SUBMIT */}
 
-              <div className="col-12 d-flex justify-content-end">
+              <div className="col-12 border rounded bg-white p-3 p-md-4">
+                <h2 className="h5 mb-3">Upload Data</h2>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="form-control"
+                  aria-label="Upload candidate details Excel file"
+                  onChange={(event) => {
+                    void handleExcelUpload(event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                />
+                {excelError && (
+                  <div className="text-danger mt-2" role="alert">
+                    {excelError}
+                  </div>
+                )}
+                {excelMessage && (
+                  <div className="text-success mt-2" role="status">
+                    {excelMessage}
+                  </div>
+                )}
+              </div>
+
+              <div className="col-12 d-flex justify-content-between gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-lg px-4"
+                  onClick={onBackToHR}
+                >
+                  Back
+                </button>
 
                 <button
                   type="submit"

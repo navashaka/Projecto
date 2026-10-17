@@ -40,6 +40,7 @@ from app.modules.hr.payroll.router import router as payroll_router
 from app.modules.company.router import router as company_router
 from app.modules.location.router import router as location_router
 from app.modules.gl.router import router as gl_router
+from app.modules.ar.router import router as ar_router
 
 from app.api.v1.gl_tax_type import router as gl_tax_type_router
 from app.api.v1.gl_group import router as gl_group_router
@@ -333,6 +334,9 @@ app.include_router(gl_unsecured_loans_router)
 
 # Inventory module
 app.include_router(inventory_router)
+
+# Accounts Receivable module
+app.include_router(ar_router)
 
 # API v1 routes
 app.include_router(api_v1_router, prefix="/api/v1")

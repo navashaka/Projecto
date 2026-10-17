@@ -25,6 +25,7 @@ import {
 } from '../actions/inventoryActions'
 import type { InventoryRecord } from '../types/inventoryTypes'
 import { formatInventoryError } from '../utils/inventoryFormUtils'
+import { sortOptionsByLabel } from '../../../utils/sortOptions'
 
 const unitOfMeasureEndpoint = '/inventory/unit-of-measures'
 
@@ -205,7 +206,9 @@ function UnitOfMeasurePage() {
                           ? 'No UOM names available'
                         : 'Select name'}
                   </MenuItem>
-                  {records.map((record, index) => (
+                  {sortOptionsByLabel(records, (record) =>
+                    typeof record.name === 'string' ? record.name : '',
+                  ).map((record, index) => (
                     <MenuItem
                       key={
                         typeof record.id === 'number'

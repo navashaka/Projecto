@@ -1,11 +1,11 @@
 const navItems = [
   'Dashboard',
   'Accounts',
-  'Invoices',
-  'Payments',
-  'Journal',
-  'Reports',
   'Banking',
+  'Invoices',
+  'Journal',
+  'Payments',
+  'Reports',
 ]
 
 const Navbar = () => {

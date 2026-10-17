@@ -1077,4 +1077,9 @@ export const inventoryNavigationItems =
       label,
       path: `/inventory/${key}/create`,
     }),
+  ).sort((left, right) =>
+    left.label.localeCompare(right.label, undefined, {
+      sensitivity: 'base',
+      numeric: true,
+    }),
   )

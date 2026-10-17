@@ -1,10 +1,11 @@
-import { IconButton, Tooltip } from '@mui/material'
-import { Home } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { Stack } from '@mui/material'
+import AdminPageNavigation from './shared/AdminPageNavigation'
 
 const sections = [
-  { name: 'HR Admin', href: '/hr-admin' },
+  { name: 'AR Admin', href: '/ar-admin' },
   { name: 'GL Admin', href: '/gl-admin' },
+  { name: 'HR Admin', href: '/hr-admin' },
   { name: 'Inventory Admin', href: '/inventory-admin' },
 ]
 
@@ -13,21 +14,18 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="container py-4">
-      <div className="d-flex justify-content-end mb-2">
-        <Tooltip title="Home">
-          <IconButton
-            aria-label="Home"
-            onClick={() => navigate('/')}
-            color="primary"
-          >
-            <Home size={24} />
-          </IconButton>
-        </Tooltip>
-      </div>
-
-      <header className="mb-4">
-        <h1 className="h2 mb-0">Projecto Admin Dashboard</h1>
-      </header>
+      <Stack
+        component="header"
+        className="mb-4"
+        spacing={1.5}
+      >
+        <h1 className="h2 mb-0 text-center">
+          Projecto Admin Dashboard
+        </h1>
+        <div>
+          <AdminPageNavigation homePath="/" showModules={false} />
+        </div>
+      </Stack>
 
       <div className="row g-3">
         {sections.map((section) => (

@@ -4,21 +4,21 @@ import { Home } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { hrNavigationItems as hrFormNavigationItems } from '../../modules/hr/constants/hrNavigationItems'
 import { inventoryNavigationItems } from '../../modules/inventory/constants/inventoryConstants'
+import { arPages } from '../../modules/ar/constants/arResources'
 
 const glNavigationItems = [
   { label: 'GL Home', path: '/gl' },
-  { label: 'GL Groups', path: '/gl/groups' },
-  { label: 'GL Accounts', path: '/gl/accounts' },
-  { label: 'GL Sundry Creditors', path: '/gl/sundry-creditors' },
-  { label: 'GL Sundry Debtors', path: '/gl/sundry-debtors' },
-  { label: 'GL Secured Loans', path: '/gl/secured-loans' },
-  { label: 'GL Unsecured Loans', path: '/gl/unsecured-loans' },
   { label: 'GL Bank Accounts', path: '/gl/bank-accounts' },
   { label: 'GL Cheque Ranges', path: '/gl/cheque-ranges' },
+  { label: 'GL Groups', path: '/gl/groups' },
   { label: 'GL HSN Master', path: '/gl/hsn-masters' },
-  { label: 'GL SAC Master', path: '/gl/sac-masters' },
-  { label: 'GL Tax Types', path: '/gl/tax-types' },
   { label: 'GL OD Limits', path: '/gl/od-limits' },
+  { label: 'GL SAC Master', path: '/gl/sac-masters' },
+  { label: 'GL Secured Loans', path: '/gl/secured-loans' },
+  { label: 'GL Sundry Creditors', path: '/gl/sundry-creditors' },
+  { label: 'GL Sundry Debtors', path: '/gl/sundry-debtors' },
+  { label: 'GL Tax Types', path: '/gl/tax-types' },
+  { label: 'GL Unsecured Loans', path: '/gl/unsecured-loans' },
 ]
 
 const hrNavigationItems = [
@@ -28,13 +28,13 @@ const hrNavigationItems = [
 
 const menuItems = [
   { label: 'Dashboard', path: '/' },
-  { label: 'Company Profile', path: '/company-profile/create' },
   { label: 'Reports', path: '/admin/reports' },
 ]
 
 const adminNavigationItems = [
-  { label: 'HR Admin', path: '/hr-admin' },
+  { label: 'AR Admin', path: '/ar-admin' },
   { label: 'GL Admin', path: '/gl-admin' },
+  { label: 'HR Admin', path: '/hr-admin' },
   { label: 'Inventory Admin', path: '/inventory-admin' },
 ]
 
@@ -45,8 +45,10 @@ const LeftSidebar = () => {
 
   const isHRPage =
     path === '/hr' ||
+    path.startsWith('/hr/') ||
     path.startsWith('/employment/') ||
     path.startsWith('/employees/') ||
+    path.startsWith('/user-enquiry/') ||
     path.startsWith('/attendance/') ||
     path.startsWith('/payroll/') ||
     path.startsWith('/company-holidays/') ||
@@ -59,6 +61,7 @@ const LeftSidebar = () => {
 
   const isInventoryPage = path.startsWith('/inventory')
   const isGLPage = path === '/gl' || path.startsWith('/gl/')
+  const isARPage = path === '/ar' || path.startsWith('/ar/')
 
   const isAdminPage = adminNavigationItems.some(
     (item) => path === item.path || path.startsWith(`${item.path}/`),
@@ -67,6 +70,7 @@ const LeftSidebar = () => {
   const [hrExpanded, setHRExpanded] = useState(isHRPage)
   const [inventoryExpanded, setInventoryExpanded] = useState(isInventoryPage)
   const [glExpanded, setGLExpanded] = useState(isGLPage)
+  const [arExpanded, setARExpanded] = useState(isARPage)
   const [adminExpanded, setAdminExpanded] = useState(isAdminPage)
 
   return (
@@ -82,6 +86,7 @@ const LeftSidebar = () => {
               key={item.label}
               type="button"
               className="btn btn-light text-start"
+              style={{ order: item.label === 'Dashboard' ? 0 : 2 }}
               onClick={() => navigate(item.path)}
             >
               {item.label}
@@ -90,6 +95,41 @@ const LeftSidebar = () => {
 
           <div
             className="d-grid gap-2"
+            style={{ order: 3 }}
+            onMouseEnter={() => setARExpanded(true)}
+            onMouseLeave={() => setARExpanded(false)}
+          >
+            <button
+              type="button"
+              className="btn btn-light text-start"
+              aria-expanded={arExpanded}
+              aria-controls="ar-submenu"
+              onClick={() => setARExpanded((expanded) => !expanded)}
+            >
+              Accounts Receivable
+            </button>
+
+            {arExpanded && (
+              <div id="ar-submenu" className="d-grid gap-2 ms-3 ps-2 border-start">
+                {arPages.map((item) => (
+                  <button
+                    key={item.path}
+                    type="button"
+                    className={`btn text-start ${
+                      path === item.path ? 'btn-primary' : 'btn-light'
+                    }`}
+                    onClick={() => navigate(item.path)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div
+            className="d-grid gap-2"
+            style={{ order: 1 }}
             onMouseEnter={() => setAdminExpanded(true)}
             onMouseLeave={() => setAdminExpanded(false)}
           >
@@ -121,6 +161,7 @@ const LeftSidebar = () => {
 
           <div
             className="d-grid gap-2"
+            style={{ order: 5 }}
             onMouseEnter={() => setHRExpanded(true)}
             onMouseLeave={() => setHRExpanded(false)}
           >
@@ -168,6 +209,7 @@ const LeftSidebar = () => {
 
           <div
             className="d-grid gap-2"
+            style={{ order: 6 }}
             onMouseEnter={() => setInventoryExpanded(true)}
             onMouseLeave={() => setInventoryExpanded(false)}
           >
@@ -199,6 +241,7 @@ const LeftSidebar = () => {
 
           <div
             className="d-grid gap-2"
+            style={{ order: 4 }}
             onMouseEnter={() => setGLExpanded(true)}
             onMouseLeave={() => setGLExpanded(false)}
           >

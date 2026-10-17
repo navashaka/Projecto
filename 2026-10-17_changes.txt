@@ -1,0 +1,59 @@
+Daily Work Report – 17 October 2026
+
+Project: Projecto
+
+Modules: HR, Customer Registration, Accounts Receivable (AR)
+
+User Enquiry Form – HR Module
+
+- Reviewed the existing User Enquiry form and its navigation requirements.
+- Worked on organizing the User Enquiry form under the HR module.
+- Planned to preserve the existing form fields, API integration, and save functionality.
+- Identified the need to remove the old entry point after the new navigation is implemented.
+
+Customer Registration Form
+
+- Reviewed the Customer Registration form navigation requirement.
+- Identified the requirement to move Customer Registration to the Welcome Back → Register Here flow.
+- Planned to preserve the existing form and API functionality.
+- Identified the need to remove the old Customer Registration entry point to avoid duplicate navigation paths.
+
+Accounts Receivable (AR) Module
+
+- Worked on Excel test-data preparation for customer registration, quotations, Proforma Invoices, invoices, and tax invoices.
+- Corrected the customer Excel Activity value to "Trader".
+- Reviewed invoice import validation and identified unsupported columns that needed to be removed.
+- Reviewed the expected invoice item fields, including "item_sl_no" and "item_description", to align Excel data with the existing schema.
+- Prepared test data for validating AR forms and imports.
+
+Proforma Invoice Template
+
+- Reviewed the existing Proforma Invoice frontend component and shared form logic.
+- Inspected the backend models, schemas, repository, database configuration, and live database constraints.
+- Investigated generating unique Proforma Invoice numbers without changing the existing database schema.
+- Confirmed that the Proforma Invoice Type must use the existing database-supported values: "Goods", "Service", and "Export".
+- Identified "Direct" as a separate option for the Quotation No dropdown.
+- Reviewed the existing per-item GST field and calculation logic.
+- Identified the requirement to display GST Rate in the item table to calculate GST and Grand Total correctly.
+
+GST Calculation Requirements
+
+- Amount = Quantity × Rate
+- GST = Amount × GST Rate / 100
+- Grand Total = Total + GST
+- GST rate should use the existing "gst_rate" field, and calculated values should be saved through the existing API and database structure.
+
+Excel Import Validation
+
+- Reviewed Excel headers against the existing AR database/API structure.
+- Identified mismatches between the invoice template and accepted item fields.
+- Worked on correcting test data and removing unsupported columns.
+- Identified the need for valid database IDs and exact template headers to ensure successful imports.
+
+Pending Tasks
+
+- Complete and verify the User Enquiry and Customer Registration navigation changes.
+- Finalize the Proforma Invoice template layout and numbering logic.
+- Complete the GST Rate UI and verify GST calculations and saved values.
+- Finish aligning Excel test data with the required import template and valid database IDs.
+- Run the frontend build and relevant backend checks after implementation.
