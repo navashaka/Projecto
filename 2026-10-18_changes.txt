@@ -1,0 +1,12 @@
+Daily Work Report – 18 October 2026
+
+Project: Projecto
+
+1. Worked on the Invoice for Goods form implementation.
+2. Fixed issues in the Accounts Receivable (AR) quotation form.
+3. Worked on GST and grand-total calculations.
+4. Worked on the Terms of Delivery dropdown.
+5. Worked on E-Way Bill website navigation.
+6. Reviewed existing save, edit, delete, and Excel upload functionality.
+
+Pending: Final testing, error verification, and frontend build validation.Daily Work Report – 18 October 2026
