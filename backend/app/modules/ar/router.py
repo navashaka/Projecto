@@ -13,6 +13,8 @@ from .schemas import AR_MODELS, AR_RESOURCES, SCHEMAS
 
 router = APIRouter(prefix="/ar", tags=["Accounts Receivable"])
 
+EWAY_BILL_URL = "https://ewaybillgst.gov.in/Login.aspx"
+
 
 def _with_body_schema(
     endpoint: Any,
@@ -21,9 +23,11 @@ def _with_body_schema(
 ) -> Any:
     signature = inspect.signature(endpoint)
     parameters = list(signature.parameters.values())
+
     parameters[body_parameter] = parameters[body_parameter].replace(
         annotation=request_schema,
     )
+
     endpoint.__signature__ = signature.replace(parameters=parameters)
     return endpoint
 
@@ -46,7 +50,9 @@ def _create_endpoint(
 
 
 def _list_endpoint(model: type[DeclarativeBase]) -> Any:
-    def endpoint(db: Session = Depends(get_db)) -> list[DeclarativeBase]:
+    def endpoint(
+        db: Session = Depends(get_db),
+    ) -> list[DeclarativeBase]:
         return service.get_all_records(db, model)
 
     return endpoint
@@ -82,7 +88,10 @@ def _update_endpoint(
 
 
 def _delete_endpoint(model: type[DeclarativeBase]) -> Any:
-    def endpoint(record_id: int, db: Session = Depends(get_db)) -> Response:
+    def endpoint(
+        record_id: int,
+        db: Session = Depends(get_db),
+    ) -> Response:
         service.delete_record(db, model, record_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -94,8 +103,14 @@ def ar_root() -> dict[str, list[str]]:
     return {"resources": list(AR_RESOURCES.values())}
 
 
+@router.get("/eway-bill-url", name="get_ar_eway_bill_url")
+def get_eway_bill_url() -> dict[str, str]:
+    return {"eway_bill_url": EWAY_BILL_URL}
+
+
 for ar_model in AR_MODELS:
     create_schema, update_schema, response_schema = SCHEMAS[ar_model]
+
     resource_path = AR_RESOURCES[ar_model]
     operation_prefix = resource_path.replace("-", "_")
     collection_path = f"/{resource_path}"
@@ -109,6 +124,7 @@ for ar_model in AR_MODELS:
         name=f"list_{operation_prefix}",
         operation_id=f"list_ar_{operation_prefix}",
     )
+
     router.add_api_route(
         collection_path,
         _create_endpoint(ar_model, create_schema),
@@ -118,6 +134,7 @@ for ar_model in AR_MODELS:
         name=f"create_{operation_prefix}",
         operation_id=f"create_ar_{operation_prefix}",
     )
+
     router.add_api_route(
         record_path,
         _get_endpoint(ar_model),
@@ -126,6 +143,7 @@ for ar_model in AR_MODELS:
         name=f"get_{operation_prefix}",
         operation_id=f"get_ar_{operation_prefix}",
     )
+
     router.add_api_route(
         record_path,
         _update_endpoint(ar_model, update_schema),
@@ -134,6 +152,7 @@ for ar_model in AR_MODELS:
         name=f"update_{operation_prefix}",
         operation_id=f"update_ar_{operation_prefix}",
     )
+
     router.add_api_route(
         record_path,
         _delete_endpoint(ar_model),

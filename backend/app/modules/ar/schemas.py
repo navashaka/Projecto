@@ -1,8 +1,14 @@
 from typing import Any
 import re
 
-from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
-from sqlalchemy import Column, Numeric, String
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    create_model,
+    field_validator,
+)
+from sqlalchemy import Numeric, String
 from sqlalchemy.orm import DeclarativeBase
 
 from .models import (
@@ -71,35 +77,47 @@ def _normalized_field_value(
 ) -> Any:
     if value is None:
         return value
+
     if not isinstance(value, (str, int)) or isinstance(value, bool):
         raise ValueError(f"{field_name} must be text.")
 
     text_value = str(value).strip()
+
     if not text_value and not required:
         return text_value
 
     normalized_name = field_name.lower()
+
     if normalized_name == "pan" or normalized_name.endswith("_pan"):
         text_value = text_value.upper()
         if not _PAN_PATTERN.fullmatch(text_value):
             raise ValueError(
-                f"{field_name} must be 10 characters in PAN format (ABCDE1234F)."
+                f"{field_name} must be 10 characters in PAN format "
+                "(ABCDE1234F)."
             )
+
     elif normalized_name == "contact_no":
         if not _PHONE_PATTERN.fullmatch(text_value):
-            raise ValueError(f"{field_name} must contain exactly 10 digits.")
+            raise ValueError(
+                f"{field_name} must contain exactly 10 digits."
+            )
+
     elif (
         normalized_name in {"account_no", "bank_account_no"}
         or re.fullmatch(r"bank_account_no_[0-9]+", normalized_name)
     ):
         if not _ACCOUNT_NUMBER_PATTERN.fullmatch(text_value):
-            raise ValueError(f"{field_name} must contain 1 to 50 digits only.")
+            raise ValueError(
+                f"{field_name} must contain 1 to 50 digits only."
+            )
+
     elif normalized_name == "ifsc" or normalized_name.endswith("_ifsc"):
         text_value = text_value.upper()
         if not _IFSC_PATTERN.fullmatch(text_value):
             raise ValueError(
                 f"{field_name} must be a valid 11-character IFSC code."
             )
+
     return text_value
 
 
@@ -107,8 +125,10 @@ def _field_validators(
     fields: dict[str, tuple[Any, Any]],
 ) -> dict[str, Any]:
     validators: dict[str, Any] = {}
+
     for field_name, (_, field_definition) in fields.items():
         normalized_name = field_name.lower()
+
         if not (
             normalized_name == "pan"
             or normalized_name.endswith("_pan")
@@ -133,10 +153,12 @@ def _field_validators(
             )
 
         validate_value.__name__ = f"validate_{field_name}"
+
         validators[validate_value.__name__] = field_validator(
             field_name,
             mode="before",
         )(validate_value)
+
     return validators
 
 
@@ -149,23 +171,28 @@ def _column_fields(
     exclude_fields: set[str] | None = None,
 ) -> dict[str, tuple[Any, Any]]:
     fields: dict[str, tuple[Any, Any]] = {}
+
     child_foreign_key = (
         AR_CHILDREN[model][2]
         if nested and model in AR_CHILDREN
         else None
     )
+
     for column in model.__table__.columns:
-        if column.name in {"created_at", "updated_at"}:
-            if not response:
-                continue
+        if column.name in {"created_at", "updated_at"} and not response:
+            continue
+
         if column.primary_key and not response:
             continue
-        if column.name == child_foreign_key or (
-            exclude_fields is not None and column.name in exclude_fields
-        ):
+
+        if column.name == child_foreign_key:
+            continue
+
+        if exclude_fields is not None and column.name in exclude_fields:
             continue
 
         field_type = column.type.python_type
+
         if column.nullable:
             field_type = field_type | None
 
@@ -177,8 +204,10 @@ def _column_fields(
             default = ...
 
         constraints: dict[str, Any] = {}
+
         if isinstance(column.type, String) and column.type.length is not None:
             constraints["max_length"] = column.type.length
+
         if isinstance(column.type, Numeric) and column.type.precision is not None:
             constraints["max_digits"] = column.type.precision
             constraints["decimal_places"] = column.type.scale or 0
@@ -187,6 +216,7 @@ def _column_fields(
             field_type,
             Field(default=default, **constraints),
         )
+
     return fields
 
 
@@ -214,6 +244,7 @@ CREATE_SCHEMAS = {
     )
     for model in AR_MODELS
 }
+
 UPDATE_SCHEMAS = {
     model: _make_model(
         f"{model.__name__}Update",
@@ -221,6 +252,7 @@ UPDATE_SCHEMAS = {
     )
     for model in AR_MODELS
 }
+
 RESPONSE_SCHEMAS = {
     model: _make_model(
         f"{model.__name__}Response",
@@ -230,7 +262,12 @@ RESPONSE_SCHEMAS = {
     for model in AR_MODELS
 }
 
-for header_model, (child_field, child_model, foreign_key) in AR_CHILDREN.items():
+
+for header_model, (
+    child_field,
+    child_model,
+    foreign_key,
+) in AR_CHILDREN.items():
     nested_create = _make_model(
         f"{child_model.__name__}NestedCreate",
         _column_fields(
@@ -239,6 +276,7 @@ for header_model, (child_field, child_model, foreign_key) in AR_CHILDREN.items()
             exclude_fields={foreign_key},
         ),
     )
+
     nested_update = _make_model(
         f"{child_model.__name__}NestedUpdate",
         _column_fields(
@@ -248,6 +286,7 @@ for header_model, (child_field, child_model, foreign_key) in AR_CHILDREN.items()
             exclude_fields={foreign_key},
         ),
     )
+
     CREATE_SCHEMAS[header_model] = _make_model(
         f"{header_model.__name__}Create",
         {
@@ -255,6 +294,7 @@ for header_model, (child_field, child_model, foreign_key) in AR_CHILDREN.items()
             child_field: (list[nested_create] | None, None),
         },
     )
+
     UPDATE_SCHEMAS[header_model] = _make_model(
         f"{header_model.__name__}Update",
         {
@@ -262,6 +302,7 @@ for header_model, (child_field, child_model, foreign_key) in AR_CHILDREN.items()
             child_field: (list[nested_update] | None, None),
         },
     )
+
     RESPONSE_SCHEMAS[header_model] = _make_model(
         f"{header_model.__name__}Response",
         {
@@ -273,6 +314,7 @@ for header_model, (child_field, child_model, foreign_key) in AR_CHILDREN.items()
         },
         from_attributes=True,
     )
+
 
 SCHEMAS = {
     model: (

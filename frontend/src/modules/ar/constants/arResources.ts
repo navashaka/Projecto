@@ -1,6 +1,9 @@
 import type { ARDocumentDefinition, ARFieldDefinition } from '../types/arTypes'
 
-const textFields = (names: string, required: string[] = []): ARFieldDefinition[] =>
+const textFields = (
+  names: string,
+  required: string[] = [],
+): ARFieldDefinition[] =>
   names.split(' ').filter(Boolean).map((name) => ({
     name,
     kind: 'text',
@@ -11,10 +14,17 @@ const numberFields = (
   names: string,
   step = 0.01,
 ): ARFieldDefinition[] =>
-  names.split(' ').filter(Boolean).map((name) => ({ name, kind: 'number', step }))
+  names.split(' ').filter(Boolean).map((name) => ({
+    name,
+    kind: 'number',
+    step,
+  }))
 
 const dateFields = (names: string): ARFieldDefinition[] =>
-  names.split(' ').filter(Boolean).map((name) => ({ name, kind: 'date' }))
+  names.split(' ').filter(Boolean).map((name) => ({
+    name,
+    kind: 'date',
+  }))
 
 const commonItemFields: ARFieldDefinition[] = [
   { name: 'sl_no', kind: 'number', step: 1, required: true },
@@ -29,11 +39,7 @@ const commonItemFields: ARFieldDefinition[] = [
   { name: 'total_amount', kind: 'number', readOnly: true },
 ]
 
-const paymentTermsOptions = [
-  'Created',
-  'Approved',
-  'Checked',
-]
+const paymentTermsOptions = ['Created', 'Approved', 'Checked']
 
 export const arCustomerFields: ARFieldDefinition[] = [
   ...textFields('customer_name', ['customer_name']),
@@ -45,6 +51,7 @@ export const arCustomerFields: ARFieldDefinition[] = [
     'gstn email_id contact_no contact_person_name ship_to_address ship_to_address_1 ship_to_address_2 ship_to_address_3 msme_status msme_no activity',
   ),
 ]
+
 arCustomerFields.find((field) => field.name === 'bill_to_address')!.kind = 'textarea'
 arCustomerFields.find((field) => field.name === 'ship_to_address')!.kind = 'textarea'
 
@@ -56,7 +63,7 @@ export const arDocuments: Record<string, ARDocumentDefinition> = {
     itemForeignKey: 'quotation_id',
     itemKind: 'quotation',
     fields: [
-      { name: 'quotation_no', kind: 'text' },
+      ...textFields('quotation_no'),
       { name: 'quotation_date', kind: 'date', required: true },
       { name: 'customer_id', kind: 'customer', required: true },
       ...textFields('vendor_name'),
@@ -72,12 +79,17 @@ export const arDocuments: Record<string, ARDocumentDefinition> = {
     ],
     itemFields: [
       { name: 'item_no', kind: 'number', step: 1, required: true },
-      { name: 'product_item_description', kind: 'textarea', required: true },
+      {
+        name: 'product_item_description',
+        kind: 'textarea',
+        required: true,
+      },
       { name: 'quantity', kind: 'number', step: 0.001 },
       { name: 'rate', kind: 'number' },
       { name: 'amount', kind: 'number', readOnly: true },
     ],
   },
+
   'proforma-invoices': {
     title: 'Proforma Invoice',
     endpoint: 'proforma-invoices',
@@ -93,7 +105,11 @@ export const arDocuments: Record<string, ARDocumentDefinition> = {
         required: true,
         options: ['Goods', 'Service', 'Export'],
       },
-      { name: 'dispatch_type', kind: 'select' },
+      {
+        name: 'dispatch_type',
+        kind: 'select',
+        options: ['Direct', 'Transfer', 'OC Site'],
+      },
       ...numberFields('oc_id', 1),
       { name: 'quotation_id', kind: 'quotation' },
       ...textFields('order_by asm order_approved_by'),
@@ -126,6 +142,7 @@ export const arDocuments: Record<string, ARDocumentDefinition> = {
       { name: 'uom', kind: 'text' },
     ],
   },
+
   invoices: {
     title: 'Invoice',
     endpoint: 'invoices',
@@ -135,8 +152,18 @@ export const arDocuments: Record<string, ARDocumentDefinition> = {
     fields: [
       ...textFields('invoice_no'),
       { name: 'invoice_date', kind: 'date', required: true },
-      ...textFields('invoice_type', ['invoice_type']),
-      ...textFields('dispatch_type'),
+      {
+        name: 'invoice_type',
+        kind: 'select',
+        required: true,
+        options: ['Goods', 'Service', 'Export'],
+      },
+      {
+        name: 'dispatch_type',
+        kind: 'select',
+        required: true,
+        options: ['Direct', 'Transfer', 'OC Site'],
+      },
       ...numberFields('oc_id', 1),
       { name: 'proforma_invoice_id', kind: 'proforma-invoice' },
       { name: 'quotation_id', kind: 'quotation' },
@@ -163,6 +190,7 @@ export const arDocuments: Record<string, ARDocumentDefinition> = {
       { name: 'inventory_issue_id', kind: 'number', step: 1 },
     ],
   },
+
   'tax-invoices': {
     title: 'Tax Invoice',
     endpoint: 'tax-invoices',
@@ -219,6 +247,7 @@ for (const definition of Object.values(arDocuments)) {
     if (['total', 'grand_total'].includes(field.name)) {
       field.readOnly = true
     }
+
     if (definition.endpoint !== 'quotations' && field.name === 'gst') {
       field.readOnly = true
     }
