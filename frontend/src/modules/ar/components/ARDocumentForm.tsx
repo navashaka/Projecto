@@ -1,4 +1,4 @@
-import {
+﻿import {
   Alert,
   Box,
   Button,
@@ -61,17 +61,6 @@ const invoiceAddressFields = new Set([
   'buyer_address_3',
   'buyer_pan',
   'buyer_gstn',
-])
-
-const taxInvoiceOrderFields = new Set([
-  'purchase_order_no',
-  'purchase_order_date',
-  'lr_no',
-  'lr_date',
-  'terms_of_payment',
-  'terms_of_delivery',
-  'transporter',
-  'vehicle_no',
 ])
 
 const taxInvoiceItemOrder = [
@@ -1292,7 +1281,8 @@ export default function ARDocumentForm({ resource }: ARDocumentFormProps) {
               </Table>
             </TableContainer>
 
-            <Stack direction="row" spacing={1} justifyContent="space-between">
+            <Stack direction="row" spacing={1} 
+            sx={{ justifyContent: 'space-between' }}>
               <Button
                 onClick={() => setItems((current) => [...current, blankItem(definition, current.length)])}
                 variant="outlined"
@@ -1329,9 +1319,9 @@ export default function ARDocumentForm({ resource }: ARDocumentFormProps) {
 
             {!isTaxInvoice && (
               <Typography align="right">
-                Total: ₹{totals.total.toFixed(2)}
-                {' | '}GST: ₹{totals.gst.toFixed(2)}
-                {' | '}Grand Total: ₹{totals.grandTotal.toFixed(2)}
+                Total: Γé╣{totals.total.toFixed(2)}
+                {' | '}GST: Γé╣{totals.gst.toFixed(2)}
+                {' | '}Grand Total: Γé╣{totals.grandTotal.toFixed(2)}
               </Typography>
             )}
 
@@ -1390,7 +1380,7 @@ export default function ARDocumentForm({ resource }: ARDocumentFormProps) {
 
             <Stack direction="row" spacing={1}>
               <Button disabled={saving} type="submit" variant="contained">
-                {saving ? 'Saving…' : editingId ? `Update ${definition.title}` : `Save ${definition.title}`}
+                {saving ? 'SavingΓÇª' : editingId ? `Update ${definition.title}` : `Save ${definition.title}`}
               </Button>
 
               {editingId !== undefined && (
@@ -1408,7 +1398,7 @@ export default function ARDocumentForm({ resource }: ARDocumentFormProps) {
           </Typography>
 
           {loading ? (
-            <Typography>Loading records…</Typography>
+            <Typography>Loading recordsΓÇª</Typography>
           ) : (
             <TableContainer>
               <Table size="small">

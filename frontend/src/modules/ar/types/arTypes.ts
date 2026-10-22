@@ -1,11 +1,15 @@
 export type ARValue = string | number | boolean | null | undefined
-export type ARRecord = Record<string, unknown> & { id?: number }
+
+export type ARRecord = Record<string, unknown> & {
+  id?: number
+}
 
 export type ARFieldKind =
   | 'text'
   | 'number'
   | 'date'
   | 'datetime-local'
+  | 'email'
   | 'textarea'
   | 'boolean'
   | 'select'
@@ -15,6 +19,7 @@ export type ARFieldKind =
 
 export interface ARFieldDefinition {
   name: string
+  label?: string
   kind: ARFieldKind
   required?: boolean
   step?: number
