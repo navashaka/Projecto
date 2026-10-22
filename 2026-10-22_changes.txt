@@ -1,0 +1,50 @@
+Daily Work Report – 22 October 2026
+
+Project: Projecto
+
+Tax Invoice Template
+
+- Completed the Tax Invoice template implementation in the AR module.
+- Worked on the invoice layout and e-Invoice details.
+- Added the invoice header, invoice dates, Consignee and Buyer sections.
+- Worked on purchase order, delivery challan, transporter and vehicle details.
+- Implemented the item table with quantity, rate, HSN, GST rate, tax and total amount.
+- Worked on automatic subtotal, GST and grand total calculations.
+- Added the amount-in-words section.
+- Added company PAN, GSTIN, CIN, bank details and authorised signatory sections.
+
+Address Fields Changes
+
+- Updated address fields in Inventory Delivery Challan Inwards.
+- Updated vendor address fields in Gate Entries.
+- Updated vendor address fields in Material Receipt Notes (MRN).
+- Confirmed that the Inventory and HR forms are working.
+- Started updating Buyer and Consignee address labels in the AR module.
+- Planned the address field changes for the remaining AR forms.
+
+Database Modifications
+
+- Worked on database changes related to the ongoing module implementation.
+- Identified the need to align database columns with the updated address fields.
+- Backend models and schemas need to match the new address structure.
+
+Backend Modifications Pending
+
+- Update SQLAlchemy models for the new address fields wherever required.
+- Update Pydantic schemas and validation rules.
+- Update API request and response handling.
+- Update database columns and migrations for the address fields.
+- Modify customer address auto-fill logic.
+- Update quotation-to-invoice data restoration.
+- Update proforma-invoice-to-tax-invoice data restoration.
+- Verify create, edit and update operations.
+- Test all affected AR APIs and fix any validation or database errors.
+
+Current Status
+
+- Tax Invoice template: Completed.
+- Inventory forms: Working.
+- HR forms: Working.
+- AR address modifications: In progress.
+- Related backend and database updates: Pending.
+- GL module: No changes made today.

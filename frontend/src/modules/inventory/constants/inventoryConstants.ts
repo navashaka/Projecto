@@ -17,16 +17,6 @@ const text = (
   required,
 })
 
-const longText = (
-  name: string,
-  label: string,
-  maxLength: number,
-): InventoryFieldDefinition => ({
-  name,
-  label,
-  kind: 'textarea',
-  maxLength,
-})
 
 const number = (
   name: string,
@@ -308,11 +298,12 @@ const inventoryResources: InventoryResourceDefinition[] = [
         'Vendor name',
         200,
       ),
-      longText(
-        'vendor_address',
-        'Vendor address',
-        500,
-      ),
+      text('street_no', 'Street Number', 50),
+      text('street_name', 'Street Name', 200),
+      text('city', 'City', 100),
+      text('state', 'State', 100),
+      text('zip_code', 'ZIP Code', 20),
+      text('country', 'Country', 100),
       text(
         'transporter_name',
         'Transporter name',
@@ -455,11 +446,12 @@ const inventoryResources: InventoryResourceDefinition[] = [
         'Vendor name',
         200,
       ),
-      longText(
-        'vendor_address',
-        'Vendor address',
-        500,
-      ),
+      text('street_no', 'Street Number', 50),
+      text('street_name', 'Street Name', 200),
+      text('city', 'City', 100),
+      text('state', 'State', 100),
+      text('zip_code', 'ZIP Code', 20),
+      text('country', 'Country', 100),
       text(
         'eway_bill_no',
         'E-way bill number',
@@ -758,11 +750,12 @@ const inventoryResources: InventoryResourceDefinition[] = [
         'Job worker',
         200,
       ),
-      longText(
-        'address',
-        'Address',
-        500,
-      ),
+      text('street_no', 'Street Number', 50),
+      text('street_name', 'Street Name', 200),
+      text('city', 'City', 100),
+      text('state', 'State', 100),
+      text('zip_code', 'ZIP Code', 20),
+      text('country', 'Country', 100),
       text(
         'work_order_no',
         'Work order number',

@@ -222,9 +222,13 @@ function invoiceFieldLabel(name: string): string {
   if (name === 'consignee_customer_name' || name === 'buyer_customer_name') {
     return 'Customer Name'
   }
-  if (name.startsWith('consignee_address_')) return 'Address'
-  if (name.startsWith('buyer_address_')) return 'Address of Delivery'
-  return fieldLabel(name)
+  if (name === 'consignee_address_1') return 'Street Number'
+  if (name === 'consignee_address_2') return 'Street Name'
+  if (name === 'consignee_address_3') return 'City / State / ZIP / Country'
+  if (name === 'buyer_address_1') return 'Street Number'
+  if (name === 'buyer_address_2') return 'Street Name'
+  if (name === 'buyer_address_3') return 'City / State / ZIP / Country'
+    return fieldLabel(name)
 }
 
 function fieldValue(record: ARRecord, field: ARFieldDefinition): string | boolean {

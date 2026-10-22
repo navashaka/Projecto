@@ -1296,7 +1296,49 @@ function InventoryResourceForm({
       setSavingItems(false)
     }
   }
+const handleDownloadExcelTemplate = () => {
+    const headers = excelFields.map((field) => field.name)
 
+    const sampleRow: Record<string, string | number | boolean> = {}
+
+    excelFields.forEach((field) => {
+      if (field.kind === 'boolean') {
+        sampleRow[field.name] = false
+      } else if (field.kind === 'date') {
+        sampleRow[field.name] = '2026-10-22'
+      } else if (field.kind === 'datetime-local') {
+        sampleRow[field.name] = '2026-10-22T09:00:00'
+      } else if (field.kind === 'time') {
+        sampleRow[field.name] = '09:00:00'
+      } else if (
+        field.kind === 'number' ||
+        (field.kind === 'select' && field.optionsEndpoint)
+      ) {
+        sampleRow[field.name] = field.required ? 1 : ''
+      } else if (field.kind === 'select' && field.choices?.length) {
+        sampleRow[field.name] = String(field.choices[0].value)
+      } else {
+        sampleRow[field.name] = ''
+      }
+    })
+
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      headers,
+      headers.map((header) => sampleRow[header] ?? ''),
+    ])
+
+    worksheet['!cols'] = headers.map((header) => ({
+      wch: Math.max(header.length + 5, 18),
+    }))
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sample Template')
+
+    XLSX.writeFile(
+      workbook,
+      `${resource.key}-${excelTarget}-sample-template.xlsx`,
+    )
+  }
   const handleExcelFileChange = async (file?: File) => {
     setExcelFile(null)
     setExcelPreviewRows([])
@@ -2133,7 +2175,14 @@ function InventoryResourceForm({
               {excelMessage}
             </Alert>
           )}
-
+          <Button
+           disabled={excelUploading || excelFields.length === 0}
+           onClick={handleDownloadExcelTemplate}
+           variant="outlined"
+           type="button"
+          >
+            Download Sample Excel Template
+          </Button>
           <div>
             <Typography
               component="label"

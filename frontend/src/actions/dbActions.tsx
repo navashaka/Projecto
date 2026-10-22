@@ -59,7 +59,17 @@ export type UserEnquiryPayload = {
   nationality?: string
   motherTongue?: string
   languagesKnown?: string
+
+  streetNo?: string
+  streetName?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  country?: string
+
+  // Backward compatibility with existing form/API usage
   address?: string
+
   phone?: string
   personalEmail?: string
   pan?: string
@@ -104,7 +114,17 @@ export const normalizeUserEnquiryPayload = (
   nationality: payload.nationality,
   mother_tongue: payload.motherTongue,
   other_languages_known: payload.languagesKnown,
+
+  street_no: payload.streetNo,
+  street_name: payload.streetName,
+  city: payload.city,
+  state: payload.state,
+  zip_code: payload.zipCode,
+  country: payload.country,
+
+  // Retained so existing backend code using address won't break
   address: payload.address,
+
   phone: payload.phone,
   personal_email: payload.personalEmail,
   pan: payload.pan,
@@ -123,48 +143,23 @@ export const normalizeUserEnquiryPayload = (
   current_ctc: payload.currentCtc,
   role_responsibilities: payload.currentResponsibilities,
 
-  previous_employer_name:
-    payload.previousEmployer,
-
-  previous_employer_position:
-    payload.previousPosition,
-
-  previous_employer_department:
-    payload.previousDepartment,
-
-  previous_employer_working_period:
-    payload.previousWorkingPeriod,
-
-  previous_employer_ctc:
-    payload.previousCtc,
-
-  previous_employer_role:
-    payload.previousResponsibilities,
+  previous_employer_name: payload.previousEmployer,
+  previous_employer_position: payload.previousPosition,
+  previous_employer_department: payload.previousDepartment,
+  previous_employer_working_period: payload.previousWorkingPeriod,
+  previous_employer_ctc: payload.previousCtc,
+  previous_employer_role: payload.previousResponsibilities,
 
   previous_employments:
-    payload.previousEmployments?.map(
-      (employment) => ({
-        employer:
-          employment.previousEmployer,
-
-        position:
-          employment.previousPosition,
-
-        department:
-          employment.previousDepartment,
-
-        working_period:
-          employment.previousWorkingPeriod,
-
-        ctc:
-          employment.previousCtc,
-
-        responsibilities:
-          employment.previousResponsibilities,
-
-        documents: null
-      })
-    ) ?? []
+    payload.previousEmployments?.map((employment) => ({
+      employer: employment.previousEmployer,
+      position: employment.previousPosition,
+      department: employment.previousDepartment,
+      working_period: employment.previousWorkingPeriod,
+      ctc: employment.previousCtc,
+      responsibilities: employment.previousResponsibilities,
+      documents: null
+    })) ?? []
 })
 
 export const submitUserEnquiry = async (
