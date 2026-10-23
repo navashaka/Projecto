@@ -24,7 +24,15 @@ class UserEnquiry(Base):
     date_of_birth = Column(Date, nullable=True)
     blood_group = Column(String(20), nullable=True)
     marital_status = Column(String(50), nullable=True)
-    address = Column(Text, nullable=True)
+
+    # Address Details
+    street_no = Column(String(50), nullable=True)
+    street_name = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    zip_code = Column(String(20), nullable=True)
+    country = Column(String(100), nullable=True)
+
     phone = Column(String(30), nullable=True)
     pan = Column(String(30), nullable=True)
     aadhaar = Column(String(30), nullable=True)

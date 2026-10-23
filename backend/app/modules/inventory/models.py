@@ -284,10 +284,12 @@ class InventoryGateEntry(Base):
         nullable=True,
     )
 
-    vendor_address = Column(
-        String(500),
-        nullable=True,
-    )
+    street_no = Column(String(50), nullable=True)
+    street_name = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    zip_code = Column(String(20), nullable=True)
+    country = Column(String(100), nullable=True)
 
     transporter_name = Column(
         String(200),
@@ -439,10 +441,12 @@ class InventoryMaterialReceiptNote(Base):
         nullable=True,
     )
 
-    vendor_address = Column(
-        String(500),
-        nullable=True,
-    )
+    street_no = Column(String(50), nullable=True)
+    street_name = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    zip_code = Column(String(20), nullable=True)
+    country = Column(String(100), nullable=True)
 
     eway_bill_no = Column(
         String(100),
@@ -731,10 +735,12 @@ class InventoryDeliveryChallanInward(Base):
         nullable=True,
     )
 
-    address = Column(
-        String(500),
-        nullable=True,
-    )
+    street_no = Column(String(50), nullable=True)
+    street_name = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    zip_code = Column(String(20), nullable=True)
+    country = Column(String(100), nullable=True)
 
     work_order_no = Column(
         String(100),

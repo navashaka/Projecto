@@ -21,7 +21,15 @@ class UserEnquiryBase(BaseModel):
     date_of_birth: date | None = None
     blood_group: str | None = None
     marital_status: str | None = None
-    address: str | None = None
+
+    # Address Details
+    street_no: str | None = None
+    street_name: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
+    country: str | None = "India"
+
     phone: str | None = None
     pan: str | None = None
     aadhaar: str | None = None
@@ -47,7 +55,6 @@ class UserEnquiryBase(BaseModel):
     role_responsibilities: str | None = None
 
     current_ctc: Decimal | None = None
-
     employer_documents: str | None = None
 
     # First previous employment
@@ -76,7 +83,15 @@ class UserEnquiryUpdate(BaseModel):
     date_of_birth: date | None = None
     blood_group: str | None = None
     marital_status: str | None = None
-    address: str | None = None
+
+    # Address Details
+    street_no: str | None = None
+    street_name: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
+    country: str | None = None
+
     phone: str | None = None
     pan: str | None = None
     aadhaar: str | None = None
@@ -100,6 +115,7 @@ class UserEnquiryUpdate(BaseModel):
     department: str | None = None
     working_period: str | None = None
     role_responsibilities: str | None = None
+
     current_ctc: Decimal | None = None
     employer_documents: str | None = None
 
@@ -114,7 +130,15 @@ class UserEnquiryRead(BaseModel):
     date_of_birth: date | None = None
     blood_group: str | None = None
     marital_status: str | None = None
-    address: str | None = None
+
+    # Address Details
+    street_no: str | None = None
+    street_name: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
+    country: str | None = None
+
     phone: str | None = None
     pan: str | None = None
     aadhaar: str | None = None
@@ -138,6 +162,7 @@ class UserEnquiryRead(BaseModel):
     department: str | None = None
     working_period: str | None = None
     role_responsibilities: str | None = None
+
     current_ctc: Decimal | None = None
     employer_documents: str | None = None
 

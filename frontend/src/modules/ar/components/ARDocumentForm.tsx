@@ -49,16 +49,22 @@ const QUOTATION_GST_RATE = 18
 
 const invoiceAddressFields = new Set([
   'consignee_customer_name',
-  'consignee_address_1',
-  'consignee_address_2',
-  'consignee_address_3',
+  'consignee_street_number',
+  'consignee_street_name',
+  'consignee_city',
+  'consignee_state',
+  'consignee_zip_code',
+  'consignee_country',
   'consignee_pan',
   'consignee_gstn',
   'buyer_customer_id',
   'buyer_customer_name',
-  'buyer_address_1',
-  'buyer_address_2',
-  'buyer_address_3',
+  'buyer_street_number',
+  'buyer_street_name',
+  'buyer_city',
+  'buyer_state',
+  'buyer_zip_code',
+  'buyer_country',
   'buyer_pan',
   'buyer_gstn',
 ])
@@ -222,13 +228,23 @@ function invoiceFieldLabel(name: string): string {
   if (name === 'consignee_customer_name' || name === 'buyer_customer_name') {
     return 'Customer Name'
   }
-  if (name === 'consignee_address_1') return 'Street Number'
-  if (name === 'consignee_address_2') return 'Street Name'
-  if (name === 'consignee_address_3') return 'City / State / ZIP / Country'
-  if (name === 'buyer_address_1') return 'Street Number'
-  if (name === 'buyer_address_2') return 'Street Name'
-  if (name === 'buyer_address_3') return 'City / State / ZIP / Country'
-    return fieldLabel(name)
+    const addressLabels: Record<string, string> = {
+    consignee_street_number: 'Street Number',
+    consignee_street_name: 'Street Name',
+    consignee_city: 'City',
+    consignee_state: 'State',
+    consignee_zip_code: 'ZIP Code',
+    consignee_country: 'Country',
+    buyer_street_number: 'Street Number',
+    buyer_street_name: 'Street Name',
+    buyer_city: 'City',
+    buyer_state: 'State',
+    buyer_zip_code: 'ZIP Code',
+    buyer_country: 'Country',
+  }
+
+  if (addressLabels[name]) return addressLabels[name]
+  return fieldLabel(name)
 }
 
 function fieldValue(record: ARRecord, field: ARFieldDefinition): string | boolean {
@@ -450,13 +466,16 @@ export default function ARDocumentForm({ resource }: ARDocumentFormProps) {
       if (customer) {
         const prefix = field.name === 'customer_id' ? '' : 'buyer_'
         const keys: Record<string, string> = {
-          [`${prefix}customer_name`]: 'customer_name',
-          [`${prefix}address_1`]: 'address_1',
-          [`${prefix}address_2`]: 'address_2',
-          [`${prefix}address_3`]: 'address_3',
-          [`${prefix}pan`]: 'pan',
-          [`${prefix}gstn`]: 'gstn',
-        }
+        [`${prefix}customer_name`]: "customer_name",
+        [`${prefix}street_no`]: "street_no",
+        [`${prefix}street_name`]: "street_name",
+        [`${prefix}city`]: "city",
+        [`${prefix}pin_code`]: "pin_code",
+        [`${prefix}state`]: "state",
+        [`${prefix}country`]: "country",
+        [`${prefix}pan`]: "pan",
+        [`${prefix}gstn`]: "gstn",
+        };
 
         setValues((current) => {
           const next = { ...current }
@@ -1323,9 +1342,9 @@ export default function ARDocumentForm({ resource }: ARDocumentFormProps) {
 
             {!isTaxInvoice && (
               <Typography align="right">
-                Total: Γé╣{totals.total.toFixed(2)}
-                {' | '}GST: Γé╣{totals.gst.toFixed(2)}
-                {' | '}Grand Total: Γé╣{totals.grandTotal.toFixed(2)}
+                Total: ₹{totals.total.toFixed(2)}
+                {' | '}GST: ₹{totals.gst.toFixed(2)}
+                {' | '}Grand Total: ₹{totals.grandTotal.toFixed(2)}
               </Typography>
             )}
 

@@ -23,7 +23,15 @@ class UserEnquiryService:
             date_of_birth=payload.date_of_birth,
             blood_group=payload.blood_group,
             marital_status=payload.marital_status,
-            address=payload.address,
+
+            # Address Details
+            street_no=payload.street_no,
+            street_name=payload.street_name,
+            city=payload.city,
+            state=payload.state,
+            zip_code=payload.zip_code,
+            country=payload.country,
+
             phone=payload.phone,
             pan=payload.pan,
             aadhaar=payload.aadhaar,
@@ -146,7 +154,15 @@ class UserEnquiryService:
             "date_of_birth",
             "blood_group",
             "marital_status",
-            "address",
+
+            # Address Details
+            "street_no",
+            "street_name",
+            "city",
+            "state",
+            "zip_code",
+            "country",
+
             "phone",
             "pan",
             "aadhaar",
