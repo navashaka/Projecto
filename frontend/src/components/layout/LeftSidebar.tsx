@@ -96,8 +96,7 @@ const LeftSidebar = () => {
           <div
             className="d-grid gap-2"
             style={{ order: 3 }}
-            onMouseEnter={() => setARExpanded(true)}
-            onMouseLeave={() => setARExpanded(false)}
+            onClick={() => setARExpanded(!arExpanded)}
           >
             <button
               type="button"
@@ -130,8 +129,7 @@ const LeftSidebar = () => {
           <div
             className="d-grid gap-2"
             style={{ order: 1 }}
-            onMouseEnter={() => setAdminExpanded(true)}
-            onMouseLeave={() => setAdminExpanded(false)}
+            onClick={() => setAdminExpanded(!adminExpanded)}
           >
             <button
               type="button"
@@ -162,8 +160,7 @@ const LeftSidebar = () => {
           <div
             className="d-grid gap-2"
             style={{ order: 5 }}
-            onMouseEnter={() => setHRExpanded(true)}
-            onMouseLeave={() => setHRExpanded(false)}
+            onClick={() => setHRExpanded(!hrExpanded)}
           >
             <div className="d-flex gap-1">
               <button
@@ -210,8 +207,7 @@ const LeftSidebar = () => {
           <div
             className="d-grid gap-2"
             style={{ order: 6 }}
-            onMouseEnter={() => setInventoryExpanded(true)}
-            onMouseLeave={() => setInventoryExpanded(false)}
+            onClick={() => setInventoryExpanded(!inventoryExpanded)}
           >
             <button
               type="button"
@@ -242,8 +238,7 @@ const LeftSidebar = () => {
           <div
             className="d-grid gap-2"
             style={{ order: 4 }}
-            onMouseEnter={() => setGLExpanded(true)}
-            onMouseLeave={() => setGLExpanded(false)}
+            onClick={() => setGLExpanded(!glExpanded)}
           >
             <button
               type="button"
