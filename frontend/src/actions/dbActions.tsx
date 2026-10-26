@@ -1,4 +1,5 @@
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
+import type { UserRole, UserSession } from '../store'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -62,6 +63,10 @@ export type UserEnquiryPayload = {
   previousWorkingPeriod?: string
   previousCtc?: string
   previousResponsibilities?: string
+  highestQualificationDocument?: string
+  yearOfPassDocument?: string
+  employerDocuments?: string
+  previousEmployerDocuments?: string
   [key: string]: string | undefined
 }
 
@@ -85,18 +90,22 @@ export const normalizeUserEnquiryPayload = (payload: UserEnquiryPayload) => ({
   emergency_phone_2: payload.emergencyPhone2,
   highest_qualification: payload.highestQualification,
   year_of_pass: payload.yearOfPass,
+  highest_qualification_document: payload.highestQualificationDocument,
+  year_of_pass_document: payload.yearOfPassDocument,
   current_employer: payload.currentEmployer,
   current_position: payload.position,
   department: payload.department,
   working_period: payload.workingPeriod,
   current_ctc: payload.currentCtc,
   role_responsibilities: payload.currentResponsibilities,
+  employer_documents: payload.employerDocuments,
   previous_employer_name: payload.previousEmployer,
   previous_employer_position: payload.previousPosition,
   previous_employer_department: payload.previousDepartment,
   previous_employer_working_period: payload.previousWorkingPeriod,
   previous_employer_ctc: payload.previousCtc,
-  previous_employer_role: payload.previousResponsibilities
+  previous_employer_role: payload.previousResponsibilities,
+  previous_employer_documents: payload.previousEmployerDocuments
 })
 
 export const submitUserEnquiry = async (
@@ -113,16 +122,21 @@ export const submitUserEnquiry = async (
   )
 }
 
+export type LoginCredentials = {
+  email: string
+  name: string
+  password: string
+  role: UserRole
+}
+
 export const loginUser = async (
-  email: string,
-  password: string,
-  dispatch?: (action: ApiDispatchAction<{ token?: string }>) => void
+  credentials: LoginCredentials,
+  dispatch?: (action: ApiDispatchAction<AxiosResponse<UserSession>>) => void
 ) => {
   return dispatchRequest(
     'LOGIN_USER',
     async () => {
-      const response = await apiClient.post('/api/auth/login', { email, password })
-      return response.data
+      return apiClient.post<UserSession>('/api/v1/auth/login', credentials)
     },
     dispatch
   )

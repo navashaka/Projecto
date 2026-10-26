@@ -1,62 +1,77 @@
+import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { submitUserEnquiry } from '../../actions/dbActions'
 
 type UserEnquiryFormProps = {
-  onBackToLogin: () => void
+  onBackToLogin?: () => void
 }
 
 const enquirySchema = z.object({
   candidateName: z.string().trim().min(2, 'Candidate name is required'),
-  fatherName: z.string().trim().min(2, 'Father name is required'),
-  dob: z.string().min(1, 'Date of birth is required'),
-  bloodGroup: z.string().min(1, 'Blood group is required'),
-  maritalStatus: z.string().min(1, 'Please select marital status'),
-  religion: z.string().min(1, 'Religion is required'),
-  nationality: z.string().min(1, 'Nationality is required'),
-  motherTongue: z.string().min(1, 'Mother tongue is required'),
+  fatherName: z.string().optional(),
+  dob: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  religion: z.string().optional(),
+  nationality: z.string().optional(),
+  motherTongue: z.string().optional(),
   languagesKnown: z.string().optional(),
-  address: z.string().trim().min(10, 'Address must be at least 10 characters'),
-  phone: z.string().trim().min(10, 'Phone number is required'),
-  personalEmail: z.string().trim().email('Please enter a valid email address'),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  personalEmail: z.string().trim().email('Please enter a valid email address').optional().or(z.literal('')),
   pan: z
     .string()
     .trim()
     .refine(
-      (value) => /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value.replace(/\s+/g, '').toUpperCase()),
+      (value) => !value || /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value.replace(/\s+/g, '').toUpperCase()),
       {
         message: 'PAN must be 10 characters in the format ABCDE1234F'
       }
-    ),
+    ).optional(),
   aadhar: z
     .string()
     .trim()
-    .refine((value) => /^[2-9][0-9]{11}$/.test(value.replace(/\s+/g, '')), {
+    .refine((value) => !value || /^[2-9][0-9]{11}$/.test(value.replace(/\s+/g, '')), {
       message: 'Aadhaar must be 12 digits and valid for Indian format'
-    }),
+    }).optional(),
   passportNo: z.string().optional(),
-  emergencyPhone1: z.string().trim().min(10, 'Emergency contact is required'),
+  emergencyPhone1: z.string().optional(),
   emergencyPhone2: z.string().optional(),
-  highestQualification: z.string().trim().min(2, 'Highest qualification is required'),
-  yearOfPass: z.string().trim().min(4, 'Year of pass is required'),
-  currentEmployer: z.string().trim().min(2, 'Current employer is required'),
-  position: z.string().trim().min(2, 'Current position is required'),
-  department: z.string().trim().min(2, 'Department is required'),
-  workingPeriod: z.string().trim().min(2, 'Working period is required'),
-  currentCtc: z.string().trim().min(2, 'Current CTC is required'),
-  currentResponsibilities: z.string().trim().min(10, 'Please describe responsibilities'),
-  previousEmployer: z.string().trim().min(2, 'Previous employer is required'),
-  previousPosition: z.string().trim().min(2, 'Previous position is required'),
-  previousDepartment: z.string().trim().min(2, 'Previous department is required'),
-  previousWorkingPeriod: z.string().trim().min(2, 'Previous working period is required'),
-  previousCtc: z.string().trim().min(2, 'Previous CTC is required'),
-  previousResponsibilities: z.string().trim().min(10, 'Please provide previous role details')
+  highestQualification: z.string().optional(),
+  additionalQualification: z.string().optional(),
+  yearOfPass: z.string().optional(),
+  currentEmployer: z.string().optional(),
+  position: z.string().optional(),
+  department: z.string().optional(),
+  workingPeriod: z.string().optional(),
+  currentCtc: z.string().optional(),
+  currentResponsibilities: z.string().optional(),
+  previousEmployer: z.string().optional(),
+  previousPosition: z.string().optional(),
+  previousDepartment: z.string().optional(),
+  previousWorkingPeriod: z.string().optional(),
+  previousCtc: z.string().optional(),
+  previousResponsibilities: z.string().optional()
 })
 
 type EnquiryFormValues = z.infer<typeof enquirySchema>
 
+type DocumentField =
+  | 'highestQualificationDocument'
+  | 'yearOfPassDocument'
+  | 'employerDocuments'
+  | 'previousEmployerDocuments'
+
 const UserEnquiryForm = ({ onBackToLogin }: UserEnquiryFormProps) => {
+  const [selectedDocuments, setSelectedDocuments] = useState<Record<DocumentField, string | undefined>>({
+    highestQualificationDocument: undefined,
+    yearOfPassDocument: undefined,
+    employerDocuments: undefined,
+    previousEmployerDocuments: undefined
+  })
+  const [fileInputKey, setFileInputKey] = useState(0)
   const {
     register,
     handleSubmit,
@@ -76,11 +91,37 @@ const UserEnquiryForm = ({ onBackToLogin }: UserEnquiryFormProps) => {
   const getTextAreaClass = (fieldName: keyof EnquiryFormValues) =>
     errors[fieldName] ? 'form-control is-invalid' : 'form-control'
 
+  const updateSelectedDocuments = (field: DocumentField, files: FileList | null) => {
+    const names = Array.from(files ?? []).map((file) => file.name)
+    setSelectedDocuments((current) => ({
+      ...current,
+      [field]: names.length > 0 ? names.join(', ') : undefined
+    }))
+  }
+
   const onSubmit = async (data: EnquiryFormValues) => {
     try {
-      await submitUserEnquiry(data)
+      const qualifications = [data.highestQualification, data.additionalQualification]
+        .filter((qualification): qualification is string => Boolean(qualification?.trim()))
+        .join(', ')
+
+      await submitUserEnquiry({
+        ...data,
+        highestQualification: qualifications || undefined,
+        highestQualificationDocument: selectedDocuments.highestQualificationDocument,
+        yearOfPassDocument: selectedDocuments.yearOfPassDocument,
+        employerDocuments: selectedDocuments.employerDocuments,
+        previousEmployerDocuments: selectedDocuments.previousEmployerDocuments
+      })
       alert('Enquiry submitted successfully!')
       reset()
+      setSelectedDocuments({
+        highestQualificationDocument: undefined,
+        yearOfPassDocument: undefined,
+        employerDocuments: undefined,
+        previousEmployerDocuments: undefined
+      })
+      setFileInputKey((current) => current + 1)
     } catch (error) {
       console.error('Submit enquiry error:', error)
       alert('Something went wrong while submitting the form.')
@@ -97,9 +138,11 @@ const UserEnquiryForm = ({ onBackToLogin }: UserEnquiryFormProps) => {
                 <p className="text-uppercase text-primary fw-semibold mb-1">Registration</p>
                 <h1 className="h2 mb-0">Candidate Enquiry Form</h1>
               </div>
-              <button type="button" className="btn btn-outline-secondary" onClick={onBackToLogin}>
-                Back to Login
-              </button>
+              {onBackToLogin && (
+                <button type="button" className="btn btn-outline-secondary" onClick={onBackToLogin}>
+                  Back to Login
+                </button>
+              )}
             </div>
 
             <form className="row g-3" onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -311,11 +354,40 @@ const UserEnquiryForm = ({ onBackToLogin }: UserEnquiryFormProps) => {
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Upload Certificate</label>
-                    <input type="file" className="form-control" />
+                    <input
+                      key={`highest-qualification-${fileInputKey}`}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="form-control"
+                      onChange={(event) => updateSelectedDocuments('highestQualificationDocument', event.currentTarget.files)}
+                    />
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Upload Certificate</label>
-                    <input type="file" className="form-control" />
+                    <label className="form-label">Upload Certificate for Year of Pass</label>
+                    <input
+                      key={`year-of-pass-${fileInputKey}`}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="form-control"
+                      onChange={(event) => updateSelectedDocuments('yearOfPassDocument', event.currentTarget.files)}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Below qualification</label>
+                    <select
+                      {...register('additionalQualification')}
+                      className="form-select"
+                      defaultValue=""
+                    >
+                      <option value="">Select a qualification</option>
+                      <option value="Higher Secondary">Higher Secondary</option>
+                      <option value="Diploma">Diploma</option>
+                      <option value="Bachelor's Degree">Bachelor&apos;s Degree</option>
+                      <option value="Master's Degree">Master&apos;s Degree</option>
+                      <option value="Doctorate">Doctorate</option>
+                      <option value="Professional Certification">Professional Certification</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -383,7 +455,14 @@ const UserEnquiryForm = ({ onBackToLogin }: UserEnquiryFormProps) => {
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Upload Documents</label>
-                    <input type="file" className="form-control" />
+                    <input
+                      key={`current-employer-${fileInputKey}`}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      multiple
+                      className="form-control"
+                      onChange={(event) => updateSelectedDocuments('employerDocuments', event.currentTarget.files)}
+                    />
                   </div>
                   <div className="col-12">
                     <label className="form-label">Role, Responsibilities, Promotions &amp; Achievements</label>
@@ -465,7 +544,14 @@ const UserEnquiryForm = ({ onBackToLogin }: UserEnquiryFormProps) => {
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Upload Documents</label>
-                    <input type="file" className="form-control" />
+                    <input
+                      key={`previous-employer-${fileInputKey}`}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      multiple
+                      className="form-control"
+                      onChange={(event) => updateSelectedDocuments('previousEmployerDocuments', event.currentTarget.files)}
+                    />
                   </div>
                   <div className="col-12">
                     <label className="form-label">Role, Responsibilities, Promotions &amp; Achievements</label>

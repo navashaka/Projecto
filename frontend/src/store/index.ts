@@ -1,6 +1,7 @@
 export {
   useAppStore,
   type ModuleKey,
+  type UserRole,
   type UserSession
 } from './appStore'
 

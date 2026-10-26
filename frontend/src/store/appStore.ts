@@ -10,10 +10,12 @@ export type ModuleKey =
   | 'recruitment'
   | 'reports'
 
+export type UserRole = 'admin' | 'customer' | 'employee'
+
 export type UserSession = {
   email: string
-  name?: string
-  role?: string
+  name: string
+  role: UserRole
 }
 
 type AppState = {

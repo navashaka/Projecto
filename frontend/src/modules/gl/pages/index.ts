@@ -1,0 +1,16 @@
+import type { ComponentType } from 'react'
+import {
+  CustomerPage,
+  InvoicePage,
+  ProformaInvoicePage,
+  QuotationPage,
+  TaxInvoicePage
+} from './GLPages'
+
+export const glPages: Record<string, ComponentType> = {
+  customer: CustomerPage,
+  invoice: InvoicePage,
+  'proforma-invoice': ProformaInvoicePage,
+  quotation: QuotationPage,
+  'tax-invoice': TaxInvoicePage
+}
