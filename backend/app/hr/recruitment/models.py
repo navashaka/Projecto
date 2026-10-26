@@ -15,7 +15,7 @@ from app.core.database import Base
 
 
 class UserEnquiry(Base):
-    __tablename__ = "hr_userenquiry"
+    __tablename__ = "hr_candidate_enquiry"
 
     id = Column(Integer, primary_key=True, index=True)
 
@@ -128,7 +128,7 @@ class PreviousEmployment(Base):
     user_enquiry_id = Column(
         BigInteger,
         ForeignKey(
-            "hr_userenquiry.id",
+            "hr_candidate_enquiry.id",
             ondelete="CASCADE",
         ),
         nullable=False,

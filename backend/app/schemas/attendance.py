@@ -16,7 +16,6 @@ class AttendanceCreate(BaseModel):
     other_paid_days: int = 0
 
     net_present_days: int
-    net_payable_days: int
 
 
 class AttendanceUpdate(BaseModel):
@@ -32,4 +31,3 @@ class AttendanceUpdate(BaseModel):
     other_paid_days: int | None = None
 
     net_present_days: int | None = None
-    net_payable_days: int | None = None

@@ -16,12 +16,11 @@ type PreviewRow = {
   sundays: number
   other_paid_days: number
   net_present_days: number
-  net_payable_days: number
 }
 
 type AttendanceRecord = {
   id: number
-  user_id: number
+  employee_code: number
   attendance_month: string | null
   cl: number
   el: number
@@ -31,11 +30,11 @@ type AttendanceRecord = {
   sundays: number
   other_paid_days: number
   net_present_days: number
-  net_payable_days: number | null
 }
 
 const API = 'http://localhost:8000'
 const PAGE_SIZE = 5
+
 const excelHeaders = [
   'employee_code',
   'attendance_month',
@@ -47,7 +46,6 @@ const excelHeaders = [
   'sundays',
   'other_paid_days',
   'net_present_days',
-  'net_payable_days',
 ]
 
 function getSundaysInMonth(month: string) {
@@ -119,21 +117,26 @@ function AttendanceForm() {
   const [holidayError, setHolidayError] = useState('')
   const [holidayLoading, setHolidayLoading] = useState(false)
   const [showValidation, setShowValidation] = useState(false)
-  const [touched, setTouched] = useState({ employeeCode: false, month: false })
+  const [touched, setTouched] = useState({
+    employeeCode: false,
+    month: false,
+  })
   const [saving, setSaving] = useState(false)
-  const [attendanceId, setAttendanceId] = useState<number | null>(null)
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([])
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
-  const [messageType, setMessageType] = useState<'success' | 'error'>('success')
+  const [messageType, setMessageType] = useState<'success' | 'error'>(
+    'success',
+  )
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [loadingRecords, setLoadingRecords] = useState(true)
 
   const daysInMonth = useMemo(() => {
     if (!month) return 0
+
     const [year, monthNumber] = month.split('-').map(Number)
     return new Date(year, monthNumber, 0).getDate()
   }, [month])
@@ -158,39 +161,72 @@ function AttendanceForm() {
     () => netPresentDays + (Number(otherPaidLeaves) || 0),
     [netPresentDays, otherPaidLeaves],
   )
+
   const leaveDayFields = [
     { label: 'Casual Leave (CL)', value: cl, setter: setCl },
     { label: 'Earned Leave (EL)', value: el, setter: setEl },
     { label: 'Paid Leave (PL)', value: pl, setter: setPl },
     { label: 'Loss of Pay (LOP)', value: lop, setter: setLop },
-    { label: 'Other Paid Days', value: otherPaidLeaves, setter: setOtherPaidLeaves },
+    {
+      label: 'Other Paid Days',
+      value: otherPaidLeaves,
+      setter: setOtherPaidLeaves,
+    },
   ]
 
   const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
+
   const paginatedRecords = records.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   )
 
-  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
-    setMessage(text)
-    setMessageType(type)
-  }, [])
+  const showMessage = useCallback(
+    (text: string, type: 'success' | 'error') => {
+      setMessage(text)
+      setMessageType(type)
+    },
+    [],
+  )
+
+  const downloadTemplate = () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      excelHeaders,
+      ['', '', 0, 0, 0, 0, 0, 0, 0, 0],
+    ])
+
+    worksheet['!cols'] = excelHeaders.map((header) => ({
+      wch: Math.max(header.length + 4, 18),
+    }))
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Attendance Template',
+    )
+
+    XLSX.writeFile(workbook, 'Attendance_Template.xlsx')
+  }
 
   const loadCompanyHolidays = async (selectedMonth: string) => {
     setHolidayError('')
+
     if (!selectedMonth) {
       setNationalHolidays(0)
       return
     }
 
     setHolidayLoading(true)
+
     try {
       const response = await fetch(`${API}/company-holidays/`)
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result?.detail || 'Unable to load company holidays')
+        throw new Error(
+          result?.detail || 'Unable to load company holidays',
+        )
       }
 
       const count = result.filter(
@@ -202,6 +238,7 @@ function AttendanceForm() {
     } catch (error) {
       console.error(error)
       setNationalHolidays(0)
+
       setHolidayError(
         error instanceof Error
           ? error.message
@@ -214,18 +251,22 @@ function AttendanceForm() {
 
   const loadRecords = useCallback(async () => {
     setLoadingRecords(true)
+
     try {
       const response = await fetch(`${API}/attendance/`)
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result?.detail || 'Unable to load attendance records')
+        throw new Error(
+          result?.detail || 'Unable to load attendance records',
+        )
       }
 
       setRecords(Array.isArray(result) ? result : [])
       setCurrentPage(1)
     } catch (error) {
       console.error(error)
+
       showMessage(
         error instanceof Error
           ? error.message
@@ -242,8 +283,14 @@ function AttendanceForm() {
   }, [loadRecords])
 
   useEffect(() => {
-    const lastPage = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
-    if (currentPage > lastPage) setCurrentPage(lastPage)
+    const lastPage = Math.max(
+      1,
+      Math.ceil(records.length / PAGE_SIZE),
+    )
+
+    if (currentPage > lastPage) {
+      setCurrentPage(lastPage)
+    }
   }, [currentPage, records.length])
 
   const handleSave = async () => {
@@ -261,8 +308,10 @@ function AttendanceForm() {
 
     const invalidLeaveDay = leaveDayFields.find(
       ({ value }) =>
-        value !== '' && (!Number.isInteger(Number(value)) || Number(value) < 0),
+        value !== '' &&
+        (!Number.isInteger(Number(value)) || Number(value) < 0),
     )
+
     if (invalidLeaveDay) {
       showMessage(
         `${invalidLeaveDay.label} must be a non-negative whole number.`,
@@ -273,7 +322,8 @@ function AttendanceForm() {
 
     if (holidayLoading || holidayError) {
       showMessage(
-        holidayError || 'Wait for company holidays to finish loading.',
+        holidayError ||
+          'Wait for company holidays to finish loading.',
         'error',
       )
       return
@@ -284,15 +334,20 @@ function AttendanceForm() {
       setMessage('')
 
       const employmentResponse = await fetch(
-        `${API}/employment/by-code/${encodeURIComponent(employeeCode.trim())}`,
+        `${API}/api/v1/employment/by-code/${encodeURIComponent(
+          employeeCode.trim().toUpperCase(),
+      )}`,
       )
+
       const employmentResult = await employmentResponse.json()
 
       if (!employmentResponse.ok) {
-        throw new Error(employmentResult?.detail || 'Employee not found')
+        throw new Error(
+          employmentResult?.detail || 'Employee not found',
+        )
       }
 
-      if (!employmentResult.user_id) {
+      if (!employmentResult.employee_code) {
         throw new Error('Employee User ID is missing')
       }
 
@@ -300,7 +355,7 @@ function AttendanceForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: employmentResult.user_id,
+          employee_code: employmentResult.employee_code,
           attendance_month: `${month}-01`,
           cl: Number(cl) || 0,
           el: Number(el) || 0,
@@ -310,23 +365,34 @@ function AttendanceForm() {
           sundays,
           other_paid_days: Number(otherPaidLeaves) || 0,
           net_present_days: netPresentDays,
-          net_payable_days: netPayableDays,
         }),
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result?.detail || 'Failed to save Attendance')
+        throw new Error(
+          result?.detail || 'Failed to save Attendance',
+        )
       }
 
-      setAttendanceId(result.id)
       showMessage('Attendance saved successfully.', 'success')
-      await loadRecords()
+
+      navigate('/admin/cost-of-element', {
+        state: {
+          employeeCode: employeeCode.trim(),
+          attendanceId: result.id,
+          netPresentDays,
+          netPayableDays,
+        },
+      })
     } catch (error) {
       console.error(error)
+
       showMessage(
-        error instanceof Error ? error.message : 'Unable to save Attendance',
+        error instanceof Error
+          ? error.message
+          : 'Unable to save Attendance',
         'error',
       )
     } finally {
@@ -344,12 +410,18 @@ function AttendanceForm() {
     const extension = file.name.split('.').pop()?.toLowerCase()
 
     if (!['xlsx', 'xls'].includes(extension ?? '')) {
-      showMessage('Excel files only: please choose .xlsx or .xls.', 'error')
+      showMessage(
+        'Excel files only: please choose .xlsx or .xls.',
+        'error',
+      )
       return
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      showMessage('File is too large. Maximum size is 10 MB.', 'error')
+      showMessage(
+        'File is too large. Maximum size is 10 MB.',
+        'error',
+      )
       return
     }
 
@@ -363,6 +435,7 @@ function AttendanceForm() {
       }
 
       const sheet = workbook.Sheets[firstSheetName]
+
       const rawRows = XLSX.utils.sheet_to_json<ExcelRow>(sheet, {
         defval: '',
         raw: false,
@@ -373,6 +446,7 @@ function AttendanceForm() {
       }
 
       const headers = Object.keys(rawRows[0]).map(normaliseHeader)
+
       const requiredHeaders = [
         'employee_code',
         'attendance_month',
@@ -392,6 +466,7 @@ function AttendanceForm() {
       const unexpectedHeaders = headers.filter(
         (header) => !excelHeaders.includes(header),
       )
+
       if (unexpectedHeaders.length > 0) {
         throw new Error(
           `Unsupported Excel columns: ${unexpectedHeaders.join(', ')}.`,
@@ -409,10 +484,15 @@ function AttendanceForm() {
         const code = String(row.employee_code ?? '').trim()
 
         if (!code) {
-          throw new Error(`Row ${rowNumber}: employee_code is required.`)
+          throw new Error(
+            `Row ${rowNumber}: employee_code is required.`,
+          )
         }
 
-        const rawMonth = String(row.attendance_month ?? '').trim()
+        const rawMonth = String(
+          row.attendance_month ?? '',
+        ).trim()
+
         let dateValue = ''
 
         if (/^\d{4}-\d{2}$/.test(rawMonth)) {
@@ -454,21 +534,23 @@ function AttendanceForm() {
             'net_present_days',
             rowNumber,
           ),
-          net_payable_days: toNumber(
-            row.net_payable_days,
-            'net_payable_days',
-            rowNumber,
-          ),
         }
       })
 
       setSelectedFile(file)
       setPreviewRows(parsed)
-      showMessage(`${parsed.length} Excel rows ready to preview.`, 'success')
+
+      showMessage(
+        `${parsed.length} Excel rows ready to preview.`,
+        'success',
+      )
     } catch (error) {
       console.error(error)
+
       showMessage(
-        error instanceof Error ? error.message : 'Unable to read Excel file.',
+        error instanceof Error
+          ? error.message
+          : 'Unable to read Excel file.',
         'error',
       )
     }
@@ -495,7 +577,9 @@ function AttendanceForm() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result?.detail || 'Excel attendance upload failed.')
+        throw new Error(
+          result?.detail || 'Excel attendance upload failed.',
+        )
       }
 
       showMessage(
@@ -516,29 +600,16 @@ function AttendanceForm() {
       await loadRecords()
     } catch (error) {
       console.error(error)
+
       showMessage(
-        error instanceof Error ? error.message : 'Excel upload failed.',
+        error instanceof Error
+          ? error.message
+          : 'Excel upload failed.',
         'error',
       )
     } finally {
       setUploading(false)
     }
-  }
-
-  const handleSelectCostElement = () => {
-    if (!attendanceId) {
-      showMessage('Please save Attendance first.', 'error')
-      return
-    }
-
-    navigate('/admin/cost-of-element', {
-      state: {
-        employeeCode: employeeCode.trim(),
-        attendanceId,
-        netPresentDays,
-        netPayableDays,
-      },
-    })
   }
 
   const inputClass = 'form-control'
@@ -571,10 +642,19 @@ function AttendanceForm() {
             )}
 
             <div className="border rounded bg-white p-3 p-md-4 mb-3">
-              <h2 className="h4 mb-3">Attendance Information</h2>
+              <h2 className="h4 mb-3">
+                Attendance Information
+              </h2>
+
               <div className="row g-3">
                 <div className="col-md-6">
-                  <label className="form-label" htmlFor="attendance-employee-code">Employee Code</label>
+                  <label
+                    className="form-label"
+                    htmlFor="attendance-employee-code"
+                  >
+                    Employee Code
+                  </label>
+
                   <input
                     id="attendance-employee-code"
                     type="text"
@@ -583,18 +663,36 @@ function AttendanceForm() {
                       setEmployeeCode(event.target.value)
                       setMessage('')
                     }}
-                    onBlur={() => setTouched((previous) => ({ ...previous, employeeCode: true }))}
+                    onBlur={() =>
+                      setTouched((previous) => ({
+                        ...previous,
+                        employeeCode: true,
+                      }))
+                    }
                     className={inputClass}
                     placeholder="Enter employee code"
-                    aria-invalid={(showValidation || touched.employeeCode) && !employeeCode.trim()}
+                    aria-invalid={
+                      (showValidation || touched.employeeCode) &&
+                      !employeeCode.trim()
+                    }
                   />
-                  {(showValidation || touched.employeeCode) && !employeeCode.trim() && (
-                    <div className="text-danger small mt-1">Employee Code is required.</div>
-                  )}
+
+                  {(showValidation || touched.employeeCode) &&
+                    !employeeCode.trim() && (
+                      <div className="text-danger small mt-1">
+                        Employee Code is required.
+                      </div>
+                    )}
                 </div>
 
                 <div className="col-md-6">
-                  <label className="form-label" htmlFor="attendance-month">Attendance Month</label>
+                  <label
+                    className="form-label"
+                    htmlFor="attendance-month"
+                  >
+                    Attendance Month
+                  </label>
+
                   <input
                     id="attendance-month"
                     type="month"
@@ -603,15 +701,29 @@ function AttendanceForm() {
                       setMonth(event.target.value)
                       void loadCompanyHolidays(event.target.value)
                     }}
-                    onBlur={() => setTouched((previous) => ({ ...previous, month: true }))}
+                    onBlur={() =>
+                      setTouched((previous) => ({
+                        ...previous,
+                        month: true,
+                      }))
+                    }
                     className={inputClass}
-                    aria-invalid={(showValidation || touched.month) && !month}
+                    aria-invalid={
+                      (showValidation || touched.month) && !month
+                    }
                   />
+
                   {(showValidation || touched.month) && !month && (
-                    <div className="text-danger small mt-1">Attendance Month is required.</div>
+                    <div className="text-danger small mt-1">
+                      Attendance Month is required.
+                    </div>
                   )}
+
                   {holidayError && (
-                    <div className="text-danger small mt-1" role="alert">
+                    <div
+                      className="text-danger small mt-1"
+                      role="alert"
+                    >
                       {holidayError}
                     </div>
                   )}
@@ -621,21 +733,32 @@ function AttendanceForm() {
 
             <div className="border rounded bg-white p-3 p-md-4 mb-3">
               <h2 className="h4 mb-3">Leave Details</h2>
+
               <div className="row g-3">
                 {leaveDayFields.map((field) => (
                   <div className="col-md-3" key={field.label}>
-                    <label className="form-label">{field.label}</label>
+                    <label className="form-label">
+                      {field.label}
+                    </label>
+
                     <input
                       type="number"
                       min="0"
                       step="1"
                       value={field.value}
-                      onChange={(event) => field.setter(event.target.value)}
+                      onChange={(event) =>
+                        field.setter(event.target.value)
+                      }
                       className={inputClass}
                     />
+
                     {field.value !== '' &&
-                      (!Number.isInteger(Number(field.value)) || Number(field.value) < 0) && (
-                        <div className="text-danger small mt-1" role="alert">
+                      (!Number.isInteger(Number(field.value)) ||
+                        Number(field.value) < 0) && (
+                        <div
+                          className="text-danger small mt-1"
+                          role="alert"
+                        >
                           Enter a non-negative whole number.
                         </div>
                       )}
@@ -643,7 +766,10 @@ function AttendanceForm() {
                 ))}
 
                 <div className="col-md-3">
-                  <label className="form-label">Days in Month</label>
+                  <label className="form-label">
+                    Days in Month
+                  </label>
+
                   <input
                     type="number"
                     value={daysInMonth}
@@ -655,16 +781,27 @@ function AttendanceForm() {
             </div>
 
             <div className="border rounded bg-white p-3 p-md-4 mb-3">
-              <h2 className="h4 mb-3">Attendance Calculation</h2>
+              <h2 className="h4 mb-3">
+                Attendance Calculation
+              </h2>
+
               <div className="row g-3">
                 {[
-                  { label: 'National Holidays (NH)', value: nationalHolidays },
+                  {
+                    label: 'National Holidays (NH)',
+                    value: nationalHolidays,
+                  },
                   { label: 'Sundays', value: sundays },
-                  { label: 'Net Present Days', value: netPresentDays },
-                  { label: 'Net Payable Days', value: netPayableDays },
+                  {
+                    label: 'Net Present Days',
+                    value: netPresentDays,
+                  },
                 ].map((field) => (
                   <div className="col-md-3" key={field.label}>
-                    <label className="form-label">{field.label}</label>
+                    <label className="form-label">
+                      {field.label}
+                    </label>
+
                     <input
                       type="number"
                       value={field.value}
@@ -687,39 +824,47 @@ function AttendanceForm() {
               </button>
 
               <HRBackButton />
-
-              {attendanceId && (
-                <button
-                  type="button"
-                  className="btn btn-outline-primary btn-lg px-4 text-lowercase"
-                  onClick={handleSelectCostElement}
-                >
-                  Select Cost Element
-                </button>
-              )}
             </div>
 
             <hr className="my-4" />
 
             <section className="border rounded bg-white p-3 p-md-4 mb-4">
-              <h2 className="h4 mb-3">Upload Attendance Excel</h2>
+              <h2 className="h4 mb-3">
+                Upload Attendance Excel
+              </h2>
 
               <div className="mb-3">
-                <label htmlFor="attendance-excel-file" className="form-label">
+                <label
+                  htmlFor="attendance-excel-file"
+                  className="form-label"
+                >
                   Select Excel file
                 </label>
 
-                <input
-                  id="attendance-excel-file"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className={inputClass}
-                  onChange={(event) => {
-                    void handleFileChange(event.target.files?.[0])
-                    event.target.value = ''
-                  }}
-                  disabled={uploading}
-                />
+                <div className="d-flex flex-wrap gap-2">
+                  <input
+                    id="attendance-excel-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className={inputClass}
+                    onChange={(event) => {
+                      void handleFileChange(
+                        event.target.files?.[0],
+                      )
+                      event.target.value = ''
+                    }}
+                    disabled={uploading}
+                  />
+
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary"
+                    onClick={downloadTemplate}
+                    disabled={uploading}
+                  >
+                    Download Template
+                  </button>
+                </div>
               </div>
 
               {selectedFile && (
@@ -747,7 +892,6 @@ function AttendanceForm() {
                             'Sundays',
                             'Other Paid',
                             'Net Present',
-                            'Net Payable',
                           ].map((heading) => (
                             <th key={heading}>{heading}</th>
                           ))}
@@ -755,28 +899,32 @@ function AttendanceForm() {
                       </thead>
 
                       <tbody>
-                        {previewRows.slice(0, 10).map((row, index) => (
-                          <tr key={`${row.employee_code}-${index}`}>
-                            <td>{row.employee_code}</td>
-                            <td>{row.attendance_month}</td>
-                            <td>{row.cl}</td>
-                            <td>{row.el}</td>
-                            <td>{row.pl}</td>
-                            <td>{row.lop}</td>
-                            <td>{row.nh}</td>
-                            <td>{row.sundays}</td>
-                            <td>{row.other_paid_days}</td>
-                            <td>{row.net_present_days}</td>
-                            <td>{row.net_payable_days}</td>
-                          </tr>
-                        ))}
+                        {previewRows
+                          .slice(0, 10)
+                          .map((row, index) => (
+                            <tr
+                              key={`${row.employee_code}-${index}`}
+                            >
+                              <td>{row.employee_code}</td>
+                              <td>{row.attendance_month}</td>
+                              <td>{row.cl}</td>
+                              <td>{row.el}</td>
+                              <td>{row.pl}</td>
+                              <td>{row.lop}</td>
+                              <td>{row.nh}</td>
+                              <td>{row.sundays}</td>
+                              <td>{row.other_paid_days}</td>
+                              <td>{row.net_present_days}</td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
 
                   {previewRows.length > 10 && (
                     <p className="small text-muted">
-                      Showing first 10 of {previewRows.length} rows in preview.
+                      Showing first 10 of {previewRows.length} rows
+                      in preview.
                     </p>
                   )}
 
@@ -796,7 +944,9 @@ function AttendanceForm() {
 
             <section className="border rounded bg-white p-3 p-md-4">
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                <h2 className="h4 mb-0">Saved Attendance Records</h2>
+                <h2 className="h4 mb-0">
+                  Saved Attendance Records
+                </h2>
 
                 <button
                   type="button"
@@ -809,9 +959,13 @@ function AttendanceForm() {
               </div>
 
               {loadingRecords ? (
-                <p className="text-muted mb-0">Loading attendance records...</p>
+                <p className="text-muted mb-0">
+                  Loading attendance records...
+                </p>
               ) : records.length === 0 ? (
-                <p className="text-muted mb-0">No attendance records found.</p>
+                <p className="text-muted mb-0">
+                  No attendance records found.
+                </p>
               ) : (
                 <>
                   <div className="table-responsive">
@@ -829,7 +983,6 @@ function AttendanceForm() {
                           <th>Sundays</th>
                           <th>Other Paid</th>
                           <th>Net Present</th>
-                          <th>Net Payable</th>
                         </tr>
                       </thead>
 
@@ -837,8 +990,10 @@ function AttendanceForm() {
                         {paginatedRecords.map((record) => (
                           <tr key={record.id}>
                             <td>{record.id}</td>
-                            <td>{record.user_id}</td>
-                            <td>{displayDate(record.attendance_month)}</td>
+                            <td>{record.employee_code}</td>
+                            <td>
+                              {displayDate(record.attendance_month)}
+                            </td>
                             <td>{record.cl}</td>
                             <td>{record.el}</td>
                             <td>{record.pl}</td>
@@ -847,7 +1002,6 @@ function AttendanceForm() {
                             <td>{record.sundays}</td>
                             <td>{record.other_paid_days}</td>
                             <td>{record.net_present_days}</td>
-                            <td>{record.net_payable_days ?? '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -856,7 +1010,8 @@ function AttendanceForm() {
 
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <span className="small text-muted">
-                      Page {currentPage} of {totalPages} · {records.length} records
+                      Page {currentPage} of {totalPages} ·{' '}
+                      {records.length} records
                     </span>
 
                     <div className="btn-group">
@@ -864,7 +1019,9 @@ function AttendanceForm() {
                         type="button"
                         className="btn btn-outline-secondary"
                         disabled={currentPage <= 1}
-                        onClick={() => setCurrentPage((page) => page - 1)}
+                        onClick={() =>
+                          setCurrentPage((page) => page - 1)
+                        }
                       >
                         Previous
                       </button>
@@ -873,7 +1030,9 @@ function AttendanceForm() {
                         type="button"
                         className="btn btn-outline-secondary"
                         disabled={currentPage >= totalPages}
-                        onClick={() => setCurrentPage((page) => page + 1)}
+                        onClick={() =>
+                          setCurrentPage((page) => page + 1)
+                        }
                       >
                         Next
                       </button>

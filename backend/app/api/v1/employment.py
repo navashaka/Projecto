@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from sqlalchemy import func
+from app.models.employment import Employment
 from app.api.deps import get_db
 from app.schemas.employment import EmploymentCreate, EmploymentUpdate
 from app.services.employment_service import (
@@ -36,21 +38,19 @@ def get_employment_by_code(
     employee_code: str,
     db: Session = Depends(get_db),
 ):
-    employments = list_employment_service(db)
-
-    employment = next(
-        (
-            item
-            for item in employments
-            if item.employee_code == employee_code
-        ),
-        None,
+    employment = (
+        db.query(Employment)
+        .filter(
+            func.upper(func.trim(Employment.employee_code))
+            == employee_code.strip().upper()
+        )
+        .first()
     )
 
-    if not employment:
+    if employment is None:
         raise HTTPException(
             status_code=404,
-            detail="Employee not found for the given employee code",
+            detail=f"Employee not found: {employee_code}",
         )
 
     return employment

@@ -1,3 +1,5 @@
+// dbActions.ts
+
 import axios from 'axios'
 
 const API_BASE_URL =
@@ -6,8 +8,8 @@ const API_BASE_URL =
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 })
 
 export type ApiDispatchAction<T = unknown> = {
@@ -19,21 +21,21 @@ export type ApiDispatchAction<T = unknown> = {
 export const dispatchRequest = async <T,>(
   type: string,
   request: () => Promise<T>,
-  dispatch?: (action: ApiDispatchAction<T>) => void
+  dispatch?: (action: ApiDispatchAction<T>) => void,
 ): Promise<T> => {
   try {
     const payload = await request()
 
     dispatch?.({
       type,
-      payload
+      payload,
     })
 
     return payload
   } catch (error) {
     dispatch?.({
       type: `${type}_FAILED`,
-      error
+      error,
     })
 
     throw error
@@ -47,6 +49,21 @@ export type PreviousEmploymentPayload = {
   previousWorkingPeriod: string
   previousCtc: string
   previousResponsibilities: string
+}
+
+export type QualificationPayload = {
+  qualification: string
+  institution: string
+  yearOfPass: string
+}
+
+export type AddressPayload = {
+  streetNo: string
+  streetName: string
+  city: string
+  state: string
+  zipCode: string
+  country: string
 }
 
 export type UserEnquiryPayload = {
@@ -66,8 +83,6 @@ export type UserEnquiryPayload = {
   state?: string
   zipCode?: string
   country?: string
-
-  // Backward compatibility with existing form/API usage
   address?: string
 
   phone?: string
@@ -77,6 +92,7 @@ export type UserEnquiryPayload = {
   passportNo?: string
   emergencyPhone1?: string
   emergencyPhone2?: string
+
   highestQualification?: string
   yearOfPass?: string
 
@@ -85,6 +101,7 @@ export type UserEnquiryPayload = {
   department?: string
   workingPeriod?: string
   currentCtc?: string
+  takeHome?: string
   currentResponsibilities?: string
 
   previousEmployer?: string
@@ -94,16 +111,20 @@ export type UserEnquiryPayload = {
   previousCtc?: string
   previousResponsibilities?: string
 
+  qualifications?: QualificationPayload[]
+  addresses?: AddressPayload[]
   previousEmployments?: PreviousEmploymentPayload[]
 
   [key: string]:
     | string
+    | QualificationPayload[]
+    | AddressPayload[]
     | PreviousEmploymentPayload[]
     | undefined
 }
 
 export const normalizeUserEnquiryPayload = (
-  payload: UserEnquiryPayload
+  payload: UserEnquiryPayload,
 ) => ({
   candidate_name: payload.candidateName,
   father_name: payload.fatherName,
@@ -121,8 +142,6 @@ export const normalizeUserEnquiryPayload = (
   state: payload.state,
   zip_code: payload.zipCode,
   country: payload.country,
-
-  // Retained so existing backend code using address won't break
   address: payload.address,
 
   phone: payload.phone,
@@ -141,6 +160,7 @@ export const normalizeUserEnquiryPayload = (
   department: payload.department,
   working_period: payload.workingPeriod,
   current_ctc: payload.currentCtc,
+  take_home: payload.takeHome,
   role_responsibilities: payload.currentResponsibilities,
 
   previous_employer_name: payload.previousEmployer,
@@ -150,6 +170,23 @@ export const normalizeUserEnquiryPayload = (
   previous_employer_ctc: payload.previousCtc,
   previous_employer_role: payload.previousResponsibilities,
 
+  qualifications:
+    payload.qualifications?.map((qualification) => ({
+      qualification: qualification.qualification,
+      institution: qualification.institution,
+      year_of_pass: qualification.yearOfPass,
+    })) ?? [],
+
+  addresses:
+    payload.addresses?.map((address) => ({
+      street_no: address.streetNo,
+      street_name: address.streetName,
+      city: address.city,
+      state: address.state,
+      zip_code: address.zipCode,
+      country: address.country,
+    })) ?? [],
+
   previous_employments:
     payload.previousEmployments?.map((employment) => ({
       employer: employment.previousEmployer,
@@ -158,8 +195,8 @@ export const normalizeUserEnquiryPayload = (
       working_period: employment.previousWorkingPeriod,
       ctc: employment.previousCtc,
       responsibilities: employment.previousResponsibilities,
-      documents: null
-    })) ?? []
+      documents: null,
+    })) ?? [],
 })
 
 export const submitUserEnquiry = async (
@@ -167,23 +204,22 @@ export const submitUserEnquiry = async (
   dispatch?: (
     action: ApiDispatchAction<{
       message?: string
-    }>
-  ) => void
+    }>,
+  ) => void,
 ) => {
   return dispatchRequest(
     'SUBMIT_USER_ENQUIRY',
     async () => {
-      const normalizedPayload =
-        normalizeUserEnquiryPayload(payload)
+      const normalizedPayload = normalizeUserEnquiryPayload(payload)
 
       const response = await apiClient.post(
         '/api/v1/user-enquiries/',
-        normalizedPayload
+        normalizedPayload,
       )
 
       return response.data
     },
-    dispatch
+    dispatch,
   )
 }
 
@@ -193,23 +229,20 @@ export const loginUser = async (
   dispatch?: (
     action: ApiDispatchAction<{
       token?: string
-    }>
-  ) => void
+    }>,
+  ) => void,
 ) => {
   return dispatchRequest(
     'LOGIN_USER',
     async () => {
-      const response = await apiClient.post(
-        '/api/auth/login',
-        {
-          email,
-          password
-        }
-      )
+      const response = await apiClient.post('/api/auth/login', {
+        email,
+        password,
+      })
 
       return response.data
     },
-    dispatch
+    dispatch,
   )
 }
 
@@ -218,19 +251,16 @@ export const registerUser = async (
   dispatch?: (
     action: ApiDispatchAction<{
       message?: string
-    }>
-  ) => void
+    }>,
+  ) => void,
 ) => {
   return dispatchRequest(
     'REGISTER_USER',
     async () => {
-      const response = await apiClient.post(
-        '/api/auth/register',
-        payload
-      )
+      const response = await apiClient.post('/api/auth/register', payload)
 
       return response.data
     },
-    dispatch
+    dispatch,
   )
 }

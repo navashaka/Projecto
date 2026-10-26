@@ -2,7 +2,8 @@ import io
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from openpyxl import load_workbook
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook, load_workbook
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -51,6 +52,34 @@ def delete_company_holiday(
         )
 
     return {"detail": "Company holiday deleted"}
+
+
+@router.get("/download-template")
+def download_company_holiday_template():
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Company Holidays"
+
+    worksheet.append(["holiday_date", "holiday_name"])
+    worksheet.append(["2026-01-01", "New Year"])
+
+    excel_file = io.BytesIO()
+    workbook.save(excel_file)
+    excel_file.seek(0)
+    workbook.close()
+
+    return StreamingResponse(
+        excel_file,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=company_holidays_template.xlsx"
+            )
+        },
+    )
 
 
 @router.post("/upload")
@@ -132,7 +161,10 @@ async def upload_company_holidays(
             if holiday_date is None or holiday_name is None:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Missing holiday date or name in row {row_number}",
+                    detail=(
+                        f"Missing holiday date or name in row "
+                        f"{row_number}"
+                    ),
                 )
 
             if isinstance(holiday_date, datetime):
@@ -147,7 +179,10 @@ async def upload_company_holidays(
             if not holiday_date or not holiday_name:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Missing holiday date or name in row {row_number}",
+                    detail=(
+                        f"Missing holiday date or name in row "
+                        f"{row_number}"
+                    ),
                 )
 
             holidays.append(
@@ -180,13 +215,16 @@ async def upload_company_holidays(
 
     except HTTPException:
         raise
+
     except Exception as error:
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail=f"Unable to read Excel file: {error}",
         ) from error
+
     finally:
         if "workbook" in locals():
             workbook.close()
+
         await file.close()

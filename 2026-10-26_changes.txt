@@ -1,0 +1,32 @@
+Today’s Work Report – HR Module
+
+Worked on the development and modifications of the following HR module forms:
+
+1. Attendance Form
+
+- Implemented frontend form changes and backend API integration.
+- Updated employee identification from user_id to employee_code.
+- Worked on employee lookup using employee_code.
+- Implemented attendance details such as CL, EL, PL, LOP, NH, Sundays, Other Paid Days, and Net Present Days.
+- Performed API testing and worked on resolving validation errors.
+
+2. User Enquiry Form
+
+- Worked on frontend form modifications.
+- Updated backend API and database-related changes.
+- Worked on integrating the form with the backend.
+
+3. Company Holidays Form
+
+- Worked on frontend and backend modifications.
+- Implemented holiday-related data handling and database integration.
+- Worked on API integration and testing.
+
+4. Job Profile Form
+
+- Worked on frontend form development and modifications.
+- Implemented backend API and database-related changes.
+- Worked on integrating job profile details with the backend.
+
+Overall Progress:
+Worked on frontend development, backend API integration, database modifications, and testing across the HR module forms. Attendance API validation is still under investigation.

@@ -11,13 +11,21 @@ from app.repositories.attendance_repository import (
 
 
 def create_attendance_service(db: Session, data):
-    
-    payload = data.model_dump() if hasattr(data, "model_dump") else data.dict()
+    payload = (
+        data.model_dump()
+        if hasattr(data, "model_dump")
+        else data.dict()
+    )
+
     attendance = Attendance(**payload)
+
     return create_attendance(db, attendance)
 
 
-def get_attendance_service(db: Session, attendance_id: int):
+def get_attendance_service(
+    db: Session,
+    attendance_id: int,
+):
     return get_attendance(db, attendance_id)
 
 
@@ -25,7 +33,11 @@ def list_attendance_service(db: Session):
     return get_all_attendance(db)
 
 
-def update_attendance_service(db: Session, attendance_id: int, data):
+def update_attendance_service(
+    db: Session,
+    attendance_id: int,
+    data,
+):
     return update_attendance(
         db,
         attendance_id,
@@ -33,5 +45,8 @@ def update_attendance_service(db: Session, attendance_id: int, data):
     )
 
 
-def delete_attendance_service(db: Session, attendance_id: int) -> bool:
+def delete_attendance_service(
+    db: Session,
+    attendance_id: int,
+) -> bool:
     return delete_attendance(db, attendance_id)

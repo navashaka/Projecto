@@ -1,7 +1,6 @@
 export const hrNavigationItems = [
 	{ label: 'Attendance', path: '/attendance/create' },
 	{ label: 'Company Holidays', path: '/company-holidays/create' },
-	{ label: 'Employees', path: '/employees/create' },
 	{ label: 'Employment Details', path: '/employment/create' },
 	{ label: 'Job Profile', path: '/job-profile/create' },
 	{ label: 'On Employment', path: '/on-employment/create' },
@@ -13,5 +12,5 @@ export const hrNavigationItems = [
 		label: 'Travelling Expenses Reimbursement',
 		path: '/travelling-expenses-reimbursement/create',
 	},
-	{ label: 'User Enquiry', path: '/hr/user-enquiry' },
+	{ label: 'Candidate Enquiry', path: '/hr/user-enquiry' },
 ]

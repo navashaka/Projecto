@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    String,
     BigInteger,
     Column,
     Date,
@@ -19,8 +20,8 @@ class Attendance(Base):
         autoincrement=True,
     )
 
-    user_id = Column(
-        BigInteger,
+    employee_code= Column(
+        String,
         nullable=False,
     )
 
@@ -67,11 +68,6 @@ class Attendance(Base):
     net_present_days = Column(
         Integer,
         nullable=False,
-    )
-
-    net_payable_days = Column(
-        Integer,
-        nullable=True,
     )
 
     created_at = Column(

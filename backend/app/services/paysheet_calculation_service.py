@@ -133,7 +133,7 @@ def generate_paysheet_data(
         "date_of_joining": None,
         "total_days": total_days,
         "present_days": attendance.net_present_days,
-        "paid_days": attendance.net_payable_days,
+        "paid_days": attendance.net_present_days,
         "lop_days": attendance.lop,
         "basic": basic,
         "hra": hra,

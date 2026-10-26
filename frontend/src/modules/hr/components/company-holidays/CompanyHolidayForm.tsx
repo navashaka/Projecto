@@ -38,6 +38,7 @@ function CompanyHolidayForm() {
 
   const loadHolidays = useCallback(async () => {
     setLoadingHolidays(true)
+
     try {
       const response = await apiClient.get('/company-holidays/')
       setHolidays(Array.isArray(response.data) ? response.data : [])
@@ -55,6 +56,7 @@ function CompanyHolidayForm() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setHolidayNameTouched(true)
+
     if (!holidayName.trim()) {
       setErrorMessage('Holiday name is required.')
       return
@@ -74,11 +76,13 @@ function CompanyHolidayForm() {
       setHolidayDate('')
       setHolidayName('')
       setHolidayNameTouched(false)
+
       await loadHolidays()
     } catch (error) {
       const err = error as {
         response?: { data?: { detail?: string } }
       }
+
       setErrorMessage(
         err.response?.data?.detail ?? 'Failed to add company holiday',
       )
@@ -94,16 +98,42 @@ function CompanyHolidayForm() {
 
     try {
       await apiClient.delete(`/company-holidays/${holidayId}`)
+
       setSuccessMessage('Holiday deleted successfully!')
       await loadHolidays()
     } catch (error) {
       const err = error as {
         response?: { data?: { detail?: string } }
       }
+
       setErrorMessage(err.response?.data?.detail ?? 'Unable to delete holiday')
     } finally {
       setDeletingId(null)
     }
+  }
+
+  // Download Excel template
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        holiday_date: '2026-01-01',
+        holiday_name: 'New Year',
+      },
+    ]
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData)
+    const workbook = XLSX.utils.book_new()
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Company Holidays',
+    )
+
+    XLSX.writeFile(
+      workbook,
+      'company_holidays_template.xlsx',
+    )
   }
 
   const formatExcelDate = (value: unknown): string => {
@@ -117,6 +147,7 @@ function CompanyHolidayForm() {
 
     if (typeof value === 'number') {
       const parsed = XLSX.SSF.parse_date_code(value)
+
       if (parsed) {
         return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`
       }
@@ -129,6 +160,7 @@ function CompanyHolidayForm() {
     event: ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0]
+
     setPreview([])
     setSuccessMessage('')
     setErrorMessage('')
@@ -136,20 +168,27 @@ function CompanyHolidayForm() {
     if (!file) return
 
     if (!/\.(xlsx|xls)$/i.test(file.name)) {
-      setErrorMessage('Please upload an Excel file in .xlsx or .xls format')
+      setErrorMessage(
+        'Please upload an Excel file in .xlsx or .xls format',
+      )
+
       event.target.value = ''
       return
     }
 
     try {
       const buffer = await file.arrayBuffer()
+
       const workbook = XLSX.read(buffer, {
         type: 'array',
         cellDates: true,
       })
+
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
 
-      if (!sheet) throw new Error('Excel file has no worksheet')
+      if (!sheet) {
+        throw new Error('Excel file has no worksheet')
+      }
 
       const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, {
         header: 1,
@@ -164,20 +203,31 @@ function CompanyHolidayForm() {
       const headers = rows[0].map((value) =>
         String(value).trim().toLowerCase(),
       )
+
       const dateIndex = headers.indexOf('holiday_date')
       const nameIndex = headers.indexOf('holiday_name')
+
       const unexpectedHeaders = headers.filter(
-        (header) => !['holiday_date', 'holiday_name'].includes(header),
+        (header) =>
+          !['holiday_date', 'holiday_name'].includes(header),
       )
 
-      if (dateIndex === -1 || nameIndex === -1 || unexpectedHeaders.length) {
+      if (
+        dateIndex === -1 ||
+        nameIndex === -1 ||
+        unexpectedHeaders.length
+      ) {
         throw new Error(
           [
             ...(dateIndex === -1 || nameIndex === -1
-              ? ['Excel must contain holiday_date and holiday_name columns']
+              ? [
+                  'Excel must contain holiday_date and holiday_name columns',
+                ]
               : []),
             ...(unexpectedHeaders.length
-              ? [`Unsupported Excel columns: ${unexpectedHeaders.join(', ')}`]
+              ? [
+                  `Unsupported Excel columns: ${unexpectedHeaders.join(', ')}`,
+                ]
               : []),
           ].join('. '),
         )
@@ -201,14 +251,21 @@ function CompanyHolidayForm() {
         const name = String(rawName ?? '').trim()
 
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !name) {
-          throw new Error(`Invalid holiday date or name in row ${index + 1}`)
+          throw new Error(
+            `Invalid holiday date or name in row ${index + 1}`,
+          )
         }
+
         if (name.length > 150) {
-          throw new Error(`Holiday name exceeds 150 characters in row ${index + 1}`)
+          throw new Error(
+            `Holiday name exceeds 150 characters in row ${index + 1}`,
+          )
         }
 
         const [year, month, day] = date.split('-').map(Number)
-        const checkDate = new Date(Date.UTC(year, month - 1, day))
+        const checkDate = new Date(
+          Date.UTC(year, month - 1, day),
+        )
 
         if (
           checkDate.getUTCFullYear() !== year ||
@@ -218,7 +275,10 @@ function CompanyHolidayForm() {
           throw new Error(`Invalid date in row ${index + 1}`)
         }
 
-        parsed.push({ holiday_date: date, holiday_name: name })
+        parsed.push({
+          holiday_date: date,
+          holiday_name: name,
+        })
       }
 
       if (parsed.length === 0) {
@@ -228,8 +288,11 @@ function CompanyHolidayForm() {
       setPreview(parsed)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Unable to read Excel file',
+        error instanceof Error
+          ? error.message
+          : 'Unable to read Excel file',
       )
+
       setPreview([])
       event.target.value = ''
     }
@@ -245,7 +308,12 @@ function CompanyHolidayForm() {
     try {
       const workbook = XLSX.utils.book_new()
       const worksheet = XLSX.utils.json_to_sheet(preview)
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Holidays')
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        'Holidays',
+      )
 
       const excelData = XLSX.write(workbook, {
         bookType: 'xlsx',
@@ -253,6 +321,7 @@ function CompanyHolidayForm() {
       })
 
       const formData = new FormData()
+
       formData.append(
         'file',
         new Blob([excelData], {
@@ -275,21 +344,33 @@ function CompanyHolidayForm() {
         response.data?.message ??
           `${response.data?.uploaded_count ?? preview.length} holidays saved successfully!`,
       )
+
       setPreview([])
-      if (fileInputRef.current) fileInputRef.current.value = ''
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+
       await loadHolidays()
       setCurrentPage(1)
     } catch (error) {
       const err = error as {
-        response?: { data?: { detail?: string | { msg?: string }[] } }
+        response?: {
+          data?: {
+            detail?: string | { msg?: string }[]
+          }
+        }
       }
+
       const detail = err.response?.data?.detail
 
       setErrorMessage(
         typeof detail === 'string'
           ? detail
           : Array.isArray(detail)
-            ? detail.map((item) => item.msg ?? 'Invalid data').join(', ')
+            ? detail
+                .map((item) => item.msg ?? 'Invalid data')
+                .join(', ')
             : 'Unable to save holidays',
       )
     } finally {
@@ -297,14 +378,20 @@ function CompanyHolidayForm() {
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(holidays.length / PAGE_SIZE))
+  const totalPages = Math.max(
+    1,
+    Math.ceil(holidays.length / PAGE_SIZE),
+  )
+
   const pageHolidays = holidays.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   )
 
   useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
   }, [currentPage, totalPages])
 
   return (
@@ -334,37 +421,55 @@ function CompanyHolidayForm() {
               <form onSubmit={handleSubmit}>
                 <div className="row g-3">
                   <div className="col-md-6">
-                    <label className="form-label">Holiday Date</label>
+                    <label className="form-label">
+                      Holiday Date
+                    </label>
+
                     <input
                       type="date"
                       className="form-control"
                       value={holidayDate}
-                      onChange={(event) => setHolidayDate(event.target.value)}
+                      onChange={(event) =>
+                        setHolidayDate(event.target.value)
+                      }
                       required
                     />
                   </div>
 
                   <div className="col-md-6">
-                    <label className="form-label">Holiday Name</label>
+                    <label className="form-label">
+                      Holiday Name
+                    </label>
+
                     <input
                       type="text"
                       className="form-control"
                       value={holidayName}
-                      onChange={(event) => setHolidayName(event.target.value)}
-                      onBlur={() => setHolidayNameTouched(true)}
+                      onChange={(event) =>
+                        setHolidayName(event.target.value)
+                      }
+                      onBlur={() =>
+                        setHolidayNameTouched(true)
+                      }
                       maxLength={150}
                       placeholder="Enter holiday name"
                       required
                     />
-                    {holidayNameTouched && !holidayName.trim() && (
-                      <div className="text-danger small mt-1" role="alert">
-                        Holiday name is required.
-                      </div>
-                    )}
+
+                    {holidayNameTouched &&
+                      !holidayName.trim() && (
+                        <div
+                          className="text-danger small mt-1"
+                          role="alert"
+                        >
+                          Holiday name is required.
+                        </div>
+                      )}
                   </div>
 
                   <div className="col-12 d-flex justify-content-end gap-2">
                     <HRBackButton />
+
                     <button
                       type="submit"
                       className="btn btn-primary"
@@ -378,7 +483,19 @@ function CompanyHolidayForm() {
             </div>
 
             <div className="border rounded bg-white p-3 p-md-4 mb-4">
-              <h5 className="mb-3">Upload Holiday List</h5>
+              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h5 className="mb-0">
+                  Upload Holiday List
+                </h5>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-primary"
+                  onClick={handleDownloadTemplate}
+                >
+                  Download Template
+                </button>
+              </div>
 
               <input
                 ref={fileInputRef}
@@ -391,7 +508,10 @@ function CompanyHolidayForm() {
 
               {preview.length > 0 && (
                 <div className="mt-4">
-                  <h6>Preview ({preview.length} records)</h6>
+                  <h6>
+                    Preview ({preview.length} records)
+                  </h6>
+
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
@@ -401,9 +521,12 @@ function CompanyHolidayForm() {
                           <th>Holiday Name</th>
                         </tr>
                       </thead>
+
                       <tbody>
                         {preview.map((holiday, index) => (
-                          <tr key={`${holiday.holiday_date}-${index}`}>
+                          <tr
+                            key={`${holiday.holiday_date}-${index}`}
+                          >
                             <td>{index + 1}</td>
                             <td>{holiday.holiday_date}</td>
                             <td>{holiday.holiday_name}</td>
@@ -421,6 +544,7 @@ function CompanyHolidayForm() {
                       onClick={() => {
                         setPreview([])
                         setErrorMessage('')
+
                         if (fileInputRef.current) {
                           fileInputRef.current.value = ''
                         }
@@ -428,6 +552,7 @@ function CompanyHolidayForm() {
                     >
                       Cancel
                     </button>
+
                     <button
                       type="button"
                       className="btn btn-primary"
@@ -442,12 +567,18 @@ function CompanyHolidayForm() {
             </div>
 
             <div className="border rounded bg-white p-3 p-md-4">
-              <h5 className="mb-3">Company Holiday List</h5>
+              <h5 className="mb-3">
+                Company Holiday List
+              </h5>
 
               {loadingHolidays ? (
-                <p className="text-muted mb-0">Loading holidays...</p>
+                <p className="text-muted mb-0">
+                  Loading holidays...
+                </p>
               ) : holidays.length === 0 ? (
-                <p className="text-muted mb-0">No holidays found.</p>
+                <p className="text-muted mb-0">
+                  No holidays found.
+                </p>
               ) : (
                 <>
                   <div className="table-responsive">
@@ -460,50 +591,74 @@ function CompanyHolidayForm() {
                           {isAdmin && <th>Action</th>}
                         </tr>
                       </thead>
+
                       <tbody>
-                        {pageHolidays.map((holiday, index) => (
-                          <tr key={holiday.id}>
-                            <td>{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
-                            <td>{holiday.holiday_date}</td>
-                            <td>{holiday.holiday_name}</td>
-                            {isAdmin && (
+                        {pageHolidays.map(
+                          (holiday, index) => (
+                            <tr key={holiday.id}>
                               <td>
-                                <button
-                                  type="button"
-                                  className="btn btn-danger btn-sm"
-                                  disabled={deletingId === holiday.id}
-                                  onClick={() => handleDelete(holiday.id)}
-                                >
-                                  {deletingId === holiday.id
-                                    ? 'Deleting...'
-                                    : 'Delete'}
-                                </button>
+                                {(currentPage - 1) *
+                                  PAGE_SIZE +
+                                  index +
+                                  1}
                               </td>
-                            )}
-                          </tr>
-                        ))}
+
+                              <td>{holiday.holiday_date}</td>
+
+                              <td>{holiday.holiday_name}</td>
+
+                              {isAdmin && (
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-danger btn-sm"
+                                    disabled={
+                                      deletingId === holiday.id
+                                    }
+                                    onClick={() =>
+                                      handleDelete(holiday.id)
+                                    }
+                                  >
+                                    {deletingId === holiday.id
+                                      ? 'Deleting...'
+                                      : 'Delete'}
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ),
+                        )}
                       </tbody>
                     </table>
                   </div>
 
                   <div className="d-flex justify-content-between align-items-center mt-3">
                     <small className="text-muted">
-                      Page {currentPage} of {totalPages} · {holidays.length} records
+                      Page {currentPage} of {totalPages} ·{' '}
+                      {holidays.length} records
                     </small>
+
                     <div className="d-flex gap-2">
                       <button
                         type="button"
                         className="btn btn-outline-secondary btn-sm"
                         disabled={currentPage === 1}
-                        onClick={() => setCurrentPage((page) => page - 1)}
+                        onClick={() =>
+                          setCurrentPage((page) => page - 1)
+                        }
                       >
                         Previous
                       </button>
+
                       <button
                         type="button"
                         className="btn btn-outline-secondary btn-sm"
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage((page) => page + 1)}
+                        disabled={
+                          currentPage === totalPages
+                        }
+                        onClick={() =>
+                          setCurrentPage((page) => page + 1)
+                        }
                       >
                         Next
                       </button>

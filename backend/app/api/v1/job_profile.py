@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.schemas.job_profile import JobProfileCreate, JobProfileUpdate
+from app.schemas.job_profile import (
+    JobProfileCreate,
+    JobProfileUpdate,
+)
 from app.services.job_profile_service import (
     create_job_profile_service,
     delete_job_profile_service,
@@ -37,8 +40,13 @@ def get_job_profile(
     db: Session = Depends(get_db),
 ):
     job_profile = get_job_profile_service(db, job_id)
+
     if not job_profile:
-        raise HTTPException(status_code=404, detail="Job profile not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Job profile not found",
+        )
+
     return job_profile
 
 
@@ -48,14 +56,30 @@ def update_job_profile(
     data: JobProfileUpdate,
     db: Session = Depends(get_db),
 ):
-    job_profile = update_job_profile_service(db, job_id, data)
+    job_profile = update_job_profile_service(
+        db,
+        job_id,
+        data,
+    )
+
     if not job_profile:
-        raise HTTPException(status_code=404, detail="Job profile not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Job profile not found",
+        )
+
     return job_profile
 
 
 @router.delete("/{job_id}")
-def delete_job_profile(job_id: int, db: Session = Depends(get_db)):
+def delete_job_profile(
+    job_id: int,
+    db: Session = Depends(get_db),
+):
     if not delete_job_profile_service(db, job_id):
-        raise HTTPException(status_code=404, detail="Job profile not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Job profile not found",
+        )
+
     return {"detail": "Job profile deleted"}

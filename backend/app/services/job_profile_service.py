@@ -15,7 +15,12 @@ def create_job_profile_service(
     db: Session,
     data: JobProfileCreate,
 ):
-    payload = data.model_dump() if hasattr(data, "model_dump") else data.dict()
+    payload = (
+        data.model_dump()
+        if hasattr(data, "model_dump")
+        else data.dict()
+    )
+
     job_profile = JobProfile(**payload)
 
     return create_job_profile(db, job_profile)
@@ -37,12 +42,21 @@ def update_job_profile_service(
     job_id: int,
     data: JobProfileUpdate,
 ):
+    payload = (
+        data.model_dump(exclude_unset=True)
+        if hasattr(data, "model_dump")
+        else data.dict(exclude_unset=True)
+    )
+
     return update_job_profile(
         db,
         job_id,
-        data.model_dump(exclude_unset=True),
+        payload,
     )
 
 
-def delete_job_profile_service(db: Session, job_id: int) -> bool:
+def delete_job_profile_service(
+    db: Session,
+    job_id: int,
+) -> bool:
     return delete_job_profile(db, job_id)

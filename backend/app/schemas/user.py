@@ -1,4 +1,3 @@
-
 from datetime import date
 from decimal import Decimal
 
@@ -11,22 +10,33 @@ class UserCreate(BaseModel):
     date_of_birth: date | None = None
     blood_group: str | None = None
     marital_status: str | None = None
-    address: str | None = None
+
+    # Address Details
+    street_no: str | None = None
+    street_name: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
+    country: str | None = None
+
     phone: str | None = None
     pan: str | None = None
     aadhaar: str | None = None
     passport_no: str | None = None
     personal_email: str | None = None
+
     emergency_phone: str | None = None
     emergency_phone2: str | None = None
     mother_tongue: str | None = None
     other_languages: str | None = None
     religion: str | None = None
     nationality: str | None = None
+
     highest_qualification: str | None = None
     years_of_experience: Decimal | None = None
     year_of_pass: int | None = None
     qualification_certificate: str | None = None
+
     current_employer: str | None = None
     position: str | None = None
     department: str | None = None
