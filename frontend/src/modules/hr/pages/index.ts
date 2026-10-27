@@ -10,11 +10,12 @@ import {
   PayrollPage,
   SalaryPage,
   TravellingAdvancePage,
-  UserEnquiryPage
 } from './HRPages'
 
+import UserEnquiryForm from '../../../components/auth/UserEnquiryForm'
+
 export const hrPages: Record<string, ComponentType> = {
-  'user-enquiry': UserEnquiryPage,
+  'candidate-enquiry': UserEnquiryForm,
   'bank-enquiry': BankEnquiryPage,
   attendance: AttendancePage,
   employees: EmployeesPage,
@@ -24,5 +25,5 @@ export const hrPages: Record<string, ComponentType> = {
   payroll: PayrollPage,
   leave: LeavePage,
   'on-employment': OnEmploymentPage,
-  'travelling-advance': TravellingAdvancePage
+  'travelling-advance': TravellingAdvancePage,
 }

@@ -1,7 +1,7 @@
 import UserEnquiryForm from '../../../components/auth/UserEnquiryForm'
 import ModuleDataPage from '../../shared/ModuleDataPage'
 
-export const UserEnquiryPage = () => <UserEnquiryForm />
+export const CandidateEnquiryPage = () => <UserEnquiryForm />
 
 export const BankEnquiryPage = () => (
   <ModuleDataPage
@@ -99,9 +99,7 @@ export const CompanyHolidaysPage = () => (
     fields={[
       { name: 'holidayName', label: 'Holiday name' },
       { name: 'holidayDate', label: 'Holiday date', type: 'date' },
-      { name: 'location', label: 'Location / office' },
       { name: 'holidayType', label: 'Holiday type', type: 'select', options: ['Public holiday', 'Company holiday', 'Optional holiday'] },
-      { name: 'description', label: 'Description', type: 'textarea', required: false }
     ]}
   />
 )
@@ -229,15 +227,20 @@ export const TravellingAdvancePage = () => (
     title="Travelling Advance"
     fields={[
       { name: 'employeeCode', label: 'Employee code' },
-      { name: 'employeeName', label: 'Employee name' },
+      { name: 'employeeName', label: 'Employee name', required: false },
+      { name: 'designation', label: 'Designation', required: false },
+      { name: 'department', label: 'Department', required: false },
       { name: 'requestDate', label: 'Request date', type: 'date' },
-      { name: 'travelDate', label: 'Travel date', type: 'date' },
       { name: 'returnDate', label: 'Return date', type: 'date', required: false },
-      { name: 'destination', label: 'Destination' },
       { name: 'purpose', label: 'Purpose of travel', type: 'textarea' },
-      { name: 'amount', label: 'Advance amount', type: 'number' },
+      { name: 'typeOfBudget', label: 'Type of Budget' },
+      { name: 'budgetAmount', label: 'Budget amount', type: 'number' },
+      { name: 'otherExpenseType', label: 'Other Expense Type', required: false },
+      { name: 'otherExpenseAmount', label: 'Other Expense Amount', type: 'number', required: false },
+      { name: 'totalAdvance', label: 'Total Advance', type: 'number' },
+      { name: 'totalAdvanceWords', label: 'Value in Words', required: false },
       { name: 'status', label: 'Approval status', type: 'select', options: ['Pending', 'Approved', 'Rejected', 'Settled'] },
-      { name: 'remarks', label: 'Remarks', type: 'textarea', required: false }
+      { name: 'remarks', label: 'Remarks', type: 'textarea', required: false },
     ]}
   />
 )

@@ -7,7 +7,7 @@ const menuItems = [
     id: 'hr',
     label: 'HR',
     submenu: [
-      { id: 'user-enquiry', label: 'User Enquiry' },
+      { id: 'candidate-enquiry', label: 'Candidate Enquiry' },
       { id: 'bank-enquiry', label: 'Bank Enquiry' },
       { id: 'attendance', label: 'Attendance' },
       { id: 'employees', label: 'Employees' },
@@ -117,7 +117,13 @@ const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
                       type="button"
                       className="sidebar-submenu-item"
                       aria-current={isSelected ? 'page' : undefined}
-                      onClick={() => onSelectPage({ module: activeModule.id, page: option.id })}
+                      onClick={() => {
+                        setSelectedModule(activeModule.id)
+                        onSelectPage({
+                          module: activeModule.id,
+                          page: option.id
+                        })
+                      }}
                     >
                       {option.label}
                     </button>
