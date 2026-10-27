@@ -14,7 +14,6 @@ from app.services.travelling_advance_service import (
     update_travelling_advance_service,
 )
 
-
 router = APIRouter(
     prefix="/travelling-advance",
     tags=["Travelling Advance"],
@@ -41,7 +40,10 @@ def get_travelling_advance(
 ):
     advance = get_travelling_advance_service(db, advance_id)
     if not advance:
-        raise HTTPException(status_code=404, detail="Travelling advance not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Travelling advance not found",
+        )
     return advance
 
 
@@ -53,12 +55,21 @@ def update_travelling_advance(
 ):
     advance = update_travelling_advance_service(db, advance_id, data)
     if not advance:
-        raise HTTPException(status_code=404, detail="Travelling advance not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Travelling advance not found",
+        )
     return advance
 
 
 @router.delete("/{advance_id}")
-def delete_travelling_advance(advance_id: int, db: Session = Depends(get_db)):
+def delete_travelling_advance(
+    advance_id: int,
+    db: Session = Depends(get_db),
+):
     if not delete_travelling_advance_service(db, advance_id):
-        raise HTTPException(status_code=404, detail="Travelling advance not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Travelling advance not found",
+        )
     return {"detail": "Travelling advance deleted"}
