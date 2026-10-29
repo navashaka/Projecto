@@ -1,0 +1,11 @@
+Daily Work Report – 29/10/2026
+
+Module: Inventory Management – Frontend
+
+- Worked on "InventoryResourceForm.tsx" to implement the Create New Stock Group option.
+- Worked on the Stock Group form to display Name and Under Stock Group fields.
+- Implemented the logic to add stock groups and save records through the API.
+- Worked on displaying added stock groups and refreshing the records after saving.
+- Debugged TypeScript and JSX syntax errors related to conditional rendering and bracket mismatches.
+
+Status: Stock Group functionality is under development. Final error resolution and testing are pending.

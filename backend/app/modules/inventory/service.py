@@ -22,7 +22,7 @@ def _run_write(db: Session, operation: Callable[[], Result]) -> Result:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=_INTEGRITY_CONFLICT,
+            detail=str(exc.orig),
         ) from exc
 
 
