@@ -1,0 +1,22 @@
+Daily Work Report – 30/10/2026
+
+Inventory Module – Frontend
+
+- Worked on fixing errors in the Inventory module.
+- Identified and resolved TypeScript errors in "InventoryResourceForm.tsx".
+- Reviewed Inventory form components and fixed related frontend issues.
+- Improved the overall stability of Inventory forms.
+
+Inventory Module – Backend & Database
+
+- Investigated and resolved 500 Internal Server Errors in the Delivery Challan Inwards, Gate Entries, and Material Receipt Notes APIs.
+- Analysed backend error logs and identified missing address columns in the PostgreSQL tables.
+- Added the required address columns: "street_no", "street_name", "city", "state", "zip_code", and "country".
+- Updated the database schema to match the SQLAlchemy model definitions.
+- Resolved database schema mismatches affecting Inventory API responses.
+
+Testing & Verification
+
+- Completed the required database updates for all three Inventory tables.
+- Completed the Inventory error-fixing work and related database changes.
+- Verified the changes after completing the updates.
