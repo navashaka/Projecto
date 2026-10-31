@@ -18,6 +18,7 @@ import CreateTravellingExpensesReimbursementPage from '../modules/hr/pages/trave
 
 import CreateCompanyProfilePage from '../modules/auth/pages/company-profile/CreateCompanyProfilePage.tsx'
 
+import PurchaseForm from '../modules/purchase/components/PurchaseForm.tsx'
 function AppRoutes() {
   return (
     <Routes>
@@ -94,6 +95,11 @@ function AppRoutes() {
       <Route
         path="/company-profile/create"
         element={<CreateCompanyProfilePage />}
+      />
+
+      <Route
+         path="/purchase"
+          element={<PurchaseForm />}
       />
     </Routes>
   )

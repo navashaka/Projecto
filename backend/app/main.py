@@ -35,7 +35,7 @@ from app.api.v1.employment import router as employment_router
 from app.api.v1.travelling_expenses_reimbursement import (
     router as travelling_expenses_reimbursement_router,
 )
-
+from app.modules.purchase.router import router as purchase_router
 from app.modules.hr.payroll.router import router as payroll_router
 from app.modules.company.router import router as company_router
 from app.modules.location.router import router as location_router
@@ -337,6 +337,8 @@ app.include_router(inventory_router)
 
 # Accounts Receivable module
 app.include_router(ar_router)
+
+app.include_router(purchase_router)
 
 # API v1 routes
 app.include_router(api_v1_router, prefix="/api/v1")

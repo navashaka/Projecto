@@ -234,7 +234,17 @@ const LeftSidebar = () => {
               </div>
             )}
           </div>
-
+          <div className="d-grid gap-2" style={{ order: 7 }}>
+            <button
+              type="button"
+              className={`btn text-start ${
+                path === '/purchase' ? 'btn-primary' : 'btn-light'
+              }`}
+              onClick={() => navigate('/purchase')}
+            >
+              Purchase
+            </button>
+          </div>
           <div
             className="d-grid gap-2"
             style={{ order: 4 }}

@@ -26,6 +26,7 @@ import CreateTravellingAdvancePage from './modules/hr/pages/travelling-advance/C
 import HRHomePage from './modules/hr/pages/HRHomePage'
 
 import CreateCompanyProfilePage from './modules/auth/pages/company-profile/CreateCompanyProfilePage'
+import PurchaseForm from './modules/purchase/components/PurchaseForm'
 
 import JobProfileForm from './modules/hr/components/job-profile/JobProfileForm'
 import TravellingExpensesReimbursementForm from './modules/hr/components/travelling-expenses-reimbursement/TravellingExpensesReimbursementForm'
@@ -185,7 +186,7 @@ function App() {
         path="/inventory/goods-issue-sales/create"
         element={<GoodsIssueSalePage />}
       />
-
+      <Route path="/purchase" element={<PurchaseForm />} />
       {/* Existing General Ledger routes */}
       <Route path="/gl" element={<GLHomePage />} />
       <Route path="/gl/:resourceKey" element={<GLResourcePage />} />
