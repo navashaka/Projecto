@@ -46,13 +46,28 @@ const menuItems = [
     id: 'inventory',
     label: 'Inventory',
     submenu: [
-      { id: 'customer', label: 'Customer' },
-      { id: 'invoice', label: 'Invoice' },
-      { id: 'proforma-invoice', label: 'Proforma Invoice' },
-      { id: 'quotation', label: 'Quotation' },
-      { id: 'tax-invoice', label: 'Tax Invoice' }
+      { id: 'unit-of-measurement', label: 'Unit of Measurement' },
+      { id: 'gate-entry', label: 'Gate Entry' },
+      { id: 'stock-group', label: 'Stock Group' },
+      { id: 'stock-item', label: 'Stock Item' },
+      { id: 'indent', label: 'Indent' },
+      { id: 'material-receipt-note', label: 'Material Receipt Note' },
+      { id: 'delivery-challan-inward', label: 'Delivery Challan (Inward)' },
+      { id: 'delivery-challan-outward', label: 'Delivery Challan (Outward)' },
+      { id: 'goods-issue-for-consumption', label: 'Goods Issue (For Consumption)' },
+      { id: 'goods-issue-for-sale', label: 'Goods Issue (For Sale)' },
     ]
-  }
+  },
+  {
+    id: 'purchase',
+    label: 'Purchase',
+    submenu: [
+      { id: 'vendor', label: 'Vendor' },
+      { id: 'advance-requisition', label: 'Advance Requisition' },
+      { id: 'quotation-comparison', label: 'Quotation Comparison' },
+      { id: 'purchase-order', label: 'Purchase Order' },
+    ]
+  },
 ] as const
 
 type LeftSidebarProps = {

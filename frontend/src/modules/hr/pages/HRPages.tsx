@@ -1,7 +1,7 @@
-import UserEnquiryForm from '../../../components/auth/UserEnquiryForm'
+import CandidateEnquiryForm from '../../../components/auth/UserEnquiryForm'
 import ModuleDataPage from '../../shared/ModuleDataPage'
 
-export const CandidateEnquiryPage = () => <UserEnquiryForm />
+export const CandidateEnquiryPage = () => <CandidateEnquiryForm />
 
 export const BankEnquiryPage = () => (
   <ModuleDataPage
