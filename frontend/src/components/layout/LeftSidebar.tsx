@@ -21,14 +21,23 @@ const menuItems = [
     ] as const
   },
   {
+
     id: 'gl',
     label: 'GL',
     submenu: [
-      { id: 'customer', label: 'Customer' },
-      { id: 'invoice', label: 'Invoice' },
-      { id: 'proforma-invoice', label: 'Proforma Invoice' },
-      { id: 'quotation', label: 'Quotation' },
-      { id: 'tax-invoice', label: 'Tax Invoice' }
+      { id: 'tax-type', label: 'Tax Type' },
+      { id: 'group', label: 'Group' },
+      { id: 'gl-account', label: 'GL Account' },
+      { id: 'hsn', label: 'HSN' },
+      { id: 'sac', label: 'SAC' },
+      { id: 'bank-account', label: 'Bank Account' },
+      { id: 'cheque-range', label: 'Cheque Range' },
+      { id: 'od-limit', label: 'OD Limit' },
+      { id: 'fixed-assets', label: 'Fixed Assets' },
+      { id: 'secured-loans', label: 'Secured Loans' },
+      { id: 'unsecured-loans', label: 'Unsecured Loans' },
+      { id: 'sundry-creditors', label: 'Sundry Creditors' },
+      { id: 'sundry-debtors', label: 'Sundry Debtors' },
     ]
   },
   {

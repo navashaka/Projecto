@@ -5,7 +5,8 @@ const moduleLabels: Record<ModuleId, string> = {
   hr: 'Human Resources',
   gl: 'General Ledger',
   ar: 'Accounts Receivable',
-  inventory: 'Inventory'
+  inventory: 'Inventory',
+  purchase: 'Purchase',
 }
 
 type ModulePageFrameProps = {

@@ -4,6 +4,7 @@ import { arPages } from '../../modules/ar/pages'
 import { glPages } from '../../modules/gl/pages'
 import { hrPages } from '../../modules/hr/pages'
 import { inventoryPages } from '../../modules/inventory/pages'
+import { purchasePages } from '../../modules/purchase/pages'
 
 type MainContentProps = {
   selection: ModulePageSelection | null
@@ -14,7 +15,8 @@ const MainContent = ({ selection }: MainContentProps) => {
     hr: hrPages,
     gl: glPages,
     ar: arPages,
-    inventory: inventoryPages
+    inventory: inventoryPages,
+    purchase: purchasePages
   }
   const SelectedPage = selection ? pageRegistry[selection.module][selection.page] : undefined
 
