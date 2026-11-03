@@ -1,4 +1,4 @@
-import { Fragment, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useState, type FormEvent } from 'react'
 import ModulePageFrame from './ModulePageFrame'
 import type { ModuleId, ModulePageField } from '../types'
 
@@ -68,9 +68,14 @@ const numberToWords = (value: number): string => {
   return `${parts.join(' ')} Rupees${paise ? ` and ${belowThousand(paise)} Paise` : ''} Only`
 }
 
+// Convert frontend field names to backend field names.
+const toSnakeCase = (value: string): string =>
+  value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
+
 const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
   const [records, setRecords] = useState<PageRecord[]>([])
   const isTravellingAdvance = module === 'hr' && title === 'Travelling Advance'
+  const isCandidateEnquiry = module === 'hr' && title === 'Candidate Enquiry'
 
   const [employeeCode, setEmployeeCode] = useState('')
   const [employeeName, setEmployeeName] = useState('')
@@ -87,6 +92,69 @@ const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
   const [lookupMessage, setLookupMessage] = useState('')
   const [submitMessage, setSubmitMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // GET API only for Candidate Enquiry.
+  useEffect(() => {
+    if (!isCandidateEnquiry) return
+
+    const loadUserEnquiries = async () => {
+      try {
+        const response = await fetch(
+          'http://127.0.0.1:8000/api/v1/user-enquiries/'
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user enquiries')
+        }
+
+        const data: Record<string, unknown>[] = await response.json()
+
+        const rows: PageRecord[] = data.map((item, index) => {
+          const values: Record<string, string> = {}
+
+          fields.forEach((field) => {
+            const backendKey = toSnakeCase(field.name)
+            const value = item[backendKey] ?? item[field.name]
+
+            values[field.name] =
+              value === null || value === undefined ? '' : String(value)
+          })
+
+          // Backend field names that differ from frontend field names.
+          const aliases: Record<string, string> = {
+            dob: 'date_of_birth',
+            email: 'personal_email',
+            aadhaarNumber: 'aadhaar',
+            panNumber: 'pan',
+            passportNumber: 'passport_no',
+            emergencyContact1: 'emergency_phone_1',
+            emergencyContact2: 'emergency_phone_2',
+            motherTongue: 'mother_tongue',
+            otherLanguages: 'other_languages_known',
+            yearOfPassing: 'year_of_pass',
+          }
+
+          Object.entries(aliases).forEach(([frontendKey, backendKey]) => {
+            const value = item[backendKey]
+            if (value !== null && value !== undefined) {
+              values[frontendKey] = String(value)
+            }
+          })
+
+          return {
+            id: String(item.id ?? index),
+            values
+          }
+        })
+
+        setRecords(rows)
+      } catch (error) {
+        console.error('User Enquiry GET API Error:', error)
+      }
+    }
+
+    void loadUserEnquiries()
+  }, [isCandidateEnquiry, fields])
 
   const budgetTotal = budgets.reduce(
     (total, row) => total + (Number(row.amount) || 0),
@@ -414,7 +482,9 @@ const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
       ) : (
         <>
           <div className="alert alert-info" role="status">
-            Entries on this page are held in the current browser session and are not saved to the database yet.
+            {isCandidateEnquiry
+              ? 'Candidate Enquiry records are loaded from the database.'
+              : 'Entries on this page are held in the current browser session and are not saved to the database yet.'}
           </div>
 
           <form className="row g-3 mb-4" onSubmit={(event) => {
@@ -426,23 +496,27 @@ const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
             event.currentTarget.reset()
           }}>
             {fields.map((field, index) => (
-              <Fragment key={field.name}>
+              <Fragment key={`${field.name}-${index}`}>
                 {field.section && (index === 0 || fields[index - 1].section !== field.section) && (
                   <div className="col-12 mt-2">
                     <h2 className="h5 border-bottom pb-2 mb-0">{field.section}</h2>
                   </div>
                 )}
                 <div className="col-md-6">
-                  <label className="form-label" htmlFor={`${module}-${field.name}`}>{field.label}</label>
+                  <label className="form-label" htmlFor={`${module}-${field.name}-${index}`}>{field.label}</label>
                   {field.type === 'select' ? (
-                    <select className="form-select" id={`${module}-${field.name}`} name={field.name} required={field.required ?? true} defaultValue="">
+                    <select className="form-select" id={`${module}-${field.name}-${index}`} name={field.name} required={field.required ?? true} defaultValue="">
                       <option value="" disabled>Select {field.label.toLowerCase()}</option>
                       {field.options?.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
                   ) : field.type === 'textarea' ? (
-                    <textarea className="form-control" id={`${module}-${field.name}`} name={field.name} required={field.required ?? true} rows={3} />
+                    <textarea className="form-control" id={`${module}-${field.name}-${index}`} name={field.name} required={field.required ?? true} rows={3} />
                   ) : (
-                    <input className="form-control" id={`${module}-${field.name}`} name={field.name} type={field.type ?? 'text'} required={field.required ?? true} />
+                    <input className="form-control" id={`${module}-${field.name}-${index}`} name={field.name} type={field.type ?? 'text'} required={field.required ?? true} onChange={(e) => {
+  if (field.uppercase) {
+    e.currentTarget.value = e.currentTarget.value.toUpperCase()
+  }
+}}/>
                   )}
                 </div>
               </Fragment>
@@ -454,12 +528,16 @@ const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
 
           <div className="table-responsive">
             <table className="table table-striped align-middle">
-              <thead><tr>{fields.map((field) => <th key={field.name} scope="col">{field.label}</th>)}</tr></thead>
+              <thead><tr>{fields.map((field, index) => <th key={`${field.name}-${index}`} scope="col">{field.label}</th>)}</tr></thead>
               <tbody>
                 {records.length === 0 ? (
                   <tr><td className="text-center text-muted py-4" colSpan={fields.length}>No {title.toLowerCase()} records have been added.</td></tr>
                 ) : records.map((record) => (
-                  <tr key={record.id}>{fields.map((field) => <td key={field.name}>{record.values[field.name]}</td>)}</tr>
+                  <tr key={record.id}>
+                    {fields.map((field, index) => (
+                      <td key={`${field.name}-${index}`}>{record.values[field.name] ?? ''}</td>
+                    ))}
+                  </tr>
                 ))}
               </tbody>
             </table>
