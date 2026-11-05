@@ -84,6 +84,8 @@ export const InvoicePage = () => (
     { name: 'amount', label: 'Amount', type: 'number' },
     { name: 'ewayBillNumber', label: 'E-way Bill Number' },
     { name: 'einvoiceNumber', label: 'E-invoice Number' },
+    { name: 'serviceInvoice', label: 'Service Invoice' },
+    { name: 'exportInvoice', label: 'Export Invoice' },
   ]} />
 )
 
