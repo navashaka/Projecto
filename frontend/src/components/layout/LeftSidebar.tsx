@@ -77,6 +77,17 @@ const menuItems = [
       { id: 'purchase-order', label: 'Purchase Order' },
     ]
   },
+  {
+  id: 'bank',
+  label: 'Bank',
+  submenu: [
+    { id: 'bank-passbook', label: 'Bank Passbook' },
+    { id: 'bank-receipt', label: 'Receipt' },
+    { id: 'bank-payment', label: 'Payment' },
+    { id: 'bank-book', label: 'Bank Book' },
+    { id: 'bank-reconciliation', label: 'Bank Reconciliation' },
+  ],
+},
 ] as const
 
 type LeftSidebarProps = {

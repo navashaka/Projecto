@@ -7,6 +7,7 @@ const moduleLabels: Record<ModuleId, string> = {
   ar: 'Accounts Receivable',
   inventory: 'Inventory',
   purchase: 'Purchase',
+  bank: 'Bank',
 }
 
 type ModulePageFrameProps = {
