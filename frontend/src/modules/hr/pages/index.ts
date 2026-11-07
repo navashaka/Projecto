@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import {
   AttendancePage,
   BankEnquiryPage,
+  CandidateEnquiryPage,
   CompanyHolidaysPage,
   DesignationsPage,
   EmployeesPage,
@@ -12,10 +13,10 @@ import {
   TravellingAdvancePage,
 } from './HRPages'
 
-import UserEnquiryForm from '../../../components/auth/UserEnquiryForm'
+
 
 export const hrPages: Record<string, ComponentType> = {
-  'candidate-enquiry': UserEnquiryForm,
+  'candidate-enquiry': CandidateEnquiryPage,
   'bank-enquiry': BankEnquiryPage,
   attendance: AttendancePage,
   employees: EmployeesPage,

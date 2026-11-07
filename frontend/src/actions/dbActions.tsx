@@ -1,10 +1,12 @@
 import axios, { type AxiosResponse } from 'axios'
 import type { UserRole, UserSession } from '../store'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const apiUrl = import.meta.env.VITE_API_URL
+  ?? import.meta.env.VITE_API_BASE_URL
+  ?? 'http://localhost:8000'
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: apiUrl,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -20,16 +22,16 @@ export const dispatchRequest = async <T,>(
   type: string,
   request: () => Promise<T>,
   dispatch?: (action: ApiDispatchAction<T>) => void
-): Promise<T> => {
-  try {
-    const payload = await request()
-    dispatch?.({ type, payload })
-    return payload
-  } catch (error) {
-    dispatch?.({ type: `${type}_FAILED`, error })
-    throw error
-  }
-}
+): Promise<T> =>
+  request()
+    .then((payload) => {
+      dispatch?.({ type, payload })
+      return payload
+    })
+    .catch((error: unknown) => {
+      dispatch?.({ type: `${type}_FAILED`, error })
+      throw error
+    })
 
 export type UserEnquiryPayload = {
   candidateName?: string
@@ -114,13 +116,24 @@ export const submitUserEnquiry = async (
 ) => {
   return dispatchRequest(
     'SUBMIT_USER_ENQUIRY',
-    async () => {
-      const response = await apiClient.post('/api/v1/user-enquiries/', normalizeUserEnquiryPayload(payload))
-      return response.data
-    },
+    () => apiClient
+      .post('/api/v1/user-enquiries/', normalizeUserEnquiryPayload(payload))
+      .then((response) => response.data),
     dispatch
   )
 }
+
+export const createAttendanceRecord = async (
+  payload: Record<string, string>,
+  dispatch?: (action: ApiDispatchAction<unknown>) => void
+) =>
+  dispatchRequest(
+    'CREATE_ATTENDANCE_RECORD',
+    () => apiClient
+      .post('/api/v1/hr/attendance', payload)
+      .then((response) => response.data),
+    dispatch
+  )
 
 export type LoginCredentials = {
   email: string
@@ -135,9 +148,7 @@ export const loginUser = async (
 ) => {
   return dispatchRequest(
     'LOGIN_USER',
-    async () => {
-      return apiClient.post<UserSession>('/api/v1/auth/login', credentials)
-    },
+    () => apiClient.post<UserSession>('/api/v1/auth/login', credentials),
     dispatch
   )
 }
@@ -148,10 +159,9 @@ export const registerUser = async (
 ) => {
   return dispatchRequest(
     'REGISTER_USER',
-    async () => {
-      const response = await apiClient.post('/api/auth/register', payload)
-      return response.data
-    },
+    () => apiClient
+      .post('/api/auth/register', payload)
+      .then((response) => response.data),
     dispatch
   )
 }

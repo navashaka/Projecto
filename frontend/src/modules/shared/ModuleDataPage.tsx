@@ -6,6 +6,7 @@ type ModuleDataPageProps = {
   module: ModuleId
   title: string
   fields: ModulePageField[]
+  onSave?: (values: Record<string, string>) => Promise<unknown>
 }
 
 type PageRecord = {
@@ -68,12 +69,18 @@ const numberToWords = (value: number): string => {
   return `${parts.join(' ')} Rupees${paise ? ` and ${belowThousand(paise)} Paise` : ''} Only`
 }
 
-// Convert frontend field names to backend field names.
 const toSnakeCase = (value: string): string =>
   value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 
-const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
+const ModuleDataPage = ({
+  module,
+  title,
+  fields,
+  onSave,
+}: ModuleDataPageProps) => {
   const [records, setRecords] = useState<PageRecord[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
   const isTravellingAdvance = module === 'hr' && title === 'Travelling Advance'
   const isCandidateEnquiry = module === 'hr' && title === 'Candidate Enquiry'
 
@@ -185,7 +192,7 @@ const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setShowReview(true)
   }
@@ -481,19 +488,46 @@ const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
         </>
       ) : (
         <>
-          <div className="alert alert-info" role="status">
-            {isCandidateEnquiry
-              ? 'Candidate Enquiry records are loaded from the database.'
-              : 'Entries on this page are held in the current browser session and are not saved to the database yet.'}
-          </div>
+          {onSave ? (
+            <div className="alert alert-info" role="status">
+              This form sends its values to the configured API when submitted.
+            </div>
+          ) : (
+            <div className="alert alert-info" role="status">
+              {isCandidateEnquiry
+                ? 'Candidate Enquiry records are loaded from the database.'
+                : 'Entries on this page are held in the current browser session and are not saved to the database yet.'}
+            </div>
+          )}
 
-          <form className="row g-3 mb-4" onSubmit={(event) => {
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+
+          <form className="row g-3 mb-4" onSubmit={async (event) => {
             event.preventDefault()
+            const form = event.currentTarget
             const values = Object.fromEntries(
-              Array.from(new FormData(event.currentTarget).entries()).map(([key, value]) => [key, String(value)])
+              Array.from(new FormData(form).entries()).map(([key, value]) => [key, String(value)])
             )
+
+            setError('')
+            if (onSave) {
+              setIsSaving(true)
+              try {
+                await onSave(values)
+              } catch (saveError) {
+                setError(saveError instanceof Error ? saveError.message : `Unable to save ${title}.`)
+                setIsSaving(false)
+                return
+              }
+              setIsSaving(false)
+            }
+
             setRecords((current) => [...current, { id: crypto.randomUUID(), values }])
-            event.currentTarget.reset()
+            form.reset()
           }}>
             {fields.map((field, index) => (
               <Fragment key={`${field.name}-${index}`}>
@@ -512,17 +546,26 @@ const ModuleDataPage = ({ module, title, fields }: ModuleDataPageProps) => {
                   ) : field.type === 'textarea' ? (
                     <textarea className="form-control" id={`${module}-${field.name}-${index}`} name={field.name} required={field.required ?? true} rows={3} />
                   ) : (
-                    <input className="form-control" id={`${module}-${field.name}-${index}`} name={field.name} type={field.type ?? 'text'} required={field.required ?? true} onChange={(e) => {
-  if (field.uppercase) {
-    e.currentTarget.value = e.currentTarget.value.toUpperCase()
-  }
-}}/>
+                    <input
+                      className="form-control"
+                      id={`${module}-${field.name}-${index}`}
+                      name={field.name}
+                      type={field.type ?? 'text'}
+                      required={field.required ?? true}
+                      onChange={(e) => {
+                        if (field.uppercase) {
+                          e.currentTarget.value = e.currentTarget.value.toUpperCase()
+                        }
+                      }}
+                    />
                   )}
                 </div>
               </Fragment>
             ))}
             <div className="col-12">
-              <button className="btn btn-primary" type="submit">Add {title}</button>
+              <button className="btn btn-primary" type="submit" disabled={isSaving}>
+                {isSaving ? 'Sending…' : `Add ${title}`}
+              </button>
             </div>
           </form>
 
