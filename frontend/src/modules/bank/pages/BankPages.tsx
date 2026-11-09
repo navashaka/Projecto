@@ -11,8 +11,6 @@ export const BankPassbookPage = () => (
 		{ name: 'creditAmount', label: 'Credit Rs.', type: 'number' },
 		{ name: 'balance', label: 'Balance Rs.', type: 'number' },
 		{ name: 'reconciled', label: 'Reconciled' },
-		{ name: 'creditTransaction', label: 'Credit transaction → Receipt' },
-		{ name: 'debitTransaction', label: 'Debit transaction → Payment' },
 	]} />
 )
 

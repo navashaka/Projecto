@@ -16,16 +16,17 @@ import { Add, Delete } from '@mui/icons-material'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { createHRFormRecord, getHREmployeeByCode } from '../../../../actions/dbActions'
 
 const schema = z.object({
 	employee_code: z.string().trim().min(1, 'Employee code is required'),
 	employee_name: z.string(),
 	designation: z.string(),
 	department: z.string(),
-	from_date: z.string(),
-	to_date: z.string(),
-	place_to_be_visited: z.string(),
-	purpose_of_visit: z.string(),
+	from_date: z.string().min(1, 'From date is required'),
+	to_date: z.string().min(1, 'To date is required'),
+	place_to_be_visited: z.string().trim().min(1, 'Destination is required'),
+	purpose_of_visit: z.string().trim().min(1, 'Purpose is required'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -34,8 +35,6 @@ type BudgetItem = {
 	type: string
 	amount: string
 }
-
-const API = 'http://127.0.0.1:8000'
 
 function numberToWords(amount: number): string {
 	const ones = [
@@ -128,18 +127,7 @@ export default function TravellingAdvanceForm() {
 			setEmployeeError('')
 
 			try {
-				const response = await fetch(
-					`${API}/api/v1/employment/by-code/${encodeURIComponent(code)}`,
-				)
-				const result = await response.json()
-
-				if (!response.ok) {
-					throw new Error(
-						typeof result?.detail === 'string'
-							? result.detail
-							: 'Employee not found',
-					)
-				}
+				const result = await getHREmployeeByCode(code)
 
 				if (cancelled) return
 
@@ -231,41 +219,25 @@ export default function TravellingAdvanceForm() {
 			const budgetItems = budgets
 				.filter((item) => item.type.trim())
 				.map((item) => ({
-					type: item.type.trim(),
+					type_of_budget: item.type.trim(),
 					amount: Number(item.amount) || 0,
 				}))
 
-			const response = await fetch(`${API}/travelling-advance/`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					employee_code: data.employee_code.trim().toUpperCase(),
-					employee_name: data.employee_name,
-					designation: data.designation,
-					department: data.department,
-					from_date: data.from_date || null,
-					to_date: data.to_date || null,
-					place_to_be_visited: data.place_to_be_visited,
-					purpose_of_visit: data.purpose_of_visit,
-					budget_items: budgetItems,
-					other_expense_type: otherExpenseType.trim() || null,
-					other_expense_amount: Number(otherExpense) || 0,
-					total_advance: totalAdvance,
-					total_advance_words: numberToWords(totalAdvance),
-				}),
+			await createHRFormRecord('travelling-advance', {
+				employee_code: data.employee_code.trim().toUpperCase(),
+				employee_name: data.employee_name,
+				designation: data.designation,
+				department: data.department,
+				from_date: data.from_date,
+				to_date: data.to_date,
+				place_to_be_visited: data.place_to_be_visited,
+				purpose_of_visit: data.purpose_of_visit,
+				budget_items: budgetItems,
+				other_expense_type: otherExpenseType.trim(),
+				other_expense_amount: Number(otherExpense) || 0,
+				total_advance: totalAdvance,
+				total_advance_words: numberToWords(totalAdvance),
 			})
-
-			const result = await response.json().catch(() => null)
-
-			if (!response.ok) {
-				throw new Error(
-					typeof result?.detail === 'string'
-						? result.detail
-						: JSON.stringify(
-								result?.detail ?? 'Failed to submit travelling advance',
-							),
-				)
-			}
 
 			setMessage('Travelling advance submitted successfully!')
 			setReviewOpen(false)

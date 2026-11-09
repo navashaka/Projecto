@@ -1,6 +1,5 @@
 import UserEnquiryForm from '../../../components/auth/CustomerRegistrationForm'
 import ModuleDataPage from '../../shared/ModuleDataPage'
-import { createAttendanceRecord } from '../../../actions/dbActions'
 
 export const CandidateEnquiryPage = () => <UserEnquiryForm />
 
@@ -183,7 +182,6 @@ export const AttendancePage = () => (
   <ModuleDataPage
     module="hr"
     title="Attendance"
-    onSave={createAttendanceRecord}
     fields={[
       { name: "employeeCode", label: "Employee code" },
       { name: "employeeName", label: "Employee name" },
@@ -219,17 +217,16 @@ export const EmployeesPage = () => (
       { name: "employeeId", label: "Employee ID" },
       { name: "name", label: "Employee name" },
       { name: "dateOfBirth", label: "Date of birth", type: "date" },
-      { name: "bloodGroup", label: "Blood group", required: false },
+      { name: 'bloodGroup', label: 'Blood Group', type: 'select', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
       {
         name: "maritalStatus",
         label: "Marital status",
         type: "select",
-        options: ["Single", "Married", "Divorced", "Widowed"],
+        options: ["Single", "Married"],
       },
       { name: "phone", label: "Phone", type: "tel" },
       { name: "personalEmail", label: "Personal email", type: "email" },
-      { name: "address", label: "Address", type: "textarea" },
-      { name: "pan", label: "PAN" },
+      { name: "pan", label: "PAN" ,uppercase: true},
       { name: "aadhaar", label: "Aadhaar" },
       { name: "passportNumber", label: "Passport number", required: false },
       { name: "emergencyContact", label: "Emergency contact phone" },
@@ -238,6 +235,12 @@ export const EmployeesPage = () => (
       { name: "yearOfPass", label: "Year of passing", type: "number" },
       { name: "department", label: "Department" },
       { name: "designation", label: "Designation" },
+      { name: 'streetNumber', label: 'Street Number',section: 'Address' },
+      { name: 'streetName', label: 'Street Name' },
+      { name: 'city', label: 'City' },
+      { name: 'state', label: 'State' },
+      { name: 'country', label: 'Country' },
+      { name: 'zipCode', label: 'Zip Code' },
     ]}
   />
 );
@@ -502,13 +505,13 @@ export const LeavePage = () => (
       },
       { name: "startDate", label: "Start date", type: "date" },
       { name: "endDate", label: "End date", type: "date" },
-      { name: "reason", label: "Reason", type: "textarea" },
       {
         name: "status",
         label: "Approval status",
         type: "select",
         options: ["Pending", "Approved", "Rejected"],
       },
+      { name: "reason", label: "Reason", type: "textarea" },
     ]}
   />
 );

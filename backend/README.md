@@ -39,9 +39,16 @@ It stores fields for:
 - personal details: candidate name, father name, DOB, blood group, marital status, address, phone, email
 - identity details: PAN, Aadhaar, passport, nationality, religion, mother tongue
 - education: highest qualification, pass year, documents
-- employment: current employer, position, department, working period, responsibilities, CTC, employer documents
-- previous employment: previous company, designation, department, period, salary, documents
+- address: individual street, city, state, country, and ZIP fields
+- education: repeatable qualification details
+- employment: employment type, current employer, position, department, start date, responsibilities, CTC, take-home pay, employer documents
+- previous employment: repeatable company, designation, department, dates, salary, take-home pay, responsibilities, and documents
 - audit fields: created_at, updated_at, is_active
+
+Existing PostgreSQL databases must apply the additive migration at
+`scripts/migrations/20261109_candidate_enquiry_fields.sql` before running code
+that uses the added Candidate Enquiry columns. The migration preserves all
+existing columns and records.
 
 ## API endpoints
 
@@ -68,6 +75,30 @@ GET /api/v1/user-enquiries/
 ```http
 GET /api/v1/user-enquiries/{enquiry_id}
 ```
+
+### Update enquiry
+
+```http
+PUT /api/v1/user-enquiries/{enquiry_id}
+```
+
+### Upload a Candidate Enquiry document
+
+```http
+POST /api/v1/user-enquiries/uploads
+```
+
+The other HR forms use the HR form records API. Supported form types are
+`bank-enquiry`, `attendance`, `employees`, `company-holidays`, `salary`,
+`designations`, `payroll`, `leave`, `on-employment`, and `travelling-advance`.
+Each uses `GET /api/v1/hr/forms/{form_type}`, `POST /api/v1/hr/forms/{form_type}`,
+`GET /api/v1/hr/forms/{form_type}/{record_id}`, and
+`PUT /api/v1/hr/forms/{form_type}/{record_id}`. These records are stored in the
+new `hr_form_records` table with their form fields retained in JSON.
+
+Candidate Enquiry document uploads accept PDF, DOC, DOCX, JPG, JPEG, and PNG
+files up to 10 MB. The upload API returns a path that is stored with the
+enquiry and can be retrieved through the corresponding uploads GET path.
 
 ## Example request body
 

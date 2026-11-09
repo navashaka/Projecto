@@ -1,4 +1,24 @@
-import { Fragment, useEffect, useState, type FormEvent } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import {
+  createHRFormRecord,
+  getHREmployeeByCode,
+  getHRFormRecords,
+  updateHRFormRecord,
+  uploadUserEnquiryFile,
+  getUserEnquiries,
+  submitUserEnquiry,
+  updateUserEnquiry,
+  type HRFormRecord,
+  type UserEnquiryRecord
+} from '../../actions/dbActions'
+import {
+  createPurchaseRecord,
+  deletePurchaseRecord,
+  getPurchaseRecords,
+  updatePurchaseRecord,
+  type PurchaseFormRecord,
+  type PurchaseFormType
+} from '../purchase/api'
 import ModulePageFrame from './ModulePageFrame'
 import type { ModuleId, ModulePageField } from '../types'
 
@@ -12,11 +32,16 @@ type ModuleDataPageProps = {
 type PageRecord = {
   id: string
   values: Record<string, string>
+  data?: Record<string, unknown>
 }
 
 type BudgetRow = {
   type: string
   amount: string
+}
+
+type DynamicRow = {
+  id: string
 }
 
 const numberToWords = (value: number): string => {
@@ -72,6 +97,26 @@ const numberToWords = (value: number): string => {
 const toSnakeCase = (value: string): string =>
   value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 
+const hrFormTypes: Record<string, string> = {
+  'Bank Enquiry': 'bank-enquiry',
+  Attendance: 'attendance',
+  Employees: 'employees',
+  'Company Holidays': 'company-holidays',
+  Salary: 'salary',
+  Designations: 'designations',
+  Payroll: 'payroll',
+  Leave: 'leave',
+  'On Employment': 'on-employment',
+  'Travelling Advance': 'travelling-advance'
+}
+
+const purchaseFormTypes: Record<string, PurchaseFormType> = {
+  Vendor: 'vendors',
+  'Advance Requisition': 'advance-requisitions',
+  'Quotation Comparison': 'quotation-comparisons',
+  'Purchase Order': 'orders'
+}
+
 const ModuleDataPage = ({
   module,
   title,
@@ -80,9 +125,71 @@ const ModuleDataPage = ({
 }: ModuleDataPageProps) => {
   const [records, setRecords] = useState<PageRecord[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
+  const [pendingFormValues, setPendingFormValues] = useState<Record<string, string> | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const fieldsRef = useRef(fields)
+  useEffect(() => {
+    fieldsRef.current = fields
+  }, [fields])
   const isTravellingAdvance = module === 'hr' && title === 'Travelling Advance'
   const isCandidateEnquiry = module === 'hr' && title === 'Candidate Enquiry'
+  const hrFormType = module === 'hr' ? hrFormTypes[title] : undefined
+  const purchaseFormType = module === 'purchase' ? purchaseFormTypes[title] : undefined
+  const isHRRecordForm = Boolean(hrFormType)
+  const isPurchaseRecordForm = Boolean(purchaseFormType)
+  const canEditRecords = isHRRecordForm || isCandidateEnquiry || isPurchaseRecordForm
+
+  const [qualificationRows, setQualificationRows] = useState<DynamicRow[]>([
+    { id: crypto.randomUUID() }
+  ])
+
+  const [previousEmploymentRows, setPreviousEmploymentRows] = useState<DynamicRow[]>([
+    { id: crypto.randomUUID() }
+  ])
+
+  const qualificationStart = fields.findIndex(
+    (field) => field.section === 'Qualification'
+  )
+
+  const previousEmploymentStart = fields.findIndex(
+    (field) => field.section === 'Previous Employment Details'
+  )
+
+  const getSectionFields = (startIndex: number) => {
+    if (startIndex === -1) return []
+
+    let endIndex = fields.length
+
+    for (let i = startIndex + 1; i < fields.length; i++) {
+      if (fields[i].section) {
+        endIndex = i
+        break
+      }
+    }
+
+    return fields.slice(startIndex, endIndex)
+  }
+
+  const qualificationFields = getSectionFields(qualificationStart)
+  const previousEmploymentFields = getSectionFields(previousEmploymentStart)
+
+  const dynamicFieldIndexes = new Set<number>()
+
+  if (isCandidateEnquiry && qualificationStart !== -1) {
+    qualificationFields.forEach((_, index) => {
+      dynamicFieldIndexes.add(qualificationStart + index)
+    })
+  }
+
+  if (isCandidateEnquiry && previousEmploymentStart !== -1) {
+    previousEmploymentFields.forEach((_, index) => {
+      dynamicFieldIndexes.add(previousEmploymentStart + index)
+    })
+  }
 
   const [employeeCode, setEmployeeCode] = useState('')
   const [employeeName, setEmployeeName] = useState('')
@@ -100,68 +207,156 @@ const ModuleDataPage = ({
   const [submitMessage, setSubmitMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // GET API only for Candidate Enquiry.
+  const mapCandidateEnquiryRecord = useCallback((
+    item: UserEnquiryRecord,
+    index: number
+  ): PageRecord => {
+    const values: Record<string, string> = {}
+
+    fieldsRef.current.forEach((field) => {
+      const backendKey = toSnakeCase(field.name)
+      const value = item[backendKey] ?? item[field.name]
+
+      values[field.name] =
+        value === null || value === undefined ? '' : String(value)
+    })
+
+    const aliases: Record<string, string> = {
+      dob: 'date_of_birth',
+      email: 'personal_email',
+      aadhaarNumber: 'aadhaar',
+      panNumber: 'pan',
+      passportNumber: 'passport_no',
+      emergencyContact1: 'emergency_phone_1',
+      emergencyContact2: 'emergency_phone_2',
+      motherTongue: 'mother_tongue',
+      otherLanguages: 'other_languages_known',
+      yearOfPassing: 'year_of_pass',
+      attachDocuments: 'highest_qualification_document',
+      employmentType: 'employment_type',
+      designation: 'current_position',
+      currentCTC: 'current_ctc',
+      currentResponsibilities: 'role_responsibilities',
+      previousEmployer: 'previous_employer_name',
+      previousDesignation: 'previous_employer_position',
+      previousDepartment: 'previous_employer_department',
+      previousCTC: 'previous_employer_ctc',
+      previousRelievedOn: 'previous_working_to',
+      previousResponsibilities: 'previous_employer_role'
+    }
+
+    Object.entries(aliases).forEach(([frontendKey, backendKey]) => {
+      const value = item[backendKey]
+      if (value !== null && value !== undefined) {
+        values[frontendKey] = String(value)
+      }
+    })
+
+    return {
+      id: String(item.id ?? index),
+      values,
+      data: item
+    }
+  }, [])
+
+  const mapHRFormRecord = useCallback((item: HRFormRecord, index: number): PageRecord => {
+    const values: Record<string, string> = {}
+
+    if (item.form_type === 'travelling-advance') {
+      values.employeeCode = String(item.payload.employee_code ?? '')
+      values.employeeName = String(item.payload.employee_name ?? '')
+      values.placeToBeVisited = String(item.payload.place_to_be_visited ?? '')
+      values.totalAdvance = String(item.payload.total_advance ?? '')
+      values.totalAdvanceWords = String(item.payload.total_advance_words ?? '')
+    } else {
+      fieldsRef.current.forEach((field) => {
+        const value = item.payload[field.name]
+        values[field.name] =
+          value === null || value === undefined ? '' : String(value)
+      })
+    }
+
+    return {
+      id: String(item.id ?? index),
+      values,
+      data: item.payload
+    }
+  }, [])
+
+  const mapPurchaseFormRecord = useCallback((
+    item: PurchaseFormRecord,
+    index: number
+  ): PageRecord => {
+    const values: Record<string, string> = {}
+    fieldsRef.current.forEach((field) => {
+      const value = item.payload[field.name]
+      values[field.name] =
+        value === null || value === undefined ? '' : String(value)
+    })
+    return {
+      id: String(item.id ?? index),
+      values,
+      data: item.payload
+    }
+  }, [])
+
   useEffect(() => {
-    if (!isCandidateEnquiry) return
+    if (!isCandidateEnquiry && !hrFormType && !purchaseFormType) return
 
-    const loadUserEnquiries = async () => {
+    let cancelled = false
+    const loadRecords = async () => {
+      setIsLoadingRecords(true)
+      setError('')
       try {
-        const response = await fetch(
-          'http://127.0.0.1:8000/api/v1/user-enquiries/'
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch user enquiries')
+        if (isCandidateEnquiry) {
+          const data = await getUserEnquiries()
+          if (!cancelled) setRecords(data.map(mapCandidateEnquiryRecord))
+        } else if (hrFormType) {
+          const data = await getHRFormRecords(hrFormType)
+          if (!cancelled) setRecords(data.map(mapHRFormRecord))
+        } else if (purchaseFormType) {
+          const data = await getPurchaseRecords(purchaseFormType)
+          if (!cancelled) setRecords(data.map(mapPurchaseFormRecord))
         }
-
-        const data: Record<string, unknown>[] = await response.json()
-
-        const rows: PageRecord[] = data.map((item, index) => {
-          const values: Record<string, string> = {}
-
-          fields.forEach((field) => {
-            const backendKey = toSnakeCase(field.name)
-            const value = item[backendKey] ?? item[field.name]
-
-            values[field.name] =
-              value === null || value === undefined ? '' : String(value)
-          })
-
-          // Backend field names that differ from frontend field names.
-          const aliases: Record<string, string> = {
-            dob: 'date_of_birth',
-            email: 'personal_email',
-            aadhaarNumber: 'aadhaar',
-            panNumber: 'pan',
-            passportNumber: 'passport_no',
-            emergencyContact1: 'emergency_phone_1',
-            emergencyContact2: 'emergency_phone_2',
-            motherTongue: 'mother_tongue',
-            otherLanguages: 'other_languages_known',
-            yearOfPassing: 'year_of_pass',
-          }
-
-          Object.entries(aliases).forEach(([frontendKey, backendKey]) => {
-            const value = item[backendKey]
-            if (value !== null && value !== undefined) {
-              values[frontendKey] = String(value)
-            }
-          })
-
-          return {
-            id: String(item.id ?? index),
-            values
-          }
-        })
-
-        setRecords(rows)
       } catch (error) {
-        console.error('User Enquiry GET API Error:', error)
+        if (!cancelled) {
+          setError(
+            error instanceof Error
+              ? `Unable to load ${title} records: ${error.message}`
+              : `Unable to load ${title} records.`
+          )
+        }
+      } finally {
+        if (!cancelled) setIsLoadingRecords(false)
       }
     }
 
-    void loadUserEnquiries()
-  }, [isCandidateEnquiry, fields])
+    void loadRecords()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    isCandidateEnquiry,
+    hrFormType,
+    purchaseFormType,
+    title,
+    mapCandidateEnquiryRecord,
+    mapHRFormRecord,
+    mapPurchaseFormRecord
+  ])
+
+  useEffect(() => {
+    if (!pendingFormValues || !formRef.current) return
+    Object.entries(pendingFormValues).forEach(([name, value]) => {
+      const input = formRef.current?.querySelector<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >(`[name="${CSS.escape(name)}"]`)
+      if (input && !(input instanceof HTMLInputElement && input.type === 'file')) {
+        input.value = value
+      }
+    })
+    setPendingFormValues(null)
+  }, [pendingFormValues, qualificationRows, previousEmploymentRows])
 
   const budgetTotal = budgets.reduce(
     (total, row) => total + (Number(row.amount) || 0),
@@ -176,14 +371,8 @@ const ModuleDataPage = ({
     try {
       setLookupMessage('Searching employee...')
 
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/v1/employment/by-code/${encodeURIComponent(code.trim())}`
-      )
-
-      if (!response.ok) throw new Error('Employee not found')
-
-      const data = await response.json()
-      setEmployeeName(data.employee_name ?? data.name ?? '')
+      const data = await getHREmployeeByCode(code.trim())
+      setEmployeeName(data.employee_name ?? '')
       setDesignation(data.designation ?? '')
       setDepartment(data.department ?? '')
       setLookupMessage('Employee details loaded.')
@@ -206,8 +395,8 @@ const ModuleDataPage = ({
       employee_name: employeeName,
       designation,
       department,
-      from_date: fromDate || null,
-      to_date: toDate || null,
+      from_date: fromDate,
+      to_date: toDate,
       place_to_be_visited: placeToBeVisited,
       purpose_of_visit: purpose,
       budget_items: budgets
@@ -223,41 +412,22 @@ const ModuleDataPage = ({
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/travelling-advance/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
+      const saved = editingRecordId
+        ? await updateHRFormRecord('travelling-advance', editingRecordId, payload)
+        : await createHRFormRecord('travelling-advance', payload)
+      const record = mapHRFormRecord(saved, records.length)
+      setRecords((current) =>
+        editingRecordId
+          ? current.map((item) => item.id === editingRecordId ? record : item)
+          : [...current, record]
+      )
 
-      if (!response.ok) {
-        const message = await response.text()
-        throw new Error(message || 'Unable to save travelling advance.')
-      }
-
-      setRecords((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          values: {
-            employeeCode,
-            employeeName,
-            designation,
-            department,
-            fromDate,
-            toDate,
-            placeToBeVisited,
-            purpose,
-            typeOfBudget: budgets.map((row) => row.type).join(', '),
-            budgetAmount: String(budgetTotal),
-            otherExpenseType,
-            otherExpenseAmount,
-            totalAdvance: String(totalAdvance),
-            totalAdvanceWords: totalWords
-          }
-        }
-      ])
-
-      setSubmitMessage('Travelling Advance submitted successfully.')
+      setSubmitMessage(
+        editingRecordId
+          ? 'Travelling Advance updated successfully.'
+          : 'Travelling Advance submitted successfully.'
+      )
+      setEditingRecordId(null)
       setShowReview(false)
       setEmployeeCode('')
       setEmployeeName('')
@@ -279,6 +449,207 @@ const ModuleDataPage = ({
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const renderDynamicField = (
+    field: ModulePageField,
+    rowId: string,
+    sectionName: string
+  ) => {
+    const inputId = `${sectionName}-${rowId}-${field.name}`
+    const inputName = `${sectionName}_${rowId}_${field.name}`
+
+    return (
+      <div className="col-md-6" key={inputId}>
+        <label className="form-label" htmlFor={inputId}>
+          {field.label}
+        </label>
+
+        {field.type === 'select' ? (
+          <select
+            className="form-select"
+            id={inputId}
+            name={inputName}
+            required={field.required ?? !isCandidateEnquiry}
+            defaultValue=""
+          >
+            <option value="" disabled>
+              Select {field.label.toLowerCase()}
+            </option>
+            {field.options?.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        ) : field.type === 'textarea' ? (
+          <textarea
+            className="form-control"
+            id={inputId}
+            name={inputName}
+            required={field.required ?? !isCandidateEnquiry}
+            rows={3}
+          />
+        ) : (
+          <input
+            className="form-control"
+            id={inputId}
+            name={inputName}
+            type={field.type ?? 'text'}
+            required={field.required ?? !isCandidateEnquiry}
+            onChange={(e) => {
+              if (field.uppercase) {
+                e.currentTarget.value = e.currentTarget.value.toUpperCase()
+              }
+            }}
+          />
+        )}
+      </div>
+    )
+  }
+
+  const editRecord = (record: PageRecord) => {
+    if (isCandidateEnquiry && record.data) {
+      const pendingValues: Record<string, string> = {}
+      fields.forEach((field, index) => {
+        if (!dynamicFieldIndexes.has(index) && field.type !== 'file') {
+          pendingValues[field.name] = record.values[field.name] ?? ''
+        }
+      })
+
+      const qualificationDetails = Array.isArray(record.data.qualification_details)
+        ? record.data.qualification_details
+        : []
+      const qualificationIds = qualificationDetails.length
+        ? qualificationDetails.map(() => crypto.randomUUID())
+        : [crypto.randomUUID()]
+      qualificationDetails.forEach((item, index) => {
+        if (typeof item !== 'object' || item === null) return
+        const detail = item as Record<string, unknown>
+        const rowId = qualificationIds[index]
+        pendingValues[`qualification_${rowId}_highestQualification`] =
+          String(detail.highest_qualification ?? '')
+        pendingValues[`qualification_${rowId}_yearOfPassing`] =
+          String(detail.year_of_pass ?? '')
+        pendingValues[`qualification_${rowId}_attachDocuments`] =
+          String(detail.document ?? '')
+      })
+
+      const employmentDetails = Array.isArray(record.data.previous_employment_details)
+        ? record.data.previous_employment_details
+        : []
+      const employmentIds = employmentDetails.length
+        ? employmentDetails.map(() => crypto.randomUUID())
+        : [crypto.randomUUID()]
+      employmentDetails.forEach((item, index) => {
+        if (typeof item !== 'object' || item === null) return
+        const detail = item as Record<string, unknown>
+        const rowId = employmentIds[index]
+        const detailValues: Record<string, unknown> = {
+          previousEmployer: detail.employer_name,
+          previousDesignation: detail.position,
+          previousDepartment: detail.department,
+          previousWorkingFrom: detail.working_from,
+          previousRelievedOn: detail.relieved_on,
+          previousCTC: detail.ctc,
+          previousTakeHome: detail.take_home,
+          previousResponsibilities: detail.responsibilities,
+          previousEmployerDocuments: detail.documents
+        }
+        Object.entries(detailValues).forEach(([name, value]) => {
+          pendingValues[`previousEmployment_${rowId}_${name}`] = String(value ?? '')
+        })
+      })
+
+      setQualificationRows(qualificationIds.map((id) => ({ id })))
+      setPreviousEmploymentRows(employmentIds.map((id) => ({ id })))
+      setPendingFormValues(pendingValues)
+    } else if (isTravellingAdvance && record.data) {
+      const payload = record.data
+      setEmployeeCode(String(payload.employee_code ?? ''))
+      setEmployeeName(String(payload.employee_name ?? ''))
+      setDesignation(String(payload.designation ?? ''))
+      setDepartment(String(payload.department ?? ''))
+      setFromDate(String(payload.from_date ?? ''))
+      setToDate(String(payload.to_date ?? ''))
+      setPlaceToBeVisited(String(payload.place_to_be_visited ?? ''))
+      setPurpose(String(payload.purpose_of_visit ?? ''))
+      setOtherExpenseType(String(payload.other_expense_type ?? ''))
+      setOtherExpenseAmount(String(payload.other_expense_amount ?? ''))
+      const items = Array.isArray(payload.budget_items) ? payload.budget_items : []
+      const restoredBudgets = items.flatMap((item) => {
+        if (typeof item !== 'object' || item === null) return []
+        const detail = item as Record<string, unknown>
+        return [{
+          type: String(detail.type_of_budget ?? ''),
+          amount: String(detail.amount ?? '')
+        }]
+      })
+      setBudgets(restoredBudgets.length ? restoredBudgets : [{ type: '', amount: '' }])
+    } else {
+      const form = formRef.current
+      if (!form) return
+      fields.forEach((field) => {
+        const input = form.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+          `[name="${field.name}"]`
+        )
+        if (input && !(input instanceof HTMLInputElement && input.type === 'file')) {
+          input.value = record.values[field.name] ?? ''
+        }
+      })
+    }
+
+    setEditingRecordId(record.id)
+    setError('')
+    setSuccessMessage('')
+    setSubmitMessage('')
+  }
+
+  const deletePurchaseRecordFromList = async (record: PageRecord) => {
+    if (!purchaseFormType || !window.confirm(`Delete this ${title.toLowerCase()} record?`)) {
+      return
+    }
+
+    setIsSaving(true)
+    setError('')
+    setSuccessMessage('')
+    try {
+      await deletePurchaseRecord(purchaseFormType, record.id)
+      setRecords((current) => current.filter((item) => item.id !== record.id))
+      if (editingRecordId === record.id) cancelEdit()
+      setSuccessMessage(`${title} deleted successfully.`)
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? `Unable to delete ${title}: ${deleteError.message}`
+          : `Unable to delete ${title}.`
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingRecordId(null)
+    setShowReview(false)
+    setError('')
+    setSuccessMessage('')
+    setBudgets([{ type: '', amount: '' }])
+    setEmployeeCode('')
+    setEmployeeName('')
+    setDesignation('')
+    setDepartment('')
+    setFromDate('')
+    setToDate('')
+    setPlaceToBeVisited('')
+    setPurpose('')
+    setOtherExpenseType('')
+    setOtherExpenseAmount('')
+    if (isCandidateEnquiry) {
+      setQualificationRows([{ id: crypto.randomUUID() }])
+      setPreviousEmploymentRows([{ id: crypto.randomUUID() }])
+    }
+    formRef.current?.reset()
   }
 
   return (
@@ -422,9 +793,15 @@ const ModuleDataPage = ({
 
             <div className="col-12">
               <button className="btn btn-primary" type="submit">Review</button>
+              {editingRecordId && (
+                <button className="btn btn-secondary ms-2" type="button" onClick={cancelEdit}>
+                  Cancel
+                </button>
+              )}
             </div>
           </form>
 
+          {error && <div className="alert alert-danger" role="alert">{error}</div>}
           {submitMessage && <div className="alert alert-info" role="status">{submitMessage}</div>}
 
           {showReview && (
@@ -459,7 +836,7 @@ const ModuleDataPage = ({
                   <div className="modal-footer">
                     <button className="btn btn-secondary" type="button" onClick={() => setShowReview(false)}>Back to Edit</button>
                     <button className="btn btn-primary" type="button" disabled={submitting} onClick={submitTravellingAdvance}>
-                      {submitting ? 'Submitting...' : 'Confirm & Submit'}
+                      {submitting ? 'Submitting...' : editingRecordId ? 'Confirm & Update' : 'Confirm & Submit'}
                     </button>
                   </div>
                 </div>
@@ -469,10 +846,10 @@ const ModuleDataPage = ({
 
           <div className="table-responsive">
             <table className="table table-striped align-middle">
-              <thead><tr><th>Employee Code</th><th>Employee Name</th><th>Place</th><th>Total Advance</th><th>Value in Words</th></tr></thead>
+              <thead><tr><th>Employee Code</th><th>Employee Name</th><th>Place</th><th>Total Advance</th><th>Value in Words</th><th>Actions</th></tr></thead>
               <tbody>
                 {records.length === 0 ? (
-                  <tr><td className="text-center text-muted py-4" colSpan={5}>No travelling advance records have been added.</td></tr>
+                  <tr><td className="text-center text-muted py-4" colSpan={6}>No travelling advance records have been added.</td></tr>
                 ) : records.map((record) => (
                   <tr key={record.id}>
                     <td>{record.values.employeeCode}</td>
@@ -480,6 +857,7 @@ const ModuleDataPage = ({
                     <td>{record.values.placeToBeVisited}</td>
                     <td>{record.values.totalAdvance}</td>
                     <td>{record.values.totalAdvanceWords}</td>
+                    <td><button className="btn btn-sm btn-outline-primary" type="button" onClick={() => editRecord(record)}>Edit</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -488,9 +866,11 @@ const ModuleDataPage = ({
         </>
       ) : (
         <>
-          {onSave ? (
+          {onSave || isHRRecordForm || isPurchaseRecordForm ? (
             <div className="alert alert-info" role="status">
-              This form sends its values to the configured API when submitted.
+              {isPurchaseRecordForm
+                ? `This form loads and saves its records through the Purchase API.`
+                : 'This form loads and saves its records through the HR API.'}
             </div>
           ) : (
             <div className="alert alert-info" role="status">
@@ -505,19 +885,137 @@ const ModuleDataPage = ({
               {error}
             </div>
           )}
+          {successMessage && (
+            <div className="alert alert-success" role="status">
+              {successMessage}
+            </div>
+          )}
+          {isLoadingRecords && (
+            <p className="text-muted" role="status">Loading {title.toLowerCase()} records…</p>
+          )}
 
-          <form className="row g-3 mb-4" onSubmit={async (event) => {
+          <form ref={formRef} className="row g-3 mb-4" onSubmit={async (event) => {
             event.preventDefault()
             const form = event.currentTarget
+            const formData = new FormData(form)
+            const formValueToString = async (value: FormDataEntryValue | null) => {
+              if (!(value instanceof File)) return String(value ?? '')
+              if (value.size === 0) return ''
+              if (isCandidateEnquiry) {
+                const uploadedFile = await uploadUserEnquiryFile(value)
+                return uploadedFile.path
+              }
+              return value.name
+            }
+
             const values = Object.fromEntries(
-              Array.from(new FormData(form).entries()).map(([key, value]) => [key, String(value)])
-            )
+              await Promise.all(
+                Array.from(formData.entries()).map(async ([key, value]) => [
+                  key,
+                  await formValueToString(value)
+                ])
+              )
+            ) as Record<string, string>
+
+            // Collect multiple Qualification entries.
+            if (isCandidateEnquiry) {
+              values.qualificationDetails = JSON.stringify(
+                await Promise.all(
+                  qualificationRows.map(async (row) =>
+                    Object.fromEntries(
+                      await Promise.all(
+                        qualificationFields.map(async (field) => [
+                          field.name,
+                          await formValueToString(
+                            formData.get(`qualification_${row.id}_${field.name}`)
+                          )
+                        ])
+                      )
+                    )
+                  )
+                )
+              )
+
+              // Collect multiple Previous Employment entries.
+              values.previousEmploymentDetails = JSON.stringify(
+                await Promise.all(
+                  previousEmploymentRows.map(async (row) =>
+                    Object.fromEntries(
+                      await Promise.all(
+                        previousEmploymentFields.map(async (field) => [
+                          field.name,
+                          await formValueToString(
+                            formData.get(`previousEmployment_${row.id}_${field.name}`)
+                          )
+                        ])
+                      )
+                    )
+                  )
+                )
+              )
+            }
+
+            if (isCandidateEnquiry && editingRecordId) {
+              const original = records.find((record) => record.id === editingRecordId)?.data
+              const qualifications = Array.isArray(original?.qualification_details)
+                ? original.qualification_details.map((item) =>
+                    typeof item === 'object' && item !== null
+                      ? item as Record<string, unknown>
+                      : {}
+                  )
+                : []
+              const previousEmployments = Array.isArray(original?.previous_employment_details)
+                ? original.previous_employment_details.map((item) =>
+                    typeof item === 'object' && item !== null
+                      ? item as Record<string, unknown>
+                      : {}
+                  )
+                : []
+
+              values.attachDocuments ||= String(original?.highest_qualification_document ?? '')
+              values.employerDocuments ||= String(original?.employer_documents ?? '')
+              values.qualificationDetails = JSON.stringify(
+                (JSON.parse(values.qualificationDetails) as Record<string, string>[]).map(
+                  (detail, index) => ({
+                    ...detail,
+                    attachDocuments: detail.attachDocuments || String(qualifications[index]?.document ?? '')
+                  })
+                )
+              )
+              values.previousEmploymentDetails = JSON.stringify(
+                (JSON.parse(values.previousEmploymentDetails) as Record<string, string>[]).map(
+                  (detail, index) => ({
+                    ...detail,
+                    previousEmployerDocuments:
+                      detail.previousEmployerDocuments || String(previousEmployments[index]?.documents ?? '')
+                  })
+                )
+              )
+            }
 
             setError('')
-            if (onSave) {
+            setSuccessMessage('')
+            let savedEnquiry: UserEnquiryRecord | undefined
+            let savedHRForm: HRFormRecord | undefined
+            let savedPurchaseForm: PurchaseFormRecord | undefined
+            if (onSave || isCandidateEnquiry || hrFormType || purchaseFormType) {
               setIsSaving(true)
               try {
-                await onSave(values)
+                if (isCandidateEnquiry) {
+                  savedEnquiry = editingRecordId
+                    ? await updateUserEnquiry(editingRecordId, values)
+                    : await submitUserEnquiry(values)
+                } else if (hrFormType) {
+                  savedHRForm = editingRecordId
+                    ? await updateHRFormRecord(hrFormType, editingRecordId, values)
+                    : await createHRFormRecord(hrFormType, values)
+                } else if (purchaseFormType) {
+                  savedPurchaseForm = editingRecordId
+                    ? await updatePurchaseRecord(purchaseFormType, editingRecordId, values)
+                    : await createPurchaseRecord(purchaseFormType, values)
+                } else {
+                  await onSave?.(values)
+                }
               } catch (saveError) {
                 setError(saveError instanceof Error ? saveError.message : `Unable to save ${title}.`)
                 setIsSaving(false)
@@ -526,60 +1024,275 @@ const ModuleDataPage = ({
               setIsSaving(false)
             }
 
-            setRecords((current) => [...current, { id: crypto.randomUUID(), values }])
+            if (isCandidateEnquiry && savedEnquiry) {
+              const savedRecord = mapCandidateEnquiryRecord(savedEnquiry, records.length)
+              setRecords((current) =>
+                editingRecordId
+                  ? current.map((record) =>
+                      record.id === editingRecordId ? savedRecord : record
+                    )
+                  : [...current, savedRecord]
+              )
+            } else if (hrFormType && savedHRForm) {
+              const savedRecord = mapHRFormRecord(savedHRForm, records.length)
+              setRecords((current) =>
+                editingRecordId
+                  ? current.map((record) =>
+                      record.id === editingRecordId ? savedRecord : record
+                    )
+                  : [...current, savedRecord]
+              )
+            } else if (purchaseFormType && savedPurchaseForm) {
+              const savedRecord = mapPurchaseFormRecord(savedPurchaseForm, records.length)
+              setRecords((current) =>
+                editingRecordId
+                  ? current.map((record) =>
+                      record.id === editingRecordId ? savedRecord : record
+                    )
+                  : [...current, savedRecord]
+              )
+              setSuccessMessage(
+                editingRecordId
+                  ? `${title} updated successfully.`
+                  : `${title} saved successfully.`
+              )
+            } else {
+              setRecords((current) => [
+                ...current,
+                { id: crypto.randomUUID(), values }
+              ])
+            }
+            setEditingRecordId(null)
             form.reset()
+
+            if (isCandidateEnquiry) {
+              setQualificationRows([{ id: crypto.randomUUID() }])
+              setPreviousEmploymentRows([{ id: crypto.randomUUID() }])
+            }
           }}>
-            {fields.map((field, index) => (
-              <Fragment key={`${field.name}-${index}`}>
-                {field.section && (index === 0 || fields[index - 1].section !== field.section) && (
-                  <div className="col-12 mt-2">
-                    <h2 className="h5 border-bottom pb-2 mb-0">{field.section}</h2>
-                  </div>
-                )}
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor={`${module}-${field.name}-${index}`}>{field.label}</label>
-                  {field.type === 'select' ? (
-                    <select className="form-select" id={`${module}-${field.name}-${index}`} name={field.name} required={field.required ?? true} defaultValue="">
-                      <option value="" disabled>Select {field.label.toLowerCase()}</option>
-                      {field.options?.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  ) : field.type === 'textarea' ? (
-                    <textarea className="form-control" id={`${module}-${field.name}-${index}`} name={field.name} required={field.required ?? true} rows={3} />
-                  ) : (
-                    <input
-                      className="form-control"
-                      id={`${module}-${field.name}-${index}`}
-                      name={field.name}
-                      type={field.type ?? 'text'}
-                      required={field.required ?? true}
-                      onChange={(e) => {
-                        if (field.uppercase) {
-                          e.currentTarget.value = e.currentTarget.value.toUpperCase()
-                        }
-                      }}
-                    />
+            {fields.map((field, index) => {
+              if (dynamicFieldIndexes.has(index)) {
+                if (index === qualificationStart) {
+                  return (
+                    <Fragment key="qualification-section">
+                      <div className="col-12 mt-2">
+                        <h2 className="h5 border-bottom pb-2 mb-0">
+                          Qualification
+                        </h2>
+                      </div>
+
+                      {qualificationRows.map((row, rowIndex) => (
+                        <Fragment key={row.id}>
+                          <div className="col-12">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <strong>Qualification {rowIndex + 1}</strong>
+
+                              {qualificationRows.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() =>
+                                    setQualificationRows((current) =>
+                                      current.filter((item) => item.id !== row.id)
+                                    )
+                                  }
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {qualificationFields.map((item) =>
+                            renderDynamicField(item, row.id, 'qualification')
+                          )}
+                        </Fragment>
+                      ))}
+
+                      <div className="col-12">
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary"
+                          onClick={() =>
+                            setQualificationRows((current) => [
+                              ...current,
+                              { id: crypto.randomUUID() }
+                            ])
+                          }
+                        >
+                          + Add Qualification
+                        </button>
+                      </div>
+                    </Fragment>
+                  )
+                }
+
+                if (index === previousEmploymentStart) {
+                  return (
+                    <Fragment key="previous-employment-section">
+                      <div className="col-12 mt-4">
+                        <h2 className="h5 border-bottom pb-2 mb-0">
+                          Previous Employment Details
+                        </h2>
+                      </div>
+
+                      {previousEmploymentRows.map((row, rowIndex) => (
+                        <Fragment key={row.id}>
+                          <div className="col-12">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <strong>
+                                Previous Employment {rowIndex + 1}
+                              </strong>
+
+                              {previousEmploymentRows.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() =>
+                                    setPreviousEmploymentRows((current) =>
+                                      current.filter((item) => item.id !== row.id)
+                                    )
+                                  }
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {previousEmploymentFields.map((item) =>
+                            renderDynamicField(
+                              item,
+                              row.id,
+                              'previousEmployment'
+                            )
+                          )}
+                        </Fragment>
+                      ))}
+
+                      <div className="col-12">
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary"
+                          onClick={() =>
+                            setPreviousEmploymentRows((current) => [
+                              ...current,
+                              { id: crypto.randomUUID() }
+                            ])
+                          }
+                        >
+                          + Add Previous Employment
+                        </button>
+                      </div>
+                    </Fragment>
+                  )
+                }
+
+                return null
+              }
+
+              return (
+                <Fragment key={`${field.name}-${index}`}>
+                  {field.section && (
+                    <div className="col-12 mt-2">
+                      <h2 className="h5 border-bottom pb-2 mb-0">
+                        {field.section}
+                      </h2>
+                    </div>
                   )}
-                </div>
-              </Fragment>
-            ))}
+
+                  <div className="col-md-6">
+                    <label
+                      className="form-label"
+                      htmlFor={`${module}-${field.name}-${index}`}
+                    >
+                      {field.label}
+                    </label>
+
+                    {field.type === 'select' ? (
+                      <select
+                        className="form-select"
+                        id={`${module}-${field.name}-${index}`}
+                        name={field.name}
+                        required={field.required ?? !isCandidateEnquiry}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>
+                          Select {field.label.toLowerCase()}
+                        </option>
+                        {field.options?.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : field.type === 'textarea' ? (
+                      <textarea
+                        className="form-control"
+                        id={`${module}-${field.name}-${index}`}
+                        name={field.name}
+                        required={field.required ?? !isCandidateEnquiry}
+                        rows={3}
+                      />
+                    ) : (
+                      <input
+                        className="form-control"
+                        id={`${module}-${field.name}-${index}`}
+                        name={field.name}
+                        type={field.type ?? 'text'}
+                        required={field.required ?? !isCandidateEnquiry}
+                        onChange={(e) => {
+                          if (field.uppercase) {
+                            e.currentTarget.value = e.currentTarget.value.toUpperCase()
+                          }
+                        }}
+                      />
+                    )}
+                  </div>
+                </Fragment>
+              )
+            })}
+
             <div className="col-12">
               <button className="btn btn-primary" type="submit" disabled={isSaving}>
-                {isSaving ? 'Sending…' : `Add ${title}`}
+                {isSaving ? 'Sending…' : editingRecordId ? `Update ${title}` : `Add ${title}`}
               </button>
+              {editingRecordId && (
+                <button className="btn btn-secondary ms-2" type="button" onClick={cancelEdit}>
+                  Cancel
+                </button>
+              )}
             </div>
           </form>
 
           <div className="table-responsive">
             <table className="table table-striped align-middle">
-              <thead><tr>{fields.map((field, index) => <th key={`${field.name}-${index}`} scope="col">{field.label}</th>)}</tr></thead>
+              <thead><tr>{fields.map((field, index) => <th key={`${field.name}-${index}`} scope="col">{field.label}</th>)}{canEditRecords && <th scope="col">Actions</th>}</tr></thead>
               <tbody>
                 {records.length === 0 ? (
-                  <tr><td className="text-center text-muted py-4" colSpan={fields.length}>No {title.toLowerCase()} records have been added.</td></tr>
+                    <tr><td className="text-center text-muted py-4" colSpan={fields.length + (canEditRecords ? 1 : 0)}>{isLoadingRecords ? `Loading ${title.toLowerCase()} records…` : `No ${title.toLowerCase()} records have been added.`}</td></tr>
                 ) : records.map((record) => (
                   <tr key={record.id}>
                     {fields.map((field, index) => (
                       <td key={`${field.name}-${index}`}>{record.values[field.name] ?? ''}</td>
                     ))}
+                    {canEditRecords && (
+                      <td>
+                        <button className="btn btn-sm btn-outline-primary" type="button" onClick={() => editRecord(record)}>
+                          Edit
+                        </button>
+                        {isPurchaseRecordForm && (
+                          <button
+                            className="btn btn-sm btn-outline-danger ms-2"
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => void deletePurchaseRecordFromList(record)}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
