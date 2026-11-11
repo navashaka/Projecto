@@ -27,6 +27,7 @@ type ModuleDataPageProps = {
   title: string
   fields: ModulePageField[]
   onSave?: (values: Record<string, string>) => Promise<unknown>
+  embedded?: boolean
 }
 
 type PageRecord = {
@@ -122,6 +123,7 @@ const ModuleDataPage = ({
   title,
   fields,
   onSave,
+  embedded = false,
 }: ModuleDataPageProps) => {
   const [records, setRecords] = useState<PageRecord[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -142,6 +144,9 @@ const ModuleDataPage = ({
   const isHRRecordForm = Boolean(hrFormType)
   const isPurchaseRecordForm = Boolean(purchaseFormType)
   const canEditRecords = isHRRecordForm || isCandidateEnquiry || isPurchaseRecordForm
+  const fieldIdPrefix = embedded
+    ? `${module}-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+    : module
 
   const [qualificationRows, setQualificationRows] = useState<DynamicRow[]>([
     { id: crypto.randomUUID() }
@@ -652,8 +657,8 @@ const ModuleDataPage = ({
     formRef.current?.reset()
   }
 
-  return (
-    <ModulePageFrame module={module} page={title}>
+  const content = (
+    <>
       {isTravellingAdvance ? (
         <>
           <div className="alert alert-info" role="status">
@@ -1204,7 +1209,7 @@ const ModuleDataPage = ({
                   <div className="col-md-6">
                     <label
                       className="form-label"
-                      htmlFor={`${module}-${field.name}-${index}`}
+                      htmlFor={`${fieldIdPrefix}-${field.name}-${index}`}
                     >
                       {field.label}
                     </label>
@@ -1212,7 +1217,7 @@ const ModuleDataPage = ({
                     {field.type === 'select' ? (
                       <select
                         className="form-select"
-                        id={`${module}-${field.name}-${index}`}
+                        id={`${fieldIdPrefix}-${field.name}-${index}`}
                         name={field.name}
                         required={field.required ?? !isCandidateEnquiry}
                         defaultValue=""
@@ -1229,7 +1234,7 @@ const ModuleDataPage = ({
                     ) : field.type === 'textarea' ? (
                       <textarea
                         className="form-control"
-                        id={`${module}-${field.name}-${index}`}
+                        id={`${fieldIdPrefix}-${field.name}-${index}`}
                         name={field.name}
                         required={field.required ?? !isCandidateEnquiry}
                         rows={3}
@@ -1237,7 +1242,7 @@ const ModuleDataPage = ({
                     ) : (
                       <input
                         className="form-control"
-                        id={`${module}-${field.name}-${index}`}
+                        id={`${fieldIdPrefix}-${field.name}-${index}`}
                         name={field.name}
                         type={field.type ?? 'text'}
                         required={field.required ?? !isCandidateEnquiry}
@@ -1300,8 +1305,12 @@ const ModuleDataPage = ({
           </div>
         </>
       )}
-    </ModulePageFrame>
+    </>
   )
+
+  return embedded
+    ? content
+    : <ModulePageFrame module={module} page={title}>{content}</ModulePageFrame>
 }
 
 export default ModuleDataPage

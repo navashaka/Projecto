@@ -131,6 +131,9 @@ const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
           onChange={(event) => {
             const moduleId = menuItems.find(({ id }) => id === event.currentTarget.value)?.id
             setSelectedModule(moduleId ?? null)
+            if (moduleId === 'bank') {
+              onSelectPage({ module: 'bank', page: 'bank-passbook' })
+            }
           }}
         >
           <option value="" disabled>Select a module</option>
@@ -139,7 +142,7 @@ const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
           ))}
         </select>
 
-        {activeModule && (
+        {activeModule && activeModule.id !== 'bank' && (
           <div className="sidebar-forms">
             <h2 className="sidebar-forms-heading">Forms</h2>
             <ul className="sidebar-submenu" aria-label={`${activeModule.label} forms`}>
