@@ -96,6 +96,47 @@ Each uses `GET /api/v1/hr/forms/{form_type}`, `POST /api/v1/hr/forms/{form_type}
 `PUT /api/v1/hr/forms/{form_type}/{record_id}`. These records are stored in the
 new `hr_form_records` table with their form fields retained in JSON.
 
+## Inventory, AR, and GL form APIs
+
+The Inventory, Accounts Receivable (AR), and General Ledger (GL) forms use
+the existing PostgreSQL tables. Before deploying this version, apply the
+idempotent additive migration
+`scripts/migrations/20261111_module_form_payload.sql`. It adds JSONB payload
+columns for fields that do not have normalized columns, item-name columns for
+AR document lines, and customer foreign keys for invoice consignee selections.
+It does not drop or rewrite existing columns or records.
+
+All forms support the following routes:
+
+```text
+GET    /api/v1/module-forms/{module}/{resource}
+GET    /api/v1/module-forms/{module}/{resource}/{record_id}
+POST   /api/v1/module-forms/{module}/{resource}
+PUT    /api/v1/module-forms/{module}/{resource}/{record_id}
+DELETE /api/v1/module-forms/{module}/{resource}/{record_id}
+GET    /api/v1/module-forms/{module}/lookups/{resource}
+```
+
+Create and update requests use `{"payload": {...}}`. Inventory resources are
+`units`, `stock-groups`, `stock-items`, `indents`, `gate-entries`,
+`material-receipt-notes`, `delivery-challans-inward`,
+`delivery-challans-outward`, `goods-issues`, and `goods-issue-sales`.
+AR resources are `customers`, `quotations`, `proforma-invoices`, `invoices`,
+and `tax-invoices`. GL resources are `tax-types`, `groups`, `accounts`,
+`hsn-masters`, `sac-masters`, `bank-accounts`, `cheque-ranges`, `od-limits`,
+`fixed-assets`, `secured-loans`, `unsecured-loans`, `sundry-creditors`, and
+`sundry-debtors`, and `tax-applicability`.
+
+Document item rows and customer bank accounts are written together with their
+parent record in a database transaction. Dropdown lookups return database IDs
+and labels; foreign keys are checked by the API and PostgreSQL. Deleting a
+record referenced by a restrictive foreign key returns HTTP 409. The
+`fixed-assets` and `tax-applicability` resources update the selected GL
+account rather than creating or deleting a second account record, so DELETE
+is intentionally unavailable for those resources. Cheque images can be uploaded to
+`POST /api/v1/module-forms/gl/uploads` and are stored under the ignored
+backend uploads folder with generated filenames.
+
 Candidate Enquiry document uploads accept PDF, DOC, DOCX, JPG, JPEG, and PNG
 files up to 10 MB. The upload API returns a path that is stored with the
 enquiry and can be retrieved through the corresponding uploads GET path.

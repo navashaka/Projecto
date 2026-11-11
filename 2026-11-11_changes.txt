@@ -1,0 +1,61 @@
+Daily Work Report – 11-11-2026
+
+Inventory Module – Backend and Frontend Integration
+
+- Inspected the existing Inventory module structure, including frontend forms, backend models, database tables, schemas, and API routers.
+- Identified the existing Inventory resources that required backend API integration and connected them with the respective frontend forms.
+- Implemented backend resource APIs with the required request and response schemas and input validations.
+- Integrated the Unit of Measure, Stock Group, Stock Item, Indents, Gate Entries, Material Receipt Notes, Delivery Challans, and other available Inventory resources.
+- Connected Inventory frontend forms with the newly implemented backend API endpoints.
+- Integrated API functionality for submitting form data and retrieving saved records.
+- Verified the Inventory resource mappings between application menus, page registry, and backend APIs.
+- Checked list and lookup API endpoints for Inventory resources.
+- Verified create, list, detail retrieval, and update operations for representative Inventory forms.
+- Checked PostgreSQL database persistence for the tested Inventory records.
+
+Accounts Receivable (AR) Module – Backend and Frontend Integration
+
+- Inspected the existing AR module frontend components, backend implementation, database tables, schemas, and API structures.
+- Reviewed the existing customer, quotation, proforma invoice, invoice, and tax invoice form structures.
+- Implemented the required backend resource APIs and validations for AR module forms.
+- Developed frontend API integration to connect AR forms with their respective backend endpoints.
+- Connected AR forms for submitting data and retrieving existing records through the backend.
+- Checked customer-related API mappings, lookup endpoints, and dependent resource data.
+- Verified the AR resource mappings between frontend navigation, page registry, and backend API resources.
+- Tested AR list and lookup endpoints.
+- Checked create, list, detail retrieval, and update operations for representative AR forms.
+- Verified that tested AR records were saved and retrieved successfully from PostgreSQL.
+
+General Ledger (GL) Module – Backend and Frontend Integration
+
+- Inspected the existing GL module structure, including frontend pages, backend routers, schemas, models, and database tables.
+- Reviewed existing GL resources and identified the API integration requirements.
+- Implemented backend resource APIs and validations for the required GL resources.
+- Integrated GL frontend pages with the respective backend API endpoints.
+- Connected GL forms for data submission and retrieval.
+- Worked on GL resource mapping and page registry integration to ensure that the forms are accessible through the application navigation.
+- Verified GL resource mappings for the available GL forms.
+- Checked list and lookup API endpoints for GL resources.
+- Tested create, list, detail retrieval, and update operations for representative GL forms.
+- Verified PostgreSQL persistence for the tested GL records.
+- Checked the expected deletion restrictions for Fixed Assets and Tax Applicability resources.
+
+Common API Integration and Project Updates
+
+- Developed a common frontend API client for Inventory, AR, and GL modules to handle API requests and responses.
+- Integrated module-specific API handling into the existing Module Data Page.
+- Updated the required Inventory, AR, and GL frontend page components to use the backend APIs.
+- Added the required backend router registrations and module initialization changes.
+- Prepared an additive database migration to support additional form payload fields without deleting existing tables or data.
+- Updated application navigation and page registry mappings to connect the available module resources.
+- Checked 29 resource list endpoints and 15 lookup endpoints across the three modules.
+- Verified the mapping between application menus, frontend pages, and backend resource APIs.
+- Performed API testing for data creation, list retrieval, individual record retrieval, and applicable update operations.
+- Verified database persistence for representative forms across Inventory, AR, and GL.
+- Checked expected API responses for operations that are not supported, including deletion restrictions.
+- Removed temporary test records after completing the API checks.
+- Performed frontend TypeScript checks and production build.
+- Performed targeted lint checks for the updated navigation files.
+- Preserved existing HR and Purchase module implementations without modifying their files.
+
+Modules Covered: Inventory, Accounts Receivable (AR), and General Ledger (GL).

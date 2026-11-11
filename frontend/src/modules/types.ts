@@ -12,5 +12,6 @@ export type ModulePageField = {
   uppercase?: boolean
   type?: 'text' | 'date' | 'email' | 'number' | 'month' | 'time' | 'tel' | 'select' | 'textarea' | 'file' 
   options?: string[]
+  lookup?: string
   required?: boolean
 }

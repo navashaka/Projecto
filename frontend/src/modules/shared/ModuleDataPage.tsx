@@ -19,6 +19,17 @@ import {
   type PurchaseFormRecord,
   type PurchaseFormType
 } from '../purchase/api'
+import {
+  createModuleFormRecord,
+  deleteModuleFormRecord,
+  getModuleFormLookups,
+  getModuleFormRecords,
+  getModuleFormResource,
+  updateModuleFormRecord,
+  uploadModuleFormFile,
+  type ModuleFormLookup,
+  type ModuleFormRecord
+} from '../moduleFormsApi'
 import ModulePageFrame from './ModulePageFrame'
 import type { ModuleId, ModulePageField } from '../types'
 
@@ -130,6 +141,7 @@ const ModuleDataPage = ({
   const [isLoadingRecords, setIsLoadingRecords] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [lookupOptions, setLookupOptions] = useState<Record<string, ModuleFormLookup[]>>({})
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
   const [pendingFormValues, setPendingFormValues] = useState<Record<string, string> | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -143,7 +155,13 @@ const ModuleDataPage = ({
   const purchaseFormType = module === 'purchase' ? purchaseFormTypes[title] : undefined
   const isHRRecordForm = Boolean(hrFormType)
   const isPurchaseRecordForm = Boolean(purchaseFormType)
-  const canEditRecords = isHRRecordForm || isCandidateEnquiry || isPurchaseRecordForm
+  const moduleFormResource = getModuleFormResource(module, title)
+  const isModuleRecordForm = Boolean(moduleFormResource)
+  const canDeleteModuleRecord =
+    isModuleRecordForm &&
+    moduleFormResource !== 'fixed-assets' &&
+    moduleFormResource !== 'tax-applicability'
+  const canEditRecords = isHRRecordForm || isCandidateEnquiry || isPurchaseRecordForm || isModuleRecordForm
   const fieldIdPrefix = embedded
     ? `${module}-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
     : module
@@ -305,8 +323,25 @@ const ModuleDataPage = ({
     }
   }, [])
 
+  const mapModuleFormRecord = useCallback((
+    item: ModuleFormRecord,
+    index: number
+  ): PageRecord => {
+    const values: Record<string, string> = {}
+    fieldsRef.current.forEach((field) => {
+      const value = item.payload[field.name]
+      values[field.name] =
+        value === null || value === undefined ? '' : String(value)
+    })
+    return {
+      id: String(item.id ?? index),
+      values,
+      data: item.payload
+    }
+  }, [])
+
   useEffect(() => {
-    if (!isCandidateEnquiry && !hrFormType && !purchaseFormType) return
+    if (!isCandidateEnquiry && !hrFormType && !purchaseFormType && !moduleFormResource) return
 
     let cancelled = false
     const loadRecords = async () => {
@@ -322,6 +357,18 @@ const ModuleDataPage = ({
         } else if (purchaseFormType) {
           const data = await getPurchaseRecords(purchaseFormType)
           if (!cancelled) setRecords(data.map(mapPurchaseFormRecord))
+        } else if (moduleFormResource) {
+          const [data, lookups] = await Promise.all([
+            getModuleFormRecords(module, moduleFormResource),
+            Promise.all(
+              [...new Set(fieldsRef.current.flatMap((field) => field.lookup ? [field.lookup] : []))]
+                .map(async (lookup) => [lookup, await getModuleFormLookups(module, lookup)] as const)
+            )
+          ])
+          if (!cancelled) {
+            setRecords(data.map(mapModuleFormRecord))
+            setLookupOptions(Object.fromEntries(lookups))
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -344,10 +391,13 @@ const ModuleDataPage = ({
     isCandidateEnquiry,
     hrFormType,
     purchaseFormType,
+    module,
+    moduleFormResource,
     title,
     mapCandidateEnquiryRecord,
     mapHRFormRecord,
-    mapPurchaseFormRecord
+    mapPurchaseFormRecord,
+    mapModuleFormRecord
   ])
 
   useEffect(() => {
@@ -481,11 +531,17 @@ const ModuleDataPage = ({
             <option value="" disabled>
               Select {field.label.toLowerCase()}
             </option>
-            {field.options?.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
+            {field.lookup
+              ? lookupOptions[field.lookup]?.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))
+              : field.options?.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
           </select>
         ) : field.type === 'textarea' ? (
           <textarea
@@ -620,6 +676,30 @@ const ModuleDataPage = ({
     setSuccessMessage('')
     try {
       await deletePurchaseRecord(purchaseFormType, record.id)
+      setRecords((current) => current.filter((item) => item.id !== record.id))
+      if (editingRecordId === record.id) cancelEdit()
+      setSuccessMessage(`${title} deleted successfully.`)
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? `Unable to delete ${title}: ${deleteError.message}`
+          : `Unable to delete ${title}.`
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const deleteModuleRecordFromList = async (record: PageRecord) => {
+    if (!moduleFormResource || !window.confirm(`Delete this ${title.toLowerCase()} record?`)) {
+      return
+    }
+
+    setIsSaving(true)
+    setError('')
+    setSuccessMessage('')
+    try {
+      await deleteModuleFormRecord(module, moduleFormResource, record.id)
       setRecords((current) => current.filter((item) => item.id !== record.id))
       if (editingRecordId === record.id) cancelEdit()
       setSuccessMessage(`${title} deleted successfully.`)
@@ -871,9 +951,11 @@ const ModuleDataPage = ({
         </>
       ) : (
         <>
-          {onSave || isHRRecordForm || isPurchaseRecordForm ? (
+          {onSave || isHRRecordForm || isPurchaseRecordForm || isModuleRecordForm ? (
             <div className="alert alert-info" role="status">
-              {isPurchaseRecordForm
+              {isModuleRecordForm
+                ? 'This form loads and saves its records through the API.'
+                : isPurchaseRecordForm
                 ? `This form loads and saves its records through the Purchase API.`
                 : 'This form loads and saves its records through the HR API.'}
             </div>
@@ -910,17 +992,26 @@ const ModuleDataPage = ({
                 const uploadedFile = await uploadUserEnquiryFile(value)
                 return uploadedFile.path
               }
+              if (module === 'gl' && moduleFormResource === 'cheque-ranges') {
+                return (await uploadModuleFormFile(value)).path
+              }
               return value.name
             }
 
-            const values = Object.fromEntries(
-              await Promise.all(
-                Array.from(formData.entries()).map(async ([key, value]) => [
-                  key,
-                  await formValueToString(value)
-                ])
-              )
-            ) as Record<string, string>
+            let values: Record<string, string>
+            try {
+              values = Object.fromEntries(
+                await Promise.all(
+                  Array.from(formData.entries()).map(async ([key, value]) => [
+                    key,
+                    await formValueToString(value)
+                  ])
+                )
+              ) as Record<string, string>
+            } catch (uploadError) {
+              setError(uploadError instanceof Error ? uploadError.message : `Unable to upload ${title} attachment.`)
+              return
+            }
 
             // Collect multiple Qualification entries.
             if (isCandidateEnquiry) {
@@ -1003,7 +1094,8 @@ const ModuleDataPage = ({
             let savedEnquiry: UserEnquiryRecord | undefined
             let savedHRForm: HRFormRecord | undefined
             let savedPurchaseForm: PurchaseFormRecord | undefined
-            if (onSave || isCandidateEnquiry || hrFormType || purchaseFormType) {
+            let savedModuleForm: ModuleFormRecord | undefined
+            if (onSave || isCandidateEnquiry || hrFormType || purchaseFormType || isModuleRecordForm) {
               setIsSaving(true)
               try {
                 if (isCandidateEnquiry) {
@@ -1018,6 +1110,10 @@ const ModuleDataPage = ({
                   savedPurchaseForm = editingRecordId
                     ? await updatePurchaseRecord(purchaseFormType, editingRecordId, values)
                     : await createPurchaseRecord(purchaseFormType, values)
+                } else if (moduleFormResource) {
+                  savedModuleForm = editingRecordId
+                    ? await updateModuleFormRecord(module, moduleFormResource, editingRecordId, values)
+                    : await createModuleFormRecord(module, moduleFormResource, values)
                 } else {
                   await onSave?.(values)
                 }
@@ -1049,6 +1145,20 @@ const ModuleDataPage = ({
               )
             } else if (purchaseFormType && savedPurchaseForm) {
               const savedRecord = mapPurchaseFormRecord(savedPurchaseForm, records.length)
+              setRecords((current) =>
+                editingRecordId
+                  ? current.map((record) =>
+                      record.id === editingRecordId ? savedRecord : record
+                    )
+                  : [...current, savedRecord]
+              )
+              setSuccessMessage(
+                editingRecordId
+                  ? `${title} updated successfully.`
+                  : `${title} saved successfully.`
+              )
+            } else if (moduleFormResource && savedModuleForm) {
+              const savedRecord = mapModuleFormRecord(savedModuleForm, records.length)
               setRecords((current) =>
                 editingRecordId
                   ? current.map((record) =>
@@ -1225,11 +1335,17 @@ const ModuleDataPage = ({
                         <option value="" disabled>
                           Select {field.label.toLowerCase()}
                         </option>
-                        {field.options?.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
+                        {field.lookup
+                          ? lookupOptions[field.lookup]?.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.label}
+                              </option>
+                            ))
+                          : field.options?.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
                       </select>
                     ) : field.type === 'textarea' ? (
                       <textarea
@@ -1279,19 +1395,27 @@ const ModuleDataPage = ({
                 ) : records.map((record) => (
                   <tr key={record.id}>
                     {fields.map((field, index) => (
-                      <td key={`${field.name}-${index}`}>{record.values[field.name] ?? ''}</td>
+                      <td key={`${field.name}-${index}`}>
+                        {field.lookup
+                          ? lookupOptions[field.lookup]?.find(
+                              (option) => String(option.id) === record.values[field.name]
+                            )?.label ?? record.values[field.name] ?? ''
+                          : record.values[field.name] ?? ''}
+                      </td>
                     ))}
                     {canEditRecords && (
                       <td>
                         <button className="btn btn-sm btn-outline-primary" type="button" onClick={() => editRecord(record)}>
                           Edit
                         </button>
-                        {isPurchaseRecordForm && (
+                        {(isPurchaseRecordForm || canDeleteModuleRecord) && (
                           <button
                             className="btn btn-sm btn-outline-danger ms-2"
                             type="button"
                             disabled={isSaving}
-                            onClick={() => void deletePurchaseRecordFromList(record)}
+                            onClick={() => void (isModuleRecordForm
+                              ? deleteModuleRecordFromList(record)
+                              : deletePurchaseRecordFromList(record))}
                           >
                             Delete
                           </button>
