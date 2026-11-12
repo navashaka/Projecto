@@ -16,6 +16,12 @@ import {
   SundryCreditorsPage,
   SundryDebtorsPage,
 } from './GLPages'
+import {
+  ContraEntryPage,
+  CreditNotePage,
+  DebitNotePage,
+  JournalEntryPage,
+} from './TransactionPages'
 
 export const glPages: Record<string, ComponentType> = {
   'tax-type': TaxTypePage,
@@ -33,4 +39,8 @@ export const glPages: Record<string, ComponentType> = {
   'unsecured-loans': UnsecuredLoansPage,
   'sundry-creditors': SundryCreditorsPage,
   'sundry-debtors': SundryDebtorsPage,
+  'contra-entry': ContraEntryPage,
+  journal: JournalEntryPage,
+  'credit-note': CreditNotePage,
+  'debit-note': DebitNotePage,
 }

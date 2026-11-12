@@ -1,0 +1,30 @@
+Daily Work Report – Projecto ERP
+
+Date: 12-11-2026
+
+Bank Module – Backend & Frontend API Integration
+
+- Implemented backend API integration for the Bank module.
+- Integrated Bank Passbook / Statement functionality.
+- Connected Receipt and Payment forms with their respective APIs.
+- Integrated Bank Book and Bank Reconciliation forms.
+- Implemented API operations for creating, retrieving, updating and deleting bank records.
+- Connected frontend forms with backend endpoints.
+- Implemented bank selection and dependent data handling across Bank forms.
+- Worked on transaction details and receipt/payment item operations.
+
+General Ledger (GL) Module – Contra Entry & Journal
+
+- Started implementation of GL transaction functionality.
+- Developed the Contra Entry and Journal frontend forms.
+- Created backend database models for GL transactions.
+- Defined request and response schemas for transaction data.
+- Implemented service-layer logic for transaction processing and database operations.
+- Developed GL transaction API endpoints for record management.
+- Added database migration for the GL transaction tables.
+- Integrated GL transaction APIs with the frontend.
+- Registered GL transaction pages in the application navigation.
+
+Overall Work Summary
+
+Worked on Bank module API integration and General Ledger transaction development, covering backend implementation, database integration, frontend forms and API connectivity.

@@ -1,13 +1,13 @@
 import { ChevronDown } from 'lucide-react'
 import type { ComponentType } from 'react'
-import ModuleDataPage from '../../shared/ModuleDataPage'
+import BankDataPage from '../BankDataPage'
 
 type BankFormProps = {
 	embedded?: boolean
 }
 
 export const BankPassbookPage = ({ embedded }: BankFormProps) => (
-	<ModuleDataPage module="bank" title="Bank Passbook / Statement" embedded={embedded} fields={[
+	<BankDataPage resource="passbooks" title="Bank Passbook / Statement" embedded={embedded} fields={[
 		{ name: 'bankPassbook', label: 'Select Bank', section: 'Bank Selection' },
 		{ name: 'date', label: 'Date', type: 'date' },
 		{ name: 'transactionDate', label: 'Transaction Date', type: 'date' },
@@ -21,7 +21,7 @@ export const BankPassbookPage = ({ embedded }: BankFormProps) => (
 )
 
 export const BankReceiptPage = ({ embedded }: BankFormProps) => (
-	<ModuleDataPage module="bank" title="Receipt" embedded={embedded} fields={[
+	<BankDataPage resource="receipts" title="Receipt" embedded={embedded} fields={[
 		{ name: 'bankPassbookId', label: 'Bank to be taken from above selection' },
 		{ name: 'receiptVoucherDate', label: 'Receipt Voucher Date', type: 'date' },
 		{ name: 'bankDate', label: 'Bank Date', type: 'date' },
@@ -35,7 +35,7 @@ export const BankReceiptPage = ({ embedded }: BankFormProps) => (
 )
 
 export const BankPaymentPage = ({ embedded }: BankFormProps) => (
-	<ModuleDataPage module="bank" title="Payment" embedded={embedded} fields={[
+	<BankDataPage resource="payments" title="Payment" embedded={embedded} fields={[
 		{ name: 'bankPassbookId', label: 'Bank to be taken from above selection' },
 		{ name: 'paymentVoucherDate', label: 'Payment Voucher Date', type: 'date' },
 		{ name: 'bankDate', label: 'Bank Date', type: 'date' },
@@ -49,7 +49,7 @@ export const BankPaymentPage = ({ embedded }: BankFormProps) => (
 )
 
 export const BankBookPage = ({ embedded }: BankFormProps) => (
-	<ModuleDataPage module="bank" title="Bank Book" embedded={embedded} fields={[
+	<BankDataPage resource="books" title="Bank Book" embedded={embedded} fields={[
 		{ name: 'bankPassbookId', label: 'Bank from database' },
 		{ name: 'voucherDate', label: 'Voucher Date', type: 'date' },
 		{ name: 'voucherNumber', label: 'Voucher Number' },
@@ -63,7 +63,7 @@ export const BankBookPage = ({ embedded }: BankFormProps) => (
 )
 
 export const BankReconciliationPage = ({ embedded }: BankFormProps) => (
-	<ModuleDataPage module="bank" title="Reconciliation" embedded={embedded} fields={[
+	<BankDataPage resource="reconciliations" title="Reconciliation" embedded={embedded} fields={[
 		{ name: 'bankPassbookId', label: 'Bank from database' },
 		{ name: 'closingBalanceBankBook', label: 'Closing Balance as per Bank Book', type: 'number' },
 		{ name: 'unreconciledFromBank', label: 'Unreconciled Transactions from Bank' },

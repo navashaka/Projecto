@@ -40,6 +40,10 @@ const menuItems = [
       { id: 'unsecured-loans', label: 'Unsecured Loans' },
       { id: 'sundry-creditors', label: 'Sundry Creditors' },
       { id: 'sundry-debtors', label: 'Sundry Debtors' },
+      { id: 'contra-entry', label: 'Contra Entry' },
+      { id: 'journal', label: 'Journal' },
+      { id: 'credit-note', label: 'Credit Note' },
+      { id: 'debit-note', label: 'Debit Note' },
     ]
   },
   {

@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.auth import router as auth_router
 from app.api.v1.purchases import router as purchases_router
 from app.modules.bank.router import router as bank_router
+from app.modules.gl.router import router as gl_transactions_router
 from app.modules.module_forms.router import router as module_forms_router
 
 try:
@@ -18,6 +19,7 @@ router = APIRouter()
 router.include_router(auth_router)
 router.include_router(purchases_router)
 router.include_router(bank_router)
+router.include_router(gl_transactions_router)
 router.include_router(module_forms_router)
 if employees_router is not None:
     router.include_router(employees_router)
