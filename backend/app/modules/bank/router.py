@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import TypeVar
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
@@ -41,11 +41,10 @@ from app.modules.bank.schemas import (
 )
 from app.modules.bank.service import BankService
 
-Record = TypeVar("Record")
 router = APIRouter(prefix="/bank", tags=["bank"])
 
 
-def _database_call(operation: Callable[[], Record]) -> Record:
+def _database_call(operation: Callable[[], Any]) -> Any:
     try:
         return operation()
     except IntegrityError as error:
@@ -68,30 +67,80 @@ def _register_crud_routes(
     update_schema: type[BaseModel],
     read_schema: type[BaseModel],
 ) -> None:
-    def list_records(db: Session = Depends(get_db)):
-        return _database_call(lambda: BankService.get_all(db, model))
 
-    def get_record(record_id: int, db: Session = Depends(get_db)):
-        record = _database_call(lambda: BankService.get_by_id(db, model, record_id))
+    def list_records(db: Session = Depends(get_db)):
+        return _database_call(
+            lambda: BankService.get_all(db, model)
+        )
+
+    def get_record(
+        record_id: int,
+        db: Session = Depends(get_db),
+    ):
+        record = _database_call(
+            lambda: BankService.get_by_id(db, model, record_id)
+        )
+
         if record is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource_name} not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"{resource_name} not found",
+            )
+
         return record
 
-    def create_record(payload: create_schema, db: Session = Depends(get_db)):
-        return _database_call(lambda: BankService.create(db, model, payload))
+    def create_record(
+        payload: BaseModel,
+        db: Session = Depends(get_db),
+    ):
+        return _database_call(
+            lambda: BankService.create(db, model, payload)
+        )
 
-    def update_record(record_id: int, payload: update_schema, db: Session = Depends(get_db)):
-        record = _database_call(lambda: BankService.get_by_id(db, model, record_id))
-        if record is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource_name} not found")
-        return _database_call(lambda: BankService.update(db, record, payload))
+    def update_record(
+        record_id: int,
+        payload: BaseModel,
+        db: Session = Depends(get_db),
+    ):
+        record = _database_call(
+            lambda: BankService.get_by_id(db, model, record_id)
+        )
 
-    def delete_record(record_id: int, db: Session = Depends(get_db)) -> Response:
-        record = _database_call(lambda: BankService.get_by_id(db, model, record_id))
         if record is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource_name} not found")
-        _database_call(lambda: BankService.delete(db, record))
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"{resource_name} not found",
+            )
+
+        return _database_call(
+            lambda: BankService.update(db, record, payload)
+        )
+
+    def delete_record(
+        record_id: int,
+        db: Session = Depends(get_db),
+    ) -> Response:
+        record = _database_call(
+            lambda: BankService.get_by_id(db, model, record_id)
+        )
+
+        if record is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"{resource_name} not found",
+            )
+
+        _database_call(
+            lambda: BankService.delete(db, record)
+        )
+
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT
+        )
+
+    # Apply the actual Pydantic schemas dynamically.
+    create_record.__annotations__["payload"] = create_schema
+    update_record.__annotations__["payload"] = update_schema
 
     endpoints = (
         ("list", list_records),
@@ -100,11 +149,26 @@ def _register_crud_routes(
         ("update", update_record),
         ("delete", delete_record),
     )
-    for action, endpoint in endpoints:
-        endpoint.__name__ = f"{action}_{resource_name.replace('-', '_')}"
 
-    router.add_api_route(path, list_records, methods=["GET"], response_model=list[read_schema])
-    router.add_api_route(f"{path}/{{record_id}}", get_record, methods=["GET"], response_model=read_schema)
+    for action, endpoint in endpoints:
+        endpoint.__name__ = (
+            f"{action}_{resource_name.replace('-', '_')}"
+        )
+
+    router.add_api_route(
+        path,
+        list_records,
+        methods=["GET"],
+        response_model=list[read_schema],
+    )
+
+    router.add_api_route(
+        f"{path}/{{record_id}}",
+        get_record,
+        methods=["GET"],
+        response_model=read_schema,
+    )
+
     router.add_api_route(
         path,
         create_record,
@@ -112,12 +176,14 @@ def _register_crud_routes(
         response_model=read_schema,
         status_code=status.HTTP_201_CREATED,
     )
+
     router.add_api_route(
         f"{path}/{{record_id}}",
         update_record,
         methods=["PUT"],
         response_model=read_schema,
     )
+
     router.add_api_route(
         f"{path}/{{record_id}}",
         delete_record,
@@ -129,30 +195,64 @@ def _register_crud_routes(
 
 
 _register_crud_routes(
-    "/passbooks", "bank-passbook", BankPassbook,
-    BankPassbookCreate, BankPassbookUpdate, BankPassbookRead,
+    "/passbooks",
+    "bank-passbook",
+    BankPassbook,
+    BankPassbookCreate,
+    BankPassbookUpdate,
+    BankPassbookRead,
 )
+
 _register_crud_routes(
-    "/books", "bank-book", BankBook,
-    BankBookCreate, BankBookUpdate, BankBookRead,
+    "/books",
+    "bank-book",
+    BankBook,
+    BankBookCreate,
+    BankBookUpdate,
+    BankBookRead,
 )
+
 _register_crud_routes(
-    "/receipts", "bank-receipt", BankReceipt,
-    BankReceiptCreate, BankReceiptUpdate, BankReceiptRead,
+    "/receipts",
+    "bank-receipt",
+    BankReceipt,
+    BankReceiptCreate,
+    BankReceiptUpdate,
+    BankReceiptRead,
 )
+
 _register_crud_routes(
-    "/receipt-items", "bank-receipt-item", BankReceiptItem,
-    BankReceiptItemCreate, BankReceiptItemUpdate, BankReceiptItemRead,
+    "/receipt-items",
+    "bank-receipt-item",
+    BankReceiptItem,
+    BankReceiptItemCreate,
+    BankReceiptItemUpdate,
+    BankReceiptItemRead,
 )
+
 _register_crud_routes(
-    "/payments", "bank-payment", BankPayment,
-    BankPaymentCreate, BankPaymentUpdate, BankPaymentRead,
+    "/payments",
+    "bank-payment",
+    BankPayment,
+    BankPaymentCreate,
+    BankPaymentUpdate,
+    BankPaymentRead,
 )
+
 _register_crud_routes(
-    "/payment-items", "bank-payment-item", BankPaymentItem,
-    BankPaymentItemCreate, BankPaymentItemUpdate, BankPaymentItemRead,
+    "/payment-items",
+    "bank-payment-item",
+    BankPaymentItem,
+    BankPaymentItemCreate,
+    BankPaymentItemUpdate,
+    BankPaymentItemRead,
 )
+
 _register_crud_routes(
-    "/reconciliations", "bank-reconciliation", BankReconciliation,
-    BankReconciliationCreate, BankReconciliationUpdate, BankReconciliationRead,
+    "/reconciliations",
+    "bank-reconciliation",
+    BankReconciliation,
+    BankReconciliationCreate,
+    BankReconciliationUpdate,
+    BankReconciliationRead,
 )

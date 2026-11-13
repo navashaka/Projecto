@@ -84,6 +84,13 @@ const menuItems = [
     ]
   },
   {
+    id: 'production',
+    label: 'Production',
+    submenu: [
+      { id: 'production', label: 'Production'}
+    ]
+  },
+  {
   id: 'bank',
   label: 'Bank',
   submenu: [

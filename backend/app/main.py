@@ -9,6 +9,10 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from app.api.v1.router import router as api_v1_router
 from app.core.database import Base, engine
 from app.hr.recruitment.models import UserEnquiry  # noqa: F401
+from app.modules.profile.models import Profile  # noqa: F401
+from app.modules.profile.router import router as profile_router
+from app.modules.production.router import router as production_router
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -24,7 +28,10 @@ class UserEnquiryPayload(BaseModel):
         default=None,
         validation_alias=AliasChoices("fatherName", "father_name"),
     )
-    dob: str | None = Field(default=None, validation_alias=AliasChoices("dob", "date_of_birth"))
+    dob: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("dob", "date_of_birth"),
+    )
     blood_group: str | None = Field(
         default=None,
         validation_alias=AliasChoices("bloodGroup", "blood_group"),
@@ -50,7 +57,10 @@ class UserEnquiryPayload(BaseModel):
         validation_alias=AliasChoices("personalEmail", "personal_email"),
     )
     pan: str | None = None
-    aadhaar: str | None = Field(default=None, validation_alias=AliasChoices("aadhar", "aadhaar"))
+    aadhaar: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("aadhar", "aadhaar"),
+    )
     passport_no: str | None = Field(
         default=None,
         validation_alias=AliasChoices("passportNo", "passport_no"),
@@ -87,7 +97,10 @@ class UserEnquiryPayload(BaseModel):
     )
     current_responsibilities: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("currentResponsibilities", "current_responsibilities"),
+        validation_alias=AliasChoices(
+            "currentResponsibilities",
+            "current_responsibilities",
+        ),
     )
     previous_employer: str | None = Field(
         default=None,
@@ -103,7 +116,10 @@ class UserEnquiryPayload(BaseModel):
     )
     previous_working_period: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("previousWorkingPeriod", "previous_working_period"),
+        validation_alias=AliasChoices(
+            "previousWorkingPeriod",
+            "previous_working_period",
+        ),
     )
     previous_ctc: str | None = Field(
         default=None,
@@ -111,7 +127,10 @@ class UserEnquiryPayload(BaseModel):
     )
     previous_responsibilities: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("previousResponsibilities", "previous_responsibilities"),
+        validation_alias=AliasChoices(
+            "previousResponsibilities",
+            "previous_responsibilities",
+        ),
     )
 
 
@@ -119,7 +138,10 @@ app = FastAPI(title="Projecto API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -132,7 +154,9 @@ def startup() -> None:
 
 
 @app.post("/api/enquiries")
-def receive_user_enquiry(payload: UserEnquiryPayload) -> dict[str, Any]:
+def receive_user_enquiry(
+    payload: UserEnquiryPayload,
+) -> dict[str, Any]:
     """Receive candidate enquiry payload from the frontend."""
     return {
         "message": "Enquiry received successfully",
@@ -141,3 +165,5 @@ def receive_user_enquiry(payload: UserEnquiryPayload) -> dict[str, Any]:
 
 
 app.include_router(api_v1_router, prefix="/api/v1")
+app.include_router(profile_router, prefix="/api/v1")
+app.include_router(production_router, prefix="/api/v1")
