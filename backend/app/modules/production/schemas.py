@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,6 +20,7 @@ class ProductionUpdate(BaseModel):
     uom: str | None = None
     hsn: str | None = None
     cost_element: str | None = None
+    input_items: list[ProductionInputItemCreate] | None = None
 
 
 class ProductionInputItemRead(BaseModel):

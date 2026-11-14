@@ -36,7 +36,6 @@ import type { ModuleId, ModulePageField } from '../types'
 type ModuleDataPageProps = {
   module: ModuleId
   title: string
-  uppercase?: boolean
   fields: ModulePageField[]
   onSave?: (values: Record<string, string>) => Promise<unknown>
   embedded?: boolean

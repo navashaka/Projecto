@@ -58,7 +58,9 @@ def update_production(
     payload: schemas.ProductionUpdate,
     db: Session = Depends(get_db)
 ):
-    record = ProductionService.get_by_id(db, production_id)
+    record = database_call(
+        lambda: ProductionService.get_by_id(db, production_id)
+    )
     if record is None:
         raise HTTPException(status_code=404, detail="Production not found")
     return database_call(
@@ -71,7 +73,9 @@ def delete_production(
     production_id: int,
     db: Session = Depends(get_db)
 ):
-    record = ProductionService.get_by_id(db, production_id)
+    record = database_call(
+        lambda: ProductionService.get_by_id(db, production_id)
+    )
     if record is None:
         raise HTTPException(status_code=404, detail="Production not found")
 

@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -43,6 +44,40 @@ def get_profiles(db: Session = Depends(get_db)):
     return database_call(
         lambda: ProfileService.get_all(db, Profile)
     )
+
+
+@router.get("/lookups/{lookup_type}", response_model=list[dict[str, str]])
+def get_profile_lookups(
+    lookup_type: str,
+    db: Session = Depends(get_db),
+):
+    queries = {
+        "states": text(
+            "SELECT DISTINCT state_name AS value "
+            "FROM pincodes "
+            "WHERE state_name IS NOT NULL AND BTRIM(state_name) <> '' "
+            "ORDER BY value"
+        ),
+        "pincodes": text(
+            "SELECT DISTINCT CAST(pincode AS TEXT) AS value "
+            "FROM pincodes "
+            "WHERE pincode IS NOT NULL "
+            "ORDER BY value"
+        ),
+    }
+
+    if lookup_type == "countries":
+        return [{"value": "India", "label": "India"}]
+
+    query = queries.get(lookup_type)
+    if query is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile lookup not found",
+        )
+
+    values = database_call(lambda: db.execute(query).scalars().all())
+    return [{"value": value, "label": value} for value in values]
 
 
 @router.get("/{profile_id}", response_model=ProfileRead)

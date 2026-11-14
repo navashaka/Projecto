@@ -91,6 +91,13 @@ const menuItems = [
     ]
   },
   {
+    id: 'profile',
+    label: 'Profile',
+    submenu: [
+      { id: 'profile', label: 'Profile'}
+    ]
+  },
+  {
   id: 'bank',
   label: 'Bank',
   submenu: [

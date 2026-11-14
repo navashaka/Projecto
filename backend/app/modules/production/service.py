@@ -38,8 +38,16 @@ class ProductionService:
 
     @staticmethod
     def update(db: Session, record, payload):
-        for key, value in payload.model_dump(exclude_unset=True).items():
+        data = payload.model_dump(exclude_unset=True)
+        input_items = data.pop("input_items", None)
+
+        for key, value in data.items():
             setattr(record, key, value)
+
+        if input_items is not None:
+            record.input_items = [
+                ProductionInputItem(**item) for item in input_items
+            ]
 
         db.commit()
         db.refresh(record)
