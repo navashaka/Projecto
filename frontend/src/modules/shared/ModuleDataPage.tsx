@@ -56,6 +56,11 @@ type DynamicRow = {
   id: string
 }
 
+type HealthInsuranceMember = {
+  id: string
+  documentName: string
+}
+
 const numberToWords = (value: number): string => {
   if (!Number.isFinite(value) || value <= 0) return 'Zero Rupees Only'
 
@@ -144,6 +149,11 @@ const ModuleDataPage = ({
   const [lookupOptions, setLookupOptions] = useState<Record<string, ModuleFormLookup[]>>({})
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
   const [pendingFormValues, setPendingFormValues] = useState<Record<string, string> | null>(null)
+  const [employmentType, setEmploymentType] = useState('')
+  const [healthInsuranceMembers, setHealthInsuranceMembers] = useState<HealthInsuranceMember[]>([
+    { id: crypto.randomUUID(), documentName: '' }
+  ])
+  const [legacyHealthInsuranceDetails, setLegacyHealthInsuranceDetails] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
   const fieldsRef = useRef(fields)
   useEffect(() => {
@@ -151,6 +161,7 @@ const ModuleDataPage = ({
   }, [fields])
   const isTravellingAdvance = module === 'hr' && title === 'Travelling Advance'
   const isCandidateEnquiry = module === 'hr' && title === 'Candidate Enquiry'
+  const isOnEmployment = module === 'hr' && title === 'On Employment'
   const hrFormType = module === 'hr' ? hrFormTypes[title] : undefined
   const purchaseFormType = module === 'purchase' ? purchaseFormTypes[title] : undefined
   const isHRRecordForm = Boolean(hrFormType)
@@ -178,6 +189,10 @@ const ModuleDataPage = ({
     (field) => field.section === 'Qualification'
   )
 
+  const currentEmploymentStart = fields.findIndex(
+    (field) => field.section === 'Current Employment Details'
+  )
+
   const previousEmploymentStart = fields.findIndex(
     (field) => field.section === 'Previous Employment Details'
   )
@@ -198,13 +213,21 @@ const ModuleDataPage = ({
   }
 
   const qualificationFields = getSectionFields(qualificationStart)
+  const currentEmploymentFields = getSectionFields(currentEmploymentStart)
   const previousEmploymentFields = getSectionFields(previousEmploymentStart)
 
   const dynamicFieldIndexes = new Set<number>()
+  const currentEmploymentIndexes = new Set<number>()
 
   if (isCandidateEnquiry && qualificationStart !== -1) {
     qualificationFields.forEach((_, index) => {
       dynamicFieldIndexes.add(qualificationStart + index)
+    })
+  }
+
+  if (isCandidateEnquiry && currentEmploymentStart !== -1) {
+    currentEmploymentFields.forEach((_, index) => {
+      currentEmploymentIndexes.add(currentEmploymentStart + index)
     })
   }
 
@@ -411,7 +434,7 @@ const ModuleDataPage = ({
       }
     })
     setPendingFormValues(null)
-  }, [pendingFormValues, qualificationRows, previousEmploymentRows])
+  }, [pendingFormValues, qualificationRows, previousEmploymentRows, healthInsuranceMembers])
 
   const budgetTotal = budgets.reduce(
     (total, row) => total + (Number(row.amount) || 0),
@@ -527,6 +550,11 @@ const ModuleDataPage = ({
             name={inputName}
             required={field.required ?? !isCandidateEnquiry}
             defaultValue=""
+            onChange={(event) => {
+              if (isCandidateEnquiry && field.name === 'employmentType') {
+                setEmploymentType(event.currentTarget.value)
+              }
+            }}
           >
             <option value="" disabled>
               Select {field.label.toLowerCase()}
@@ -624,6 +652,7 @@ const ModuleDataPage = ({
 
       setQualificationRows(qualificationIds.map((id) => ({ id })))
       setPreviousEmploymentRows(employmentIds.map((id) => ({ id })))
+      setEmploymentType(record.values.employmentType ?? '')
       setPendingFormValues(pendingValues)
     } else if (isTravellingAdvance && record.data) {
       const payload = record.data
@@ -658,6 +687,58 @@ const ModuleDataPage = ({
           input.value = record.values[field.name] ?? ''
         }
       })
+      if (isOnEmployment) {
+        const storedHealthInsurance = record.values.healthInsurance ?? ''
+        let storedMembers: Record<string, unknown>[] = []
+        let legacyDetails = ''
+        try {
+          const parsed = JSON.parse(storedHealthInsurance)
+          if (Array.isArray(parsed)) {
+            storedMembers = parsed
+              .filter(
+                (item): item is Record<string, unknown> =>
+                  typeof item === 'object' && item !== null
+              )
+              .slice(0, 5)
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            const payload = parsed as Record<string, unknown>
+            if (Array.isArray(payload.familyMembers)) {
+              storedMembers = payload.familyMembers
+                .filter(
+                  (item): item is Record<string, unknown> =>
+                    typeof item === 'object' && item !== null
+                )
+                .slice(0, 5)
+            }
+            if (typeof payload.legacyDetails === 'string') {
+              legacyDetails = payload.legacyDetails
+            }
+          } else {
+            legacyDetails = storedHealthInsurance
+          }
+        } catch {
+          legacyDetails = storedHealthInsurance
+        }
+
+        const memberIds = storedMembers.length
+          ? storedMembers.map(() => crypto.randomUUID())
+          : [crypto.randomUUID()]
+        setLegacyHealthInsuranceDetails(legacyDetails)
+        setHealthInsuranceMembers(
+          memberIds.map((id, index) => ({
+            id,
+            documentName: String(storedMembers[index]?.aadhaarDocument ?? '')
+          }))
+        )
+        const memberValues: Record<string, string> = {}
+        storedMembers.forEach((member, index) => {
+          memberValues[`healthInsurance_${memberIds[index]}_familyMemberName`] =
+            String(member.familyMemberName ?? '')
+          memberValues[`healthInsurance_${memberIds[index]}_relation`] =
+            String(member.relation ?? '')
+        })
+        setPendingFormValues(memberValues)
+      }
     }
 
     setEditingRecordId(record.id)
@@ -733,6 +814,11 @@ const ModuleDataPage = ({
     if (isCandidateEnquiry) {
       setQualificationRows([{ id: crypto.randomUUID() }])
       setPreviousEmploymentRows([{ id: crypto.randomUUID() }])
+      setEmploymentType('')
+    }
+    if (isOnEmployment) {
+      setHealthInsuranceMembers([{ id: crypto.randomUUID(), documentName: '' }])
+      setLegacyHealthInsuranceDetails('')
     }
     formRef.current?.reset()
   }
@@ -1013,6 +1099,45 @@ const ModuleDataPage = ({
               return
             }
 
+            if (isOnEmployment) {
+              const familyMembers = await Promise.all(
+                healthInsuranceMembers.map(async (member) => ({
+                  familyMemberName: await formValueToString(
+                    formData.get(`healthInsurance_${member.id}_familyMemberName`)
+                  ),
+                  relation: await formValueToString(
+                    formData.get(`healthInsurance_${member.id}_relation`)
+                  ),
+                  aadhaarDocument:
+                    (await formValueToString(
+                      formData.get(`healthInsurance_${member.id}_aadhaarDocument`)
+                    )) || member.documentName
+                }))
+              )
+              const completedMembers = familyMembers.filter(
+                (member) =>
+                  member.familyMemberName.trim() ||
+                  member.relation.trim() ||
+                  member.aadhaarDocument
+              )
+
+              healthInsuranceMembers.forEach((member) => {
+                delete values[`healthInsurance_${member.id}_familyMemberName`]
+                delete values[`healthInsurance_${member.id}_relation`]
+                delete values[`healthInsurance_${member.id}_aadhaarDocument`]
+              })
+              values.healthInsurance = completedMembers.length
+                ? JSON.stringify(
+                    legacyHealthInsuranceDetails
+                      ? {
+                          familyMembers: completedMembers,
+                          legacyDetails: legacyHealthInsuranceDetails
+                        }
+                      : completedMembers
+                  )
+                : legacyHealthInsuranceDetails
+            }
+
             // Collect multiple Qualification entries.
             if (isCandidateEnquiry) {
               values.qualificationDetails = JSON.stringify(
@@ -1183,9 +1308,143 @@ const ModuleDataPage = ({
             if (isCandidateEnquiry) {
               setQualificationRows([{ id: crypto.randomUUID() }])
               setPreviousEmploymentRows([{ id: crypto.randomUUID() }])
+              setEmploymentType('')
+            }
+            if (isOnEmployment) {
+              setHealthInsuranceMembers([{ id: crypto.randomUUID(), documentName: '' }])
+              setLegacyHealthInsuranceDetails('')
             }
           }}>
             {fields.map((field, index) => {
+              if (isOnEmployment && field.name === 'healthInsurance') {
+                return (
+                  <Fragment key="health-insurance-details">
+                    <div className="col-12">
+                      <h2 className="h5 border-bottom pb-2 mb-0">
+                        Health Insurance Details
+                      </h2>
+                    </div>
+
+                    {legacyHealthInsuranceDetails && (
+                      <div className="col-12">
+                        <div className="alert alert-secondary mb-0">
+                          Previously saved details: {legacyHealthInsuranceDetails}
+                        </div>
+                      </div>
+                    )}
+
+                    {healthInsuranceMembers.map((member, memberIndex) => (
+                      <div className="col-12" key={member.id}>
+                        <div className="border rounded p-3">
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <strong>Family Member {memberIndex + 1}</strong>
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              type="button"
+                              onClick={() =>
+                                setHealthInsuranceMembers((current) =>
+                                  current.filter((item) => item.id !== member.id)
+                                )
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="row g-3">
+                            <div className="col-md-6">
+                              <label
+                                className="form-label"
+                                htmlFor={`health-insurance-${member.id}-name`}
+                              >
+                               Name
+                              </label>
+                              <input
+                                className="form-control"
+                                id={`health-insurance-${member.id}-name`}
+                                name={`healthInsurance_${member.id}_familyMemberName`}
+                              />
+                            </div>
+
+                            <div className="col-md-6">
+                              <label
+                                className="form-label"
+                                htmlFor={`health-insurance-${member.id}-relation`}
+                              >
+                                Relation
+                              </label>
+                              <input
+                                className="form-control"
+                                id={`health-insurance-${member.id}-relation`}
+                                name={`healthInsurance_${member.id}_relation`}
+                              />
+                            </div>
+
+                            <div className="col-md-6">
+                              <label
+                                className="form-label"
+                                htmlFor={`health-insurance-${member.id}-document`}
+                              >
+                                Aadhaar Document Upload
+                              </label>
+                              <input
+                                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                className="form-control"
+                                id={`health-insurance-${member.id}-document`}
+                                name={`healthInsurance_${member.id}_aadhaarDocument`}
+                                type="file"
+                                onChange={(event) => {
+                                  const documentName = event.currentTarget.files?.[0]?.name ?? ''
+                                  setHealthInsuranceMembers((current) =>
+                                    current.map((item) =>
+                                      item.id === member.id
+                                        ? { ...item, documentName }
+                                        : item
+                                    )
+                                  )
+                                }}
+                              />
+                              {member.documentName && (
+                                <div className="form-text">
+                                  {member.documentName}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {healthInsuranceMembers.length < 5 && (
+                      <div className="col-12">
+                        <button
+                          className="btn btn-outline-primary"
+                          type="button"
+                          onClick={() =>
+                            setHealthInsuranceMembers((current) =>
+                              current.length < 5
+                                ? [...current, { id: crypto.randomUUID(), documentName: '' }]
+                                : current
+                            )
+                          }
+                        >
+                          + Add Member
+                        </button>
+                      </div>
+                    )}
+                  </Fragment>
+                )
+              }
+
+              if (
+                isCandidateEnquiry &&
+                employmentType === 'Fresher' &&
+                (currentEmploymentIndexes.has(index) ||
+                  index === previousEmploymentStart)
+              ) {
+                return null
+              }
+
               if (dynamicFieldIndexes.has(index)) {
                 if (index === qualificationStart) {
                   return (

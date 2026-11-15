@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import * as XLSX from '@e965/xlsx'
+import * as XLSX from 'xlsx'
 import {
   createHRFormRecord,
   submitUserEnquiry

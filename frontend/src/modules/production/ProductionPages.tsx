@@ -15,7 +15,7 @@ import {
 
 const fields: ModulePageField[] = [
   {
-    name: 'outputProductName',
+    name: 'product',
     label: 'Name of Output Product',
     section: 'Product Details',
     required: true,
