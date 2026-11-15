@@ -20,7 +20,10 @@ function App() {
           selection={selectedPage}
           onSelectPage={setSelectedPage}
         />
-        <MainContent selection={selectedPage} />
+        <MainContent
+          selection={selectedPage}
+          onSelectPage={setSelectedPage}
+        />
         <RightSidebar />
       </div>
 

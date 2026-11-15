@@ -51,7 +51,9 @@ const productFields = fields.slice(0, 7)
 const entryFields = fields.slice(7)
 const inputItemNames = ['inputItem1', 'inputItem2', 'inputItem3'] as const
 
-const ProductionPage = () => {
+export type ProductionForm = 'output-product' | 'production-entry'
+
+const ProductionPage = ({ activeForm }: { activeForm?: ProductionForm } = {}) => {
   const [products, setProducts] = useState<ProductionRecord[]>([])
   const [entries, setEntries] = useState<ProductionEntryRecord[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
@@ -261,15 +263,30 @@ const ProductionPage = () => {
   }
 
   return (
-    <ModulePageFrame module="production" page="Production">
+    <ModulePageFrame
+      module="production"
+      page={activeForm === 'output-product'
+        ? 'Output Product'
+        : activeForm === 'production-entry'
+          ? 'Production Entry'
+          : 'Production'}
+    >
       <div className="alert alert-info" role="status">
-        Output products and production entries are loaded and saved through the Production API.
+        {activeForm === 'output-product'
+          ? 'Output products are loaded and saved through the Production API.'
+          : activeForm === 'production-entry'
+            ? 'Production entries are loaded and saved through the Production API.'
+            : 'Output products and production entries are loaded and saved through the Production API.'}
       </div>
       {error && <div className="alert alert-danger" role="alert">{error}</div>}
       {success && <div className="alert alert-success" role="status">{success}</div>}
       {isLoading && <p className="text-muted" role="status">Loading Production records…</p>}
 
-      <section aria-labelledby="production-products-title" className="mb-5">
+      <section
+        aria-labelledby="production-products-title"
+        className="mb-5"
+        hidden={activeForm === 'production-entry'}
+      >
         <h2 id="production-products-title" className="h5 mb-3">Output Product</h2>
         <form
           ref={productFormRef}
@@ -362,7 +379,10 @@ const ProductionPage = () => {
         </div>
       </section>
 
-      <section aria-labelledby="production-entries-title">
+      <section
+        aria-labelledby="production-entries-title"
+        hidden={activeForm === 'output-product'}
+      >
         <h2 id="production-entries-title" className="h5 mb-3">Production Entry</h2>
         <form
           ref={entryFormRef}

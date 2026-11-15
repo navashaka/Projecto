@@ -7,13 +7,16 @@ import { inventoryPages } from '../../modules/inventory/pages'
 import { purchasePages } from '../../modules/purchase/pages'
 import { bankPages } from '../../modules/bank/pages'
 import { productionPages } from '../../modules/production'
+import ProductionPage from '../../modules/production/ProductionPages'
 import ProfilePage from '../../modules/profile/ProfilePages'
+import ModuleFormUploadPage from '../../modules/shared/ModuleFormUploadPage'
 
 type MainContentProps = {
   selection: ModulePageSelection | null
+  onSelectPage: (selection: ModulePageSelection) => void
 }
 
-const MainContent = ({ selection }: MainContentProps) => {
+const MainContent = ({ selection, onSelectPage }: MainContentProps) => {
   const pageRegistry: Record<ModuleId, Record<string, ComponentType>> = {
     hr: hrPages,
     gl: glPages,
@@ -24,12 +27,31 @@ const MainContent = ({ selection }: MainContentProps) => {
     production: productionPages,
     profile: { profile: ProfilePage },
   }
-  const SelectedPage = selection ? pageRegistry[selection.module][selection.page] : undefined
+  const SelectedPage = selection
+    ? pageRegistry[selection.module]?.[selection.page]
+    : undefined
+  const productionForm = selection?.module === 'production'
+    ? selection.page === 'production-output-product'
+      ? 'output-product'
+      : selection.page === 'production-entry'
+        ? 'production-entry'
+        : undefined
+    : undefined
 
   return (
     <main className="card border-0 shadow-sm h-100">
       <div className="card-body p-3">
-        {SelectedPage ? <SelectedPage /> : (
+        {selection?.uploadFile ? (
+          <ModuleFormUploadPage
+            selection={selection}
+            onCancel={() => onSelectPage({
+              module: selection.module,
+              page: selection.page
+            })}
+          />
+        ) : productionForm ? (
+          <ProductionPage activeForm={productionForm} />
+        ) : SelectedPage ? <SelectedPage /> : (
           <div className="border border-dashed rounded bg-light d-flex align-items-center justify-content-center text-muted" style={{ minHeight: '38vh' }}>
             Select a submenu item to open its module page
           </div>

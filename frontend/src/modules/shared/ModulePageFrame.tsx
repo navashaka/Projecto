@@ -8,6 +8,8 @@ const moduleLabels: Record<ModuleId, string> = {
   inventory: 'Inventory',
   purchase: 'Purchase',
   bank: 'Bank',
+  profile: 'Profile',
+  production: 'Production',
 }
 
 type ModulePageFrameProps = {
