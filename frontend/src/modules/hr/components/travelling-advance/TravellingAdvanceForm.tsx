@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
 	Button,
 	Dialog,
@@ -79,6 +79,7 @@ export default function TravellingAdvanceForm() {
 	const [errorMessage, setErrorMessage] = useState('')
 	const [reviewOpen, setReviewOpen] = useState(false)
 	const [submitting, setSubmitting] = useState(false)
+	const submissionInProgress = useRef(false)
 	const [budgets, setBudgets] = useState<BudgetItem[]>([
 		{ type: '', amount: '' },
 	])
@@ -210,6 +211,9 @@ export default function TravellingAdvanceForm() {
 	})
 
 	const submitForm = async () => {
+		if (submissionInProgress.current) return
+
+		submissionInProgress.current = true
 		const data = getValues()
 		setSubmitting(true)
 		setErrorMessage('')
@@ -246,6 +250,7 @@ export default function TravellingAdvanceForm() {
 				error instanceof Error ? error.message : 'Something went wrong',
 			)
 		} finally {
+			submissionInProgress.current = false
 			setSubmitting(false)
 		}
 	}
@@ -470,7 +475,9 @@ export default function TravellingAdvanceForm() {
 
 			<Dialog
 				open={reviewOpen}
-				onClose={() => setReviewOpen(false)}
+				onClose={() => {
+					if (!submissionInProgress.current) setReviewOpen(false)
+				}}
 				fullWidth
 				maxWidth="sm"
 			>
@@ -529,13 +536,18 @@ export default function TravellingAdvanceForm() {
 				</DialogContent>
 
 				<DialogActions>
-					<Button onClick={() => setReviewOpen(false)}>Back to Edit</Button>
+					<Button
+						disabled={submitting}
+						onClick={() => setReviewOpen(false)}
+					>
+						Cancel
+					</Button>
 					<Button
 						variant="contained"
 						disabled={submitting}
 						onClick={() => void submitForm()}
 					>
-						{submitting ? 'Submitting...' : 'Submit'}
+						{submitting ? 'Submitting...' : 'OK'}
 					</Button>
 				</DialogActions>
 			</Dialog>

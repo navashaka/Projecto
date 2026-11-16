@@ -8,6 +8,7 @@ import { purchasePages } from '../../modules/purchase/pages'
 import { bankPages } from '../../modules/bank/pages'
 import { productionPages } from '../../modules/production'
 import ProductionPage from '../../modules/production/ProductionPages'
+import { GLAccountPage, TaxApplicabilityPage } from '../../modules/gl/pages/GLPages'
 import ProfilePage from '../../modules/profile/ProfilePages'
 import ModuleFormUploadPage from '../../modules/shared/ModuleFormUploadPage'
 
@@ -51,6 +52,10 @@ const MainContent = ({ selection, onSelectPage }: MainContentProps) => {
           />
         ) : productionForm ? (
           <ProductionPage activeForm={productionForm} />
+        ) : selection?.module === 'gl' && selection.page === 'gl-account' ? (
+          <GLAccountPage onSelectPage={onSelectPage} />
+        ) : selection?.module === 'gl' && selection.page === 'tax-applicability' ? (
+          <TaxApplicabilityPage onSelectPage={onSelectPage} />
         ) : SelectedPage ? <SelectedPage /> : (
           <div className="border border-dashed rounded bg-light d-flex align-items-center justify-content-center text-muted" style={{ minHeight: '38vh' }}>
             Select a submenu item to open its module page

@@ -1,4 +1,49 @@
 import ModuleDataPage from '../../shared/ModuleDataPage'
+import ModulePageFrame from '../../shared/ModulePageFrame'
+import type { ModulePageField, ModulePageSelection } from '../../types'
+
+const hsnFields: ModulePageField[] = [
+  { name: 'chapter', label: 'Chapter', required: true },
+  { name: 'heading', label: 'Heading', required: true },
+  { name: 'subHeading', label: 'Sub-Heading', required: true },
+  { name: 'hsnCode', label: 'HSN_CD / Tariff Item', required: true },
+  { name: 'hsnDescription', label: 'HSN Description', required: true },
+  { name: 'cgstRate', label: 'CGST Rate (%)', type: 'number', required: true },
+  { name: 'sgstRate', label: 'SGST / UTGST Rate (%)', type: 'number', required: true },
+  { name: 'igstRate', label: 'IGST Rate (%)', type: 'number', required: true },
+  { name: 'compensationCess', label: 'Compensation Cess', type: 'number' },
+  { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
+]
+
+const sacFields: ModulePageField[] = [
+  { name: 'chapter', label: 'Chapter', required: true },
+  { name: 'heading', label: 'Heading', required: true },
+  { name: 'sacCode', label: 'SAC_CD', required: true },
+  { name: 'sacDescription', label: 'SAC Description', required: true },
+  { name: 'cgstRate', label: 'CGST Rate (%)', type: 'number', required: true },
+  { name: 'sgstRate', label: 'SGST / UTGST Rate (%)', type: 'number', required: true },
+  { name: 'igstRate', label: 'IGST Rate (%)', type: 'number', required: true },
+  { name: 'compensationCess', label: 'Compensation Cess', type: 'number' },
+  { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
+]
+
+const taxableGroups = [
+  'Sales Accounts',
+  'Direct Incomes',
+  'Indirect Incomes',
+  'Purchase Accounts',
+  'Direct Expenses',
+  'Indirect Expenses',
+]
+const sundryGroups = ['Sundry Creditors', 'Sundry Debtors']
+const loanGroups = ['Secured Loans', 'Unsecured Loans']
+const groupVisibility = (values: string[]): NonNullable<ModulePageField['visibleWhen']> => [
+  { field: 'group', values, lookupLabel: true },
+]
+
+type GLPageNavigationProps = {
+  onSelectPage?: (selection: ModulePageSelection) => void
+}
 
 export const TaxTypePage = () => (
   <ModuleDataPage module="gl" title="Tax Type" fields={[
@@ -17,59 +62,135 @@ export const GroupPage = () => (
   ]} />
 )
 
-export const GLAccountPage = () => (
+export const GLAccountPage = ({ onSelectPage }: GLPageNavigationProps = {}) => (
   <ModuleDataPage module="gl" title="GL Account" fields={[
     { name: 'glAccountName', label: 'Name of GL Account', required: true },
+    { name: 'costApplicable', label:'Costing Applicable', type: 'select', options: ['Yes', 'No']},
     { name: 'group', label: 'Select Group', type: 'select', lookup: 'groups', required: true },
-    { name: 'glAccountCode', label: 'GL Account Code (Auto generated)' },
-    { name: 'taxApplicable', label: 'Tax applicable?', type: 'select', options: ['Yes', 'No'], required: true },
-    { name: 'taxType', label: 'Select Tax Type', type: 'select', lookup: 'tax-types' },
-    { name: 'costingApplicable', label: 'Costing applicable?', type: 'select', options: ['Yes', 'No'], required: true },
-  ]} />
+    {
+      name: 'taxApplicable',
+      label: 'Tax Applicable?',
+      type: 'select',
+      options: ['Yes', 'No'],
+      required: true,
+    },
+    {
+      name: 'taxType',
+      label: 'Select Tax Type',
+      type: 'select',
+      lookup: 'tax-types',
+      required: true,
+      visibleWhen: [
+        ...groupVisibility(taxableGroups),
+        { field: 'taxApplicable', values: ['Yes'] },
+      ],
+      actionOption: {
+        label: 'Open Tax Applicability',
+        onSelect: () => onSelectPage?.({ module: 'gl', page: 'tax-applicability' }),
+      },
+    },
+    {
+      name: 'costingApplicable',
+      label: 'Costing applicable?',
+      type: 'select',
+      options: ['Yes', 'No'],
+      required: true,
+      visibleWhen: groupVisibility(taxableGroups),
+    },
+    {
+      name: 'depreciationApplicable',
+      label: 'Depreciation applicable?',
+      type: 'select',
+      options: ['Yes', 'No'],
+      required: true,
+      visibleWhen: groupVisibility(['Fixed Assets']),
+    },
+    {
+      name: 'loanDate',
+      label: 'Date of Loan taken',
+      type: 'date',
+      required: true,
+      visibleWhen: groupVisibility(loanGroups),
+    },
+    {
+      name: 'rateOfInterest',
+      label: 'Rate of Interest',
+      type: 'number',
+      required: true,
+      visibleWhen: groupVisibility(loanGroups),
+    },
+    {
+      name: 'effectiveDate',
+      label: 'Effective Date for Interest',
+      type: 'date',
+      required: true,
+      visibleWhen: groupVisibility(loanGroups),
+    },
+    {
+      name: 'maintainBillWise',
+      label: 'Maintain Bill Wise',
+      type: 'select',
+      options: ['Yes', 'No'],
+      required: true,
+      visibleWhen: groupVisibility(sundryGroups),
+    },
+    {
+      name: 'defaultCreditDays',
+      label: 'Default Credit Days',
+      type: 'number',
+      required: true,
+      visibleWhen: [
+        ...groupVisibility(sundryGroups),
+        { field: 'maintainBillWise', values: ['Yes'] },
+      ],
+    },
+    {
+      name: 'checkCreditDays',
+      label: 'Check Credit Days',
+      type: 'select',
+      options: ['Yes', 'No'],
+      required: true,
+      visibleWhen: [
+        ...groupVisibility(sundryGroups),
+        { field: 'maintainBillWise', values: ['Yes'] },
+      ],
+    },
+  ]}
+    onFieldChange={(fieldName, value) => {
+      if (fieldName === 'taxApplicable' && value === 'Yes') {
+        onSelectPage?.({ module: 'gl', page: 'tax-applicability' })
+      }
+    }}
+  />
 )
 
 export const HSNPage = () => (
-  <ModuleDataPage module="gl" title="Create HSN" fields={[
-    { name: 'chapter', label: 'Chapter', required: true },
-    { name: 'heading', label: 'Heading', required: true },
-    { name: 'subHeading', label: 'Sub-Heading', required: true },
-    { name: 'hsnCode', label: 'HSN_CD / Tariff Item', required: true },
-    { name: 'hsnDescription', label: 'HSN_Description', required: true },
-    { name: 'cgstRate', label: 'CGST Rate (%)', type: 'number', required: true },
-    { name: 'sgstRate', label: 'SGST / UTGST Rate (%)', type: 'number', required: true },
-    { name: 'igstRate', label: 'IGST Rate (%)', type: 'number', required: true },
-    { name: 'compensationCess', label: 'Compensation Cess', type: 'number' },
-    { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
-  ]} />
+  <ModuleDataPage module="gl" title="Create HSN" fields={hsnFields} />
 )
 
 export const SACPage = () => (
-  <ModuleDataPage module="gl" title="Create SAC" fields={[
-    { name: 'chapter', label: 'Chapter', required: true },
-    { name: 'heading', label: 'Heading', required: true },
-    { name: 'sacCode', label: 'SAC_CD', required: true },
-    { name: 'sacDescription', label: 'SAC_Description', required: true },
-    { name: 'cgstRate', label: 'CGST Rate (%)', type: 'number', required: true },
-    { name: 'sgstRate', label: 'SGST / UTGST Rate (%)', type: 'number', required: true },
-    { name: 'igstRate', label: 'IGST Rate (%)', type: 'number', required: true },
-    { name: 'compensationCess', label: 'Compensation Cess', type: 'number' },
-    { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
-  ]} />
+  <ModuleDataPage module="gl" title="Create SAC" fields={sacFields} />
 )
 
-export const TaxApplicabilityPage = () => (
-  <ModuleDataPage module="gl" title="Tax Applicability" fields={[
-    { name: 'accountId', label: 'GL Account', type: 'select', lookup: 'accounts', required: true },
-    { name: 'taxType', label: 'Select Tax Type', type: 'select', lookup: 'tax-types', required: true },
-    { name: 'hsnSacApplicable', label: 'Select from HSN/SAC', type: 'select', options: ['Applicable', 'Not Applicable'], required: true },
-    { name: 'taxTypeSelection', label: 'Select from Tax Type', type: 'select', options: ['HSN', 'SAC'] },
-    { name: 'hsnSacType', label: 'HSN / SAC', type: 'select', options: ['Goods - HSN', 'Services - SAC', 'Not Applicable'] },
-    { name: 'hsnCode', label: 'HSN Code', type: 'select', lookup: 'hsn-masters' },
-    { name: 'sacCode', label: 'SAC Code', type: 'select', lookup: 'sac-masters' },
-    { name: 'igstRate', label: 'IGST', type: 'number' },
-    { name: 'cgstRate', label: 'CGST', type: 'number' },
-    { name: 'sgstRate', label: 'SGST', type: 'number' },
-  ]} />
+export const TaxApplicabilityPage = ({ onSelectPage }: GLPageNavigationProps = {}) => (
+  <ModulePageFrame module="gl" page="Tax Applicability">
+    <div className="d-flex gap-2">
+      <button
+        className="btn btn-outline-primary"
+        type="button"
+        onClick={() => onSelectPage?.({ module: 'gl', page: 'hsn' })}
+      >
+        Select HSN
+      </button>
+      <button
+        className="btn btn-outline-primary"
+        type="button"
+        onClick={() => onSelectPage?.({ module: 'gl', page: 'sac' })}
+      >
+        Select SAC
+      </button>
+    </div>
+  </ModulePageFrame>
 )
 
 export const BankAccountPage = () => (
@@ -148,8 +269,21 @@ export const SundryCreditorsPage = () => (
   <ModuleDataPage module="gl" title="Sundry Creditors" fields={[
     { name: 'accountId', label: 'GL Account', type: 'select', lookup: 'accounts', required: true },
     { name: 'maintainBillWise', label: 'Maintain Bill Wise', type: 'select', options: ['Yes', 'No'], required: true },
-    { name: 'defaultCreditDays', label: 'Default Credit Days', type: 'number', required: true },
-    { name: 'checkCreditDays', label: 'Check Credit Days', type: 'select', options: ['Yes', 'No'], required: true },
+    {
+      name: 'defaultCreditDays',
+      label: 'Default Credit Days',
+      type: 'number',
+      required: true,
+      visibleWhen: [{ field: 'maintainBillWise', values: ['Yes'] }],
+    },
+    {
+      name: 'checkCreditDays',
+      label: 'Check Credit Days',
+      type: 'select',
+      options: ['Yes', 'No'],
+      required: true,
+      visibleWhen: [{ field: 'maintainBillWise', values: ['Yes'] }],
+    },
   ]} />
 )
 
@@ -157,7 +291,20 @@ export const SundryDebtorsPage = () => (
   <ModuleDataPage module="gl" title="Sundry Debtors" fields={[
     { name: 'accountId', label: 'GL Account', type: 'select', lookup: 'accounts', required: true },
     { name: 'maintainBillWise', label: 'Maintain Bill Wise', type: 'select', options: ['Yes', 'No'], required: true },
-    { name: 'defaultCreditDays', label: 'Default Credit Days', type: 'number', required: true },
-    { name: 'checkCreditDays', label: 'Check Credit Days', type: 'select', options: ['Yes', 'No'], required: true },
+    {
+      name: 'defaultCreditDays',
+      label: 'Default Credit Days',
+      type: 'number',
+      required: true,
+      visibleWhen: [{ field: 'maintainBillWise', values: ['Yes'] }],
+    },
+    {
+      name: 'checkCreditDays',
+      label: 'Check Credit Days',
+      type: 'select',
+      options: ['Yes', 'No'],
+      required: true,
+      visibleWhen: [{ field: 'maintainBillWise', values: ['Yes'] }],
+    },
   ]} />
 )

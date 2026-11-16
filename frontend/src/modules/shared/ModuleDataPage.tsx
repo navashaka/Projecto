@@ -39,6 +39,7 @@ type ModuleDataPageProps = {
   fields: ModulePageField[]
   onSave?: (values: Record<string, string>) => Promise<unknown>
   embedded?: boolean
+  onFieldChange?: (fieldName: string, value: string) => void
 }
 
 type PageRecord = {
@@ -59,6 +60,37 @@ type DynamicRow = {
 type HealthInsuranceMember = {
   id: string
   documentName: string
+}
+
+const isFieldVisible = (
+  field: ModulePageField,
+  values: Record<string, string>,
+  fields: ModulePageField[],
+  lookupOptions: Record<string, ModuleFormLookup[]>
+) =>
+  !field.visibleWhen ||
+  field.visibleWhen.every((condition) => {
+    let value = values[condition.field] ?? ''
+    if (condition.lookupLabel) {
+      const lookup = fields.find((candidate) => candidate.name === condition.field)?.lookup
+      const option = lookup
+        ? lookupOptions[lookup]?.find((item) => String(item.id) === value)
+        : undefined
+      value = option?.label ?? value
+    }
+    return condition.values.includes(value)
+  })
+
+const normalizeConditionalValues = (
+  fields: ModulePageField[],
+  values: Record<string, string>,
+  lookupOptions: Record<string, ModuleFormLookup[]>
+) => {
+  const normalized = { ...values }
+  fields.forEach((field) => {
+    if (!isFieldVisible(field, normalized, fields, lookupOptions)) normalized[field.name] = ''
+  })
+  return normalized
 }
 
 const numberToWords = (value: number): string => {
@@ -140,6 +172,7 @@ const ModuleDataPage = ({
   fields,
   onSave,
   embedded = false,
+  onFieldChange,
 }: ModuleDataPageProps) => {
   const [records, setRecords] = useState<PageRecord[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -149,6 +182,7 @@ const ModuleDataPage = ({
   const [lookupOptions, setLookupOptions] = useState<Record<string, ModuleFormLookup[]>>({})
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
   const [pendingFormValues, setPendingFormValues] = useState<Record<string, string> | null>(null)
+  const [conditionalValues, setConditionalValues] = useState<Record<string, string>>({})
   const [employmentType, setEmploymentType] = useState('')
   const [healthInsuranceMembers, setHealthInsuranceMembers] = useState<HealthInsuranceMember[]>([
     { id: crypto.randomUUID(), documentName: '' }
@@ -434,7 +468,7 @@ const ModuleDataPage = ({
       }
     })
     setPendingFormValues(null)
-  }, [pendingFormValues, qualificationRows, previousEmploymentRows, healthInsuranceMembers])
+  }, [pendingFormValues, qualificationRows, previousEmploymentRows, healthInsuranceMembers, conditionalValues])
 
   const budgetTotal = budgets.reduce(
     (total, row) => total + (Number(row.amount) || 0),
@@ -679,6 +713,8 @@ const ModuleDataPage = ({
     } else {
       const form = formRef.current
       if (!form) return
+      setConditionalValues(normalizeConditionalValues(fields, record.values, lookupOptions))
+      setPendingFormValues(record.values)
       fields.forEach((field) => {
         const input = form.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
           `[name="${field.name}"]`
@@ -797,6 +833,7 @@ const ModuleDataPage = ({
 
   const cancelEdit = () => {
     setEditingRecordId(null)
+    setConditionalValues({})
     setShowReview(false)
     setError('')
     setSuccessMessage('')
@@ -1099,6 +1136,19 @@ const ModuleDataPage = ({
               return
             }
 
+            if (module === 'gl' && moduleFormResource === 'tax-applicability') {
+              if (values.hsnSacApplicable === 'Not Applicable') {
+                values.hsnSacType = 'Not Applicable'
+              } else if (values.hsnSacApplicable === 'Applicable') {
+                values.hsnSacType =
+                  values.taxTypeSelection === 'HSN'
+                    ? 'Goods - HSN'
+                    : values.taxTypeSelection === 'SAC'
+                      ? 'Services - SAC'
+                      : ''
+              }
+            }
+
             if (isOnEmployment) {
               const familyMembers = await Promise.all(
                 healthInsuranceMembers.map(async (member) => ({
@@ -1304,6 +1354,7 @@ const ModuleDataPage = ({
             }
             setEditingRecordId(null)
             form.reset()
+            setConditionalValues({})
 
             if (isCandidateEnquiry) {
               setQualificationRows([{ id: crypto.randomUUID() }])
@@ -1316,6 +1367,8 @@ const ModuleDataPage = ({
             }
           }}>
             {fields.map((field, index) => {
+              if (!isFieldVisible(field, conditionalValues, fields, lookupOptions)) return null
+
               if (isOnEmployment && field.name === 'healthInsurance') {
                 return (
                   <Fragment key="health-insurance-details">
@@ -1590,10 +1643,28 @@ const ModuleDataPage = ({
                         name={field.name}
                         required={field.required ?? !isCandidateEnquiry}
                         defaultValue=""
+                        onChange={(event) => {
+                          const value = event.currentTarget.value
+                          if (field.actionOption && value === '__action__') {
+                            event.currentTarget.value = ''
+                            field.actionOption.onSelect()
+                            return
+                          }
+                          setConditionalValues((current) =>
+                            normalizeConditionalValues(fields, {
+                              ...current,
+                              [field.name]: value
+                            }, lookupOptions)
+                          )
+                          onFieldChange?.(field.name, value)
+                        }}
                       >
                         <option value="" disabled>
                           Select {field.label.toLowerCase()}
                         </option>
+                        {field.actionOption && (
+                          <option value="__action__">{field.actionOption.label}</option>
+                        )}
                         {field.lookup
                           ? lookupOptions[field.lookup]?.map((option) => (
                               <option key={option.id} value={option.id}>
