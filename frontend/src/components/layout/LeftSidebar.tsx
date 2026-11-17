@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import type { ModuleId, ModulePageSelection } from '../../modules/types'
-import { moduleTemplateFiles } from '../../modules/moduleFormCatalog'
+import { getModuleFormTemplateFile } from '../../modules/moduleFormCatalog'
 
 const menuItems = [
   {
@@ -103,6 +103,12 @@ const menuItems = [
   id: 'bank',
   label: 'Bank',
   submenu: [
+    { id: 'bank-account', label: 'Bank Account' },
+    { id: 'bank-occ-account', label: 'Bank OCC Account' },
+    { id: 'od-account', label: 'OD Account' },
+    { id: 'cc-account', label: 'CC Account' },
+    { id: 'cheque-range', label: 'Cheque Range' },
+    { id: 'od-limit', label: 'OD Limit' },
     { id: 'bank-passbook', label: 'Bank Passbook' },
     { id: 'bank-receipt', label: 'Receipt' },
     { id: 'bank-payment', label: 'Payment' },
@@ -193,7 +199,7 @@ const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
                         <li>
                           <a
                             className="sidebar-form-action"
-                            href={moduleTemplateFiles[activeModule.id]}
+                            href={getModuleFormTemplateFile(activeModule.id, option.id)}
                             download
                           >
                             Template Download

@@ -25,7 +25,11 @@ import {
   createPurchaseRecord,
   type PurchaseFormType
 } from '../purchase/api'
-import { moduleFormTitles, moduleTemplateFiles } from '../moduleFormCatalog'
+import {
+  getModuleFormTemplateFile,
+  moduleFormTitles,
+  sharedBankFormPages
+} from '../moduleFormCatalog'
 import type { ModuleId, ModulePageSelection } from '../types'
 import ModulePageFrame from './ModulePageFrame'
 
@@ -73,11 +77,13 @@ const sheetNameFor = (title: string) =>
 
 const readTemplate = async (
   module: ModuleId,
+  page: string,
   title: string
 ): Promise<SheetTemplate> => {
-  const response = await fetch(moduleTemplateFiles[module])
+  const response = await fetch(getModuleFormTemplateFile(module, page))
   if (!response.ok) {
-    throw new Error(`Unable to load the ${module} template for validation.`)
+    const templateModule = module === 'bank' && sharedBankFormPages[page] ? 'GL' : module
+    throw new Error(`Unable to load the ${templateModule} template for validation.`)
   }
 
   const workbook = XLSX.read(await response.arrayBuffer(), { type: 'array' })
@@ -309,6 +315,14 @@ const createRow = async (
     return
   }
 
+  const sharedGLPage = module === 'bank' ? sharedBankFormPages[page] : undefined
+  if (sharedGLPage) {
+    const resourceName = getModuleFormResource('gl', moduleFormTitles.gl[sharedGLPage])
+    if (!resourceName) throw new Error(`Excel import is not configured for ${title}.`)
+    await createModuleFormRecord('gl', resourceName, payload)
+    return
+  }
+
   if (module === 'bank') {
     const resource = bankResources[page]
     if (!resource) throw new Error(`Excel import is not configured for ${title}.`)
@@ -480,7 +494,7 @@ const ModuleFormUploadPage = ({
       }
 
       const [template, workbook] = await Promise.all([
-        readTemplate(module, title),
+        readTemplate(module, page, title),
         file.arrayBuffer().then((buffer) =>
           XLSX.read(buffer, { type: 'array', cellDates: true })
         )
@@ -555,8 +569,8 @@ const ModuleFormUploadPage = ({
     <ModulePageFrame module={module} page={`${title ?? 'Form'} — Upload`}>
       <div className="mb-3 rounded border border-info-subtle bg-info-subtle p-3">
         Upload the completed <strong>{sheetNameFor(title ?? '')}</strong> worksheet
-        from the standardized {module} workbook. Records are submitted through the
-        selected form’s API.
+        from the standardized {sharedBankFormPages[page] ? 'GL' : module} workbook.
+        Records are submitted through the selected form’s API.
       </div>
       <p className="mb-3 text-muted">
         Selected file: <strong>{file?.name ?? 'No file selected'}</strong>

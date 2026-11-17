@@ -11,6 +11,18 @@ export const moduleTemplateFiles: Record<ModuleId, string> = {
   production: '/templates/production-module-template.xlsx'
 }
 
+export const sharedBankFormPages: Record<string, string> = {
+  'bank-account': 'bank-account',
+  'bank-occ-account': 'bank-occ-account',
+  'od-account': 'bank-occ-account',
+  'cc-account': 'bank-occ-account',
+  'cheque-range': 'cheque-range',
+  'od-limit': 'od-limit'
+}
+
+export const getModuleFormTemplateFile = (module: ModuleId, page: string) =>
+  moduleTemplateFiles[module === 'bank' && sharedBankFormPages[page] ? 'gl' : module]
+
 export const moduleFormTitles: Record<ModuleId, Record<string, string>> = {
   hr: {
     'candidate-enquiry': 'Candidate Enquiry',
@@ -72,6 +84,12 @@ export const moduleFormTitles: Record<ModuleId, Record<string, string>> = {
     'purchase-order': 'Purchase Order'
   },
   bank: {
+    'bank-account': 'Bank Accounts',
+    'bank-occ-account': 'Bank OCC Account / OD Account / CC Account',
+    'od-account': 'Bank OCC Account / OD Account / CC Account',
+    'cc-account': 'Bank OCC Account / OD Account / CC Account',
+    'cheque-range': 'Cheque Range',
+    'od-limit': 'OD Limit',
     'bank-passbook': 'Bank Passbook / Statement',
     'bank-receipt': 'Receipt',
     'bank-payment': 'Payment',
