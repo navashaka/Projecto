@@ -1,7 +1,12 @@
 import { useAppStore } from '../../store'
+import type { ModuleId } from '../../modules/types'
 import Navbar from './Navbar'
 
-const Header = () => {
+type HeaderProps = {
+  onSelectTemplateModule: (module: ModuleId) => void
+}
+
+const Header = ({ onSelectTemplateModule }: HeaderProps) => {
   const logout = useAppStore((state) => state.logout)
   const session = useAppStore((state) => state.session)
 
@@ -9,7 +14,7 @@ const Header = () => {
     <header className="navbar navbar-expand-lg bg-white border-bottom shadow-sm px-3 py-2">
       <div className="d-flex align-items-center justify-content-between w-100 gap-3">
         <div className="d-flex align-items-center flex-grow-1">
-          <Navbar />
+          <Navbar onSelectTemplateModule={onSelectTemplateModule} />
         </div>
 
         <div className="brand-block d-flex align-items-center ms-auto gap-3">

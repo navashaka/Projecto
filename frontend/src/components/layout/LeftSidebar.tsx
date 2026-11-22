@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import type { ModuleId, ModulePageSelection } from '../../modules/types'
-import { getModuleFormTemplateFile } from '../../modules/moduleFormCatalog'
 
 const menuItems = [
   {
@@ -126,7 +125,6 @@ type LeftSidebarProps = {
 const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [selectedModule, setSelectedModule] = useState<ModuleId | null>(null)
-  const [expandedForm, setExpandedForm] = useState<string | null>(null)
   const activeModule = menuItems.find(({ id }) => id === selectedModule)
 
   return (
@@ -160,7 +158,6 @@ const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
           onChange={(event) => {
             const moduleId = menuItems.find(({ id }) => id === event.currentTarget.value)?.id
             setSelectedModule(moduleId ?? null)
-            setExpandedForm(null)
             if (moduleId === 'bank') {
               onSelectPage({ module: 'bank', page: 'bank-passbook' })
             }
@@ -177,71 +174,24 @@ const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
             <h2 className="sidebar-forms-heading">Forms</h2>
             <ul className="sidebar-submenu" aria-label={`${activeModule.label} forms`}>
               {activeModule.submenu.map((option) => {
-                const formKey = `${activeModule.id}:${option.id}`
-                const isExpanded = expandedForm === formKey
-                const isSelected =
-                  selection?.module === activeModule.id &&
-                  selection.page === option.id &&
-                  !selection.uploadFile
+                const isSelected = selection?.module === activeModule.id && selection.page === option.id
 
                 return (
-                  <li className="sidebar-form-option" key={option.id}>
+                  <li key={option.id}>
                     <button
                       type="button"
-                      className={`sidebar-submenu-item${isSelected ? ' is-selected' : ''}`}
-                      aria-expanded={isExpanded}
-                      onClick={() => setExpandedForm(isExpanded ? null : formKey)}
+                      className="sidebar-submenu-item"
+                      aria-current={isSelected ? 'page' : undefined}
+                      onClick={() => {
+                        setSelectedModule(activeModule.id)
+                        onSelectPage({
+                          module: activeModule.id,
+                          page: option.id
+                        })
+                      }}
                     >
                       {option.label}
                     </button>
-                    {isExpanded && (
-                      <ul className="sidebar-form-actions" aria-label={`${option.label} actions`}>
-                        <li>
-                          <a
-                            className="sidebar-form-action"
-                            href={getModuleFormTemplateFile(activeModule.id, option.id)}
-                            download
-                          >
-                            Template Download
-                          </a>
-                        </li>
-                        <li>
-                          <label className="sidebar-form-action">
-                            Upload
-                            <input
-                              className="sidebar-upload-input"
-                              type="file"
-                              accept=".xlsx,.xlsm,.xls"
-                              aria-label={`Upload Excel data for ${option.label}`}
-                              onChange={(event) => {
-                                const file = event.currentTarget.files?.[0]
-                                if (file) {
-                                  onSelectPage({
-                                    module: activeModule.id,
-                                    page: option.id,
-                                    uploadFile: file
-                                  })
-                                }
-                                event.currentTarget.value = ''
-                              }}
-                            />
-                          </label>
-                        </li>
-                        <li>
-                          <button
-                            type="button"
-                            className="sidebar-form-action"
-                            aria-current={isSelected ? 'page' : undefined}
-                            onClick={() => {
-                              setSelectedModule(activeModule.id)
-                              onSelectPage({ module: activeModule.id, page: option.id })
-                            }}
-                          >
-                            Form Filling
-                          </button>
-                        </li>
-                      </ul>
-                    )}
                   </li>
                 )
               })}

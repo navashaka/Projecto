@@ -10,7 +10,7 @@ import { productionPages } from '../../modules/production'
 import ProductionPage from '../../modules/production/ProductionPages'
 import { GLAccountPage, TaxApplicabilityPage } from '../../modules/gl/pages/GLPages'
 import ProfilePage from '../../modules/profile/ProfilePages'
-import ModuleFormUploadPage from '../../modules/shared/ModuleFormUploadPage'
+import TempUploadDownload from '../../modules/shared/TempUploadDownload'
 
 type MainContentProps = {
   selection: ModulePageSelection | null
@@ -42,14 +42,8 @@ const MainContent = ({ selection, onSelectPage }: MainContentProps) => {
   return (
     <main className="card border-0 shadow-sm h-100">
       <div className="card-body p-3">
-        {selection?.uploadFile ? (
-          <ModuleFormUploadPage
-            selection={selection}
-            onCancel={() => onSelectPage({
-              module: selection.module,
-              page: selection.page
-            })}
-          />
+        {selection?.page === 'template-upload-download' ? (
+          <TempUploadDownload key={selection.module} module={selection.module} />
         ) : productionForm ? (
           <ProductionPage activeForm={productionForm} />
         ) : selection?.module === 'gl' && selection.page === 'gl-account' ? (

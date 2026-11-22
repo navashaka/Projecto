@@ -1717,45 +1717,45 @@ const ModuleDataPage = ({
           </form>
 
           <div className="table-responsive">
-            <table className="table table-striped align-middle">
-              <thead><tr>{fields.map((field, index) => <th key={`${field.name}-${index}`} scope="col">{field.label}</th>)}{canEditRecords && <th scope="col">Actions</th>}</tr></thead>
-              <tbody>
-                {records.length === 0 ? (
-                    <tr><td className="text-center text-muted py-4" colSpan={fields.length + (canEditRecords ? 1 : 0)}>{isLoadingRecords ? `Loading ${title.toLowerCase()} records…` : `No ${title.toLowerCase()} records have been added.`}</td></tr>
-                ) : records.map((record) => (
-                  <tr key={record.id}>
-                    {fields.map((field, index) => (
-                      <td key={`${field.name}-${index}`}>
-                        {field.lookup
-                          ? lookupOptions[field.lookup]?.find(
-                              (option) => String(option.id) === record.values[field.name]
-                            )?.label ?? record.values[field.name] ?? ''
-                          : record.values[field.name] ?? ''}
-                      </td>
-                    ))}
-                    {canEditRecords && (
-                      <td>
-                        <button className="btn btn-sm btn-outline-primary" type="button" onClick={() => editRecord(record)}>
-                          Edit
-                        </button>
-                        {(isPurchaseRecordForm || canDeleteModuleRecord) && (
-                          <button
-                            className="btn btn-sm btn-outline-danger ms-2"
-                            type="button"
-                            disabled={isSaving}
-                            onClick={() => void (isModuleRecordForm
-                              ? deleteModuleRecordFromList(record)
-                              : deletePurchaseRecordFromList(record))}
-                          >
-                            Delete
+              <table className="table table-striped align-middle">
+                <thead><tr>{fields.map((field, index) => <th key={`${field.name}-${index}`} scope="col">{field.label}</th>)}{canEditRecords && <th scope="col">Actions</th>}</tr></thead>
+                <tbody>
+                  {records.length === 0 ? (
+                      <tr><td className="text-center text-muted py-4" colSpan={fields.length + (canEditRecords ? 1 : 0)}>{isLoadingRecords ? `Loading ${title.toLowerCase()} records…` : `No ${title.toLowerCase()} records have been added.`}</td></tr>
+                  ) : records.map((record) => (
+                    <tr key={record.id}>
+                      {fields.map((field, index) => (
+                        <td key={`${field.name}-${index}`}>
+                          {field.lookup
+                            ? lookupOptions[field.lookup]?.find(
+                                (option) => String(option.id) === record.values[field.name]
+                              )?.label ?? record.values[field.name] ?? ''
+                            : record.values[field.name] ?? ''}
+                        </td>
+                      ))}
+                      {canEditRecords && (
+                        <td>
+                          <button className="btn btn-sm btn-outline-primary" type="button" onClick={() => editRecord(record)}>
+                            Edit
                           </button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          {(isPurchaseRecordForm || canDeleteModuleRecord) && (
+                            <button
+                              className="btn btn-sm btn-outline-danger ms-2"
+                              type="button"
+                              disabled={isSaving}
+                              onClick={() => void (isModuleRecordForm
+                                ? deleteModuleRecordFromList(record)
+                                : deletePurchaseRecordFromList(record))}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
           </div>
         </>
       )}

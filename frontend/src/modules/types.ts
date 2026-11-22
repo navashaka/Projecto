@@ -3,7 +3,6 @@ export type ModuleId = 'hr' | 'gl' | 'ar' | 'inventory' | 'purchase' | 'bank' | 
 export type ModulePageSelection = {
   module: ModuleId
   page: string
-  uploadFile?: File
 }
 
 export type ModulePageField = {

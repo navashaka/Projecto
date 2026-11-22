@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ModuleId } from '../../modules/types'
+import { templateModuleNames } from '../../modules/shared/templateFormCatalog'
 
-const Navbar = () => {
+type NavbarProps = {
+  onSelectTemplateModule: (module: ModuleId) => void
+}
+
+const Navbar = ({ onSelectTemplateModule }: NavbarProps) => {
   const navRef = useRef<HTMLElement>(null)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [openDownloadSubmenu, setOpenDownloadSubmenu] = useState<string | null>(null)
@@ -66,6 +72,37 @@ const Navbar = () => {
             Download
           </button>
           <ul id="nav-submenu-download" className="nav-submenu">
+            <li className={`main-nav-item has-submenu${openDownloadSubmenu === 'templates' ? ' is-open' : ''}`}>
+              <button
+                type="button"
+                className="submenu-trigger nested-submenu-trigger"
+                aria-haspopup="true"
+                aria-expanded={openDownloadSubmenu === 'templates'}
+                aria-controls="nav-submenu-templates"
+                onClick={() => setOpenDownloadSubmenu((current) =>
+                  current === 'templates' ? null : 'templates'
+                )}
+              >
+                Templates
+                <span aria-hidden="true">›</span>
+              </button>
+              <ul id="nav-submenu-templates" className="nav-submenu nav-submenu-nested">
+                {(Object.entries(templateModuleNames) as [ModuleId, string][]).map(([module, label]) => (
+                  <li key={module}>
+                    <button
+                      type="button"
+                      className="submenu-trigger"
+                      onClick={() => {
+                        onSelectTemplateModule(module)
+                        closeMenus()
+                      }}
+                    >
+                      {label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </li>
             <li className={`main-nav-item has-submenu${openDownloadSubmenu === 'pdf' ? ' is-open' : ''}`}>
               <button
                 type="button"
