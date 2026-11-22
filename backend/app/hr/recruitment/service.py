@@ -12,10 +12,17 @@ class UserEnquiryService:
         return UserEnquiryRepository.create(db, enquiry)
 
     @staticmethod
+    def update_enquiry(
+        db: Session,
+        enquiry_id: int,
+        payload: UserEnquiryCreate,
+    ) -> UserEnquiry | None:
+        return UserEnquiryRepository.update(db, enquiry_id, payload.model_dump())
+
+    @staticmethod
     def get_enquiries(db: Session):
         return UserEnquiryRepository.get_all(db)
 
     @staticmethod
     def get_enquiry(db: Session, enquiry_id: int):
         return UserEnquiryRepository.get_by_id(db, enquiry_id)
-

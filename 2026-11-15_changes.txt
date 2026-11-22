@@ -1,0 +1,28 @@
+Daily Work Report – Projecto
+
+Today, I worked on reviewing and defining the required enhancements in the HR module, focusing on the Candidate Enquiry Form and On Employment page.
+
+Candidate Enquiry Form
+
+- Reviewed the existing Employment Type field and its functionality.
+- Defined conditional visibility for employment details based on the selected Employment Type.
+- When Fresher is selected, both Current Employment Details and Previous Employment Details sections should remain hidden.
+- When Experienced is selected, both Current Employment Details and Previous Employment Details sections should be displayed.
+- Ensured that the proposed change does not affect existing fields, validations, API integrations, or other functionalities.
+
+On Employment – Health Insurance Details
+
+- Reviewed the existing Health Insurance Details section.
+- Planned an enhancement to support adding family member details under health insurance.
+- Defined the maximum limit of five family members.
+- Identified the required fields for each family member:
+  - Family Member Name
+  - Relation
+  - Aadhaar Document Upload
+- Planned Add Member and Remove Member options to manage family member entries.
+- Defined the requirement to disable or hide the Add Member option after reaching the five-member limit.
+- Ensured that the existing On Employment form functionality and other fields should remain unaffected.
+
+Overall
+
+Reviewed the HR form requirements and finalized the expected UI behavior and field-level changes while keeping existing application functionality intact.

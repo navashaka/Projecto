@@ -1,0 +1,15 @@
+ALTER TABLE hr_user_enquiries
+    ADD COLUMN IF NOT EXISTS street_number VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS street_name VARCHAR(200),
+    ADD COLUMN IF NOT EXISTS city VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS country VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS qualification_details JSON,
+    ADD COLUMN IF NOT EXISTS employment_type VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS current_working_from DATE,
+    ADD COLUMN IF NOT EXISTS current_take_home VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS previous_working_from DATE,
+    ADD COLUMN IF NOT EXISTS previous_working_to DATE,
+    ADD COLUMN IF NOT EXISTS previous_take_home VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS previous_employment_details JSON;

@@ -1,0 +1,206 @@
+import { useState } from 'react'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import type { ModuleId, ModulePageSelection } from '../../modules/types'
+
+const menuItems = [
+  {
+    id: 'hr',
+    label: 'HR',
+    submenu: [
+      { id: 'candidate-enquiry', label: 'Candidate Enquiry' },
+      { id: 'bank-enquiry', label: 'Bank Enquiry' },
+      { id: 'attendance', label: 'Attendance' },
+      { id: 'employees', label: 'Employees' },
+      { id: 'company-holidays', label: 'Company Holidays' },
+      { id: 'salary', label: 'Salary' },
+      { id: 'designations', label: 'Designations' },
+      { id: 'payroll', label: 'Payroll' },
+      { id: 'leave', label: 'Leave' },
+      { id: 'on-employment', label: 'On Employment' },
+      { id: 'travelling-advance', label: 'Travelling Advance' }
+    ] as const
+  },
+  {
+
+    id: 'gl',
+    label: 'GL',
+    submenu: [
+      { id: 'tax-type', label: 'Tax Type' },
+      { id: 'group', label: 'Group' },
+      { id: 'gl-account', label: 'GL Account' },
+      { id: 'tax-applicability', label: 'Tax Applicability' },
+      { id: 'hsn', label: 'HSN' },
+      { id: 'sac', label: 'SAC' },
+      { id: 'bank-account', label: 'Bank Account' },
+      { id: 'bank-occ-account', label: 'Bank OCC Account / OD Account / CC Account' },
+      { id: 'cheque-range', label: 'Cheque Range' },
+      { id: 'od-limit', label: 'OD Limit' },
+      { id: 'fixed-assets', label: 'Fixed Assets' },
+      { id: 'secured-loans', label: 'Secured Loans' },
+      { id: 'unsecured-loans', label: 'Unsecured Loans' },
+      { id: 'sundry-creditors', label: 'Sundry Creditors' },
+      { id: 'sundry-debtors', label: 'Sundry Debtors' },
+      { id: 'contra-entry', label: 'Contra Entry' },
+      { id: 'journal', label: 'Journal' },
+      { id: 'credit-note', label: 'Credit Note' },
+      { id: 'debit-note', label: 'Debit Note' },
+    ]
+  },
+  {
+    id: 'ar',
+    label: 'AR',
+    submenu: [
+      { id: 'customer', label: 'Customer' },
+      { id: 'invoice', label: 'Invoice' },
+      { id: 'proforma-invoice', label: 'Proforma Invoice' },
+      { id: 'quotation', label: 'Quotation' },
+      { id: 'tax-invoice', label: 'Tax Invoice' }
+    ]
+  },
+  {
+    id: 'inventory',
+    label: 'Inventory',
+    submenu: [
+      { id: 'unit-of-measurement', label: 'Unit of Measurement' },
+      { id: 'gate-entry', label: 'Gate Entry' },
+      { id: 'stock-group', label: 'Stock Group' },
+      { id: 'stock-item', label: 'Stock Item' },
+      { id: 'indent', label: 'Indent' },
+      { id: 'material-receipt-note', label: 'Material Receipt Note' },
+      { id: 'delivery-challan-inward', label: 'Delivery Challan (Inward)' },
+      { id: 'delivery-challan-outward', label: 'Delivery Challan (Outward)' },
+      { id: 'goods-issue-for-consumption', label: 'Goods Issue (For Consumption)' },
+      { id: 'goods-issue-for-sale', label: 'Goods Issue (For Sale)' },
+    ]
+  },
+  {
+    id: 'purchase',
+    label: 'Purchase',
+    submenu: [
+      { id: 'vendor', label: 'Vendor' },
+      { id: 'advance-requisition', label: 'Advance Requisition' },
+      { id: 'quotation-comparison', label: 'Quotation Comparison' },
+      { id: 'purchase-order', label: 'Purchase Order' },
+    ]
+  },
+  {
+    id: 'production',
+    label: 'Production',
+    submenu: [
+      { id: 'production-output-product', label: 'Output Product' },
+      { id: 'production-entry', label: 'Production Entry' }
+    ]
+  },
+  {
+    id: 'profile',
+    label: 'Profile',
+    submenu: [
+      { id: 'profile', label: 'Profile'}
+    ]
+  },
+  {
+  id: 'bank',
+  label: 'Bank',
+  submenu: [
+    { id: 'bank-account', label: 'Bank Account' },
+    { id: 'bank-occ-account', label: 'Bank OCC Account' },
+    { id: 'od-account', label: 'OD Account' },
+    { id: 'cc-account', label: 'CC Account' },
+    { id: 'cheque-range', label: 'Cheque Range' },
+    { id: 'od-limit', label: 'OD Limit' },
+    { id: 'bank-passbook', label: 'Bank Passbook' },
+    { id: 'bank-receipt', label: 'Receipt' },
+    { id: 'bank-payment', label: 'Payment' },
+    { id: 'bank-book', label: 'Bank Book' },
+    { id: 'bank-reconciliation', label: 'Bank Reconciliation' },
+  ],
+},
+] as const
+
+type LeftSidebarProps = {
+  selection: ModulePageSelection | null
+  onSelectPage: (selection: ModulePageSelection) => void
+}
+
+const LeftSidebar = ({ selection, onSelectPage }: LeftSidebarProps) => {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [selectedModule, setSelectedModule] = useState<ModuleId | null>(null)
+  const activeModule = menuItems.find(({ id }) => id === selectedModule)
+
+  return (
+    <aside
+      className={`left-sidebar card border-0 shadow-sm h-100${isCollapsed ? ' is-collapsed' : ''}`}
+      aria-label="Module navigation"
+    >
+      <div className="sidebar-toggle-row">
+        {!isCollapsed && <h2 className="sidebar-title sidebar-title-modules">Modules</h2>}
+        <button
+          type="button"
+          className="sidebar-toggle"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!isCollapsed}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          {isCollapsed
+            ? <PanelLeftOpen size={20} aria-hidden="true" />
+            : <PanelLeftClose size={20} aria-hidden="true" />}
+        </button>
+      </div>
+      <nav className="left-sidebar-nav" hidden={isCollapsed}>
+        <label className="form-label small fw-semibold mb-1" htmlFor="module-select">
+          Module
+        </label>
+        <select
+          id="module-select"
+          className="form-select form-select-sm"
+          value={selectedModule ?? ''}
+          onChange={(event) => {
+            const moduleId = menuItems.find(({ id }) => id === event.currentTarget.value)?.id
+            setSelectedModule(moduleId ?? null)
+            if (moduleId === 'bank') {
+              onSelectPage({ module: 'bank', page: 'bank-passbook' })
+            }
+          }}
+        >
+          <option value="" disabled>Select a module</option>
+          {menuItems.map(({ id, label }) => (
+            <option key={id} value={id}>{label}</option>
+          ))}
+        </select>
+
+        {activeModule && (
+          <div className="sidebar-forms">
+            <h2 className="sidebar-forms-heading">Forms</h2>
+            <ul className="sidebar-submenu" aria-label={`${activeModule.label} forms`}>
+              {activeModule.submenu.map((option) => {
+                const isSelected = selection?.module === activeModule.id && selection.page === option.id
+
+                return (
+                  <li key={option.id}>
+                    <button
+                      type="button"
+                      className="sidebar-submenu-item"
+                      aria-current={isSelected ? 'page' : undefined}
+                      onClick={() => {
+                        setSelectedModule(activeModule.id)
+                        onSelectPage({
+                          module: activeModule.id,
+                          page: option.id
+                        })
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+      </nav>
+    </aside>
+  )
+}
+
+export default LeftSidebar

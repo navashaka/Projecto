@@ -1,0 +1,46 @@
+import type { ComponentType } from 'react'
+import {
+  TaxTypePage,
+  GroupPage,
+  GLAccountPage,
+  TaxApplicabilityPage,
+  HSNPage,
+  SACPage,
+  BankAccountPage,
+  BankODCCAccountPage,
+  ChequeRangePage,
+  ODLimitPage,
+  FixedAssetsPage,
+  SecuredLoansPage,
+  UnsecuredLoansPage,
+  SundryCreditorsPage,
+  SundryDebtorsPage,
+} from './GLPages'
+import {
+  ContraEntryPage,
+  CreditNotePage,
+  DebitNotePage,
+  JournalEntryPage,
+} from './TransactionPages'
+
+export const glPages: Record<string, ComponentType> = {
+  'tax-type': TaxTypePage,
+  group: GroupPage,
+  'gl-account': GLAccountPage,
+  'tax-applicability': TaxApplicabilityPage,
+  'hsn': HSNPage,
+  'sac': SACPage,
+  'bank-account': BankAccountPage,
+  'bank-occ-account': BankODCCAccountPage,
+  'cheque-range': ChequeRangePage,
+  'od-limit': ODLimitPage,
+  'fixed-assets': FixedAssetsPage,
+  'secured-loans': SecuredLoansPage,
+  'unsecured-loans': UnsecuredLoansPage,
+  'sundry-creditors': SundryCreditorsPage,
+  'sundry-debtors': SundryDebtorsPage,
+  'contra-entry': ContraEntryPage,
+  journal: JournalEntryPage,
+  'credit-note': CreditNotePage,
+  'debit-note': DebitNotePage,
+}

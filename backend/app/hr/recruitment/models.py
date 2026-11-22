@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, JSON, String, Text
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -25,27 +25,41 @@ class UserEnquiry(Base):
     other_languages_known = Column(String(200), nullable=True)
     religion = Column(String(80), nullable=True)
     nationality = Column(String(80), nullable=True)
+    street_number = Column(String(50), nullable=True)
+    street_name = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
+    zip_code = Column(String(20), nullable=True)
 
     highest_qualification = Column(String(200), nullable=True)
     year_of_pass = Column(String(20), nullable=True)
     highest_qualification_document = Column(String(255), nullable=True)
     year_of_pass_document = Column(String(255), nullable=True)
+    qualification_details = Column(JSON, nullable=True)
 
+    employment_type = Column(String(50), nullable=True)
     current_employer = Column(String(200), nullable=True)
     current_position = Column(String(200), nullable=True)
     department = Column(String(200), nullable=True)
+    current_working_from = Column(Date, nullable=True)
     working_period = Column(String(150), nullable=True)
     role_responsibilities = Column(Text, nullable=True)
     current_ctc = Column(String(50), nullable=True)
+    current_take_home = Column(String(50), nullable=True)
     employer_documents = Column(String(255), nullable=True)
 
     previous_employer_name = Column(String(200), nullable=True)
     previous_employer_position = Column(String(200), nullable=True)
     previous_employer_department = Column(String(200), nullable=True)
+    previous_working_from = Column(Date, nullable=True)
+    previous_working_to = Column(Date, nullable=True)
     previous_employer_working_period = Column(String(150), nullable=True)
     previous_employer_role = Column(Text, nullable=True)
     previous_employer_ctc = Column(String(50), nullable=True)
+    previous_take_home = Column(String(50), nullable=True)
     previous_employer_documents = Column(String(255), nullable=True)
+    previous_employment_details = Column(JSON, nullable=True)
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -55,4 +69,3 @@ class UserEnquiry(Base):
         onupdate=func.now(),
         nullable=False,
     )
-
