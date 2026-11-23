@@ -47,6 +47,7 @@ type Props = {
 }
 
 type ImportRow = Record<string, string>
+type ViewRecord = Record<string, unknown>
 
 const hrFormTypes: Record<string, string> = {
   'bank-enquiry': 'bank-enquiry',
@@ -82,8 +83,6 @@ const glTransactionResources: Record<string, GLTransactionResource> = {
   'credit-note': 'credit-notes',
   'debit-note': 'debit-notes'
 }
-
-type ViewRecord = Record<string, unknown>
 
 const viewRecords = async (
   module: ModuleId,
@@ -244,6 +243,185 @@ const rupeesInWords = (value: number) => {
   return `${parts.join(' ')} Rupees${paise ? ` and ${belowThousand(paise)} Paise` : ''} Only`
 }
 
+/**
+ * Pre-validates the validations already present in the Excel import
+ * handlers before any row is submitted.
+ */
+const validateImportRow = async (
+  module: ModuleId,
+  form: TemplateForm,
+  row: ImportRow
+) => {
+  if (module === 'gl' && form.id === 'cheque-range') {
+    throw new Error(
+      'Cheque images cannot be imported from an Excel cell. Create this record from the form and upload its image there.'
+    )
+  }
+
+  if (module === 'hr') {
+    if (form.id === 'candidate-enquiry') {
+      if (row.attachDocuments || row.employerDocuments || row.previousEmployerDocuments) {
+        throw new Error(
+          'Candidate document attachments cannot be embedded in Excel. Import the row without document values, then add files from the Candidate Enquiry form.'
+        )
+      }
+      return
+    }
+
+    const formType = hrFormTypes[form.id]
+    if (!formType) throw new Error(`Import is not configured for ${form.title}.`)
+
+    if (form.id === 'travelling-advance') {
+      jsonObjectArray(row, 'budget_items')
+      numberFrom(row, 'other_expense_amount')
+    }
+    return
+  }
+
+  if (module === 'purchase') {
+    if (!purchaseFormTypes[form.id]) {
+      throw new Error(`Import is not configured for ${form.title}.`)
+    }
+    return
+  }
+
+  if (module === 'bank') {
+    if (form.targetResource && form.targetModule) return
+
+    const resource = bankResources[form.id]
+    if (!resource) throw new Error(`Import is not configured for ${form.title}.`)
+
+    const isTransaction = resource === 'receipts' || resource === 'payments'
+
+    if (isTransaction) {
+      const bankReference = row.bankPassbook ?? row.bankPassbookId ?? ''
+      if (!bankReference) throw new Error('Bank passbook is required.')
+
+      const passbooks = await getBankRecords('passbooks')
+      const passbook = passbooks.find(
+        (record) =>
+          String(record.id) === bankReference ||
+          String(record.bank_name ?? '') === bankReference
+      )
+
+      if (!passbook) {
+        throw new Error(`Bank passbook "${bankReference}" was not found.`)
+      }
+
+      if (resource === 'receipts') {
+        requiredNumber(row, 'creditAmount')
+      } else {
+        requiredNumber(row, 'debitAmount')
+      }
+    }
+
+    for (const [key, value] of Object.entries(row)) {
+      if (value && /amount|balance/i.test(key)) {
+        numberFrom(row, key)
+      }
+    }
+    return
+  }
+
+  if (module === 'production' && form.id === 'production-entry') {
+    const products = await getProductions()
+    const product = products.find(
+      (record) => record.output_product_name === row.productionProduct
+    )
+
+    if (!product) {
+      throw new Error(`Output product "${row.productionProduct}" was not found.`)
+    }
+
+    requiredNumber(row, 'shiftA')
+    requiredNumber(row, 'shiftB')
+    requiredNumber(row, 'shiftC')
+
+    const consumed = numberFrom(row, 'inputItemQtyConsumed')
+    if (consumed > 0 && !product.input_items[0]?.input_item_name) {
+      throw new Error('The selected output product has no input item to consume.')
+    }
+    return
+  }
+
+  if (module === 'production' && form.id === 'production-output-product') {
+    if (!row.outputProductName?.trim()) {
+      throw new Error('outputProductName is required.')
+    }
+    return
+  }
+
+  if (module === 'profile') return
+
+  if (module === 'gl' && glTransactionResources[form.id]) {
+    if (form.id === 'contra-entry') {
+      const debit = requiredNumber(row, 'debitAmount')
+      const credit = requiredNumber(row, 'creditAmount')
+
+      if (
+        !row.bankCashAccount1 ||
+        !row.bankCashAccount2 ||
+        row.bankCashAccount1 === row.bankCashAccount2 ||
+        debit !== credit
+      ) {
+        throw new Error('Select different accounts and equal debit/credit amounts.')
+      }
+      return
+    }
+
+    if (form.id === 'journal') {
+      const items = jsonObjectArray(row, 'items').map((item) => ({
+        gl_account: String(item.gl_account ?? ''),
+        debit_amount: Number(item.debit_amount ?? 0),
+        credit_amount: Number(item.credit_amount ?? 0)
+      }))
+
+      const debit = items.reduce((sum, item) => sum + item.debit_amount, 0)
+      const credit = items.reduce((sum, item) => sum + item.credit_amount, 0)
+
+      if (
+        items.length < 2 ||
+        items.some(
+          (item) =>
+            !Number.isFinite(item.debit_amount) ||
+            !Number.isFinite(item.credit_amount) ||
+            item.debit_amount < 0 ||
+            item.credit_amount < 0
+        ) ||
+        debit <= 0 ||
+        debit !== credit
+      ) {
+        throw new Error('Journal lines need a positive, balanced debit and credit total.')
+      }
+      return
+    }
+
+    if (form.id === 'credit-note' || form.id === 'debit-note') {
+      const inventoryRelated = ['true', 'yes', '1'].includes(
+        (row.inventoryRelated ?? '').toLowerCase()
+      )
+      const items = inventoryRelated ? jsonObjectArray(row, 'items') : []
+      const accounts = inventoryRelated ? [] : jsonObjectArray(row, 'accounts')
+      const total = [...items, ...accounts].reduce(
+        (sum, item) =>
+          sum + Number(
+            item.total_amount ?? (Number(item.amount ?? 0) + Number(item.gst ?? 0))
+          ),
+        0
+      )
+
+      if (!Number.isFinite(total) || total <= 0) {
+        throw new Error('The note needs detail lines with a total greater than zero.')
+      }
+      return
+    }
+  }
+
+  const targetModule = form.targetModule ?? module
+  const resource = form.targetResource ?? getModuleFormResource(targetModule, form.title)
+  if (!resource) throw new Error(`Import is not configured for ${form.title}.`)
+}
+
 const createBankRow = async (form: TemplateForm, row: ImportRow) => {
   if (form.targetResource && form.targetModule) {
     await createModuleFormRecord(form.targetModule, form.targetResource, row)
@@ -357,11 +535,7 @@ const createRow = async (module: ModuleId, form: TemplateForm, row: ImportRow) =
 
   if (module === 'hr') {
     if (form.id === 'candidate-enquiry') {
-      if (
-        row.attachDocuments ||
-        row.employerDocuments ||
-        row.previousEmployerDocuments
-      ) {
+      if (row.attachDocuments || row.employerDocuments || row.previousEmployerDocuments) {
         throw new Error(
           'Candidate document attachments cannot be embedded in Excel. Import the row without document values, then add files from the Candidate Enquiry form.'
         )
@@ -472,7 +646,7 @@ const createRow = async (module: ModuleId, form: TemplateForm, row: ImportRow) =
     }
 
     const creditNote = form.id === 'credit-note'
-    const inventoryRelated = ['true', 'yes', '1'].includes(row.inventoryRelated.toLowerCase())
+    const inventoryRelated = ['true', 'yes', '1'].includes((row.inventoryRelated ?? '').toLowerCase())
     const items = inventoryRelated ? jsonObjectArray(row, 'items') : []
     const accounts = inventoryRelated ? [] : jsonObjectArray(row, 'accounts')
     const total = [...items, ...accounts].reduce(
@@ -582,6 +756,7 @@ const TempUploadDownload = ({ module }: Props) => {
         dateNF: 'yyyy-mm-dd'
       })
       const headers = parsedRows[0]?.map(cellToString)
+
       if (
         !headers ||
         headers.length !== selectedForm.headers.length ||
@@ -595,28 +770,58 @@ const TempUploadDownload = ({ module }: Props) => {
           selectedForm.headers.map((header, index) => [header, cellToString(cells[index])])
         ))
         .filter((row) => Object.values(row).some((value) => value !== ''))
+
       if (!dataRows.length) throw new Error('The worksheet contains no data rows.')
       if (dataRows.length > 500) throw new Error('Upload up to 500 records at a time.')
 
-      let imported = 0
+      // STEP 1: Validate every row before saving any record.
       const failures: string[] = []
+
+      for (let index = 0; index < dataRows.length; index += 1) {
+        setProgress(`Validating row ${index + 1} of ${dataRows.length}…`)
+
+        try {
+          await validateImportRow(module, selectedForm, dataRows[index])
+        } catch (rowError) {
+          failures.push(
+            `Row ${index + 2}: ${
+              rowError instanceof Error ? rowError.message : 'Validation failed.'
+            }`
+          )
+        }
+      }
+
+      // If any row is invalid, stop the import. Nothing is saved.
+      if (failures.length > 0) {
+        setProgress('')
+        setError(
+          `Excel validation failed. No records were saved.\n${failures.join('\n')}`
+        )
+        return
+      }
+
+      // STEP 2: Save only when all rows pass validation.
+      let imported = 0
+
       for (let index = 0; index < dataRows.length; index += 1) {
         setProgress(`Importing row ${index + 1} of ${dataRows.length}…`)
+
         try {
           await createRow(module, selectedForm, dataRows[index])
           imported += 1
         } catch (rowError) {
-          failures.push(
-            `Row ${index + 2}: ${rowError instanceof Error ? rowError.message : 'Import failed.'}`
+          setProgress('')
+          setError(
+            `Saving failed at row ${index + 2}. ${imported} rows were saved before this error. ${
+              rowError instanceof Error ? rowError.message : 'Import failed.'
+            }`
           )
+          return
         }
       }
+
       setProgress('')
-      setResult(
-        failures.length
-          ? `Imported ${imported} of ${dataRows.length} rows. ${failures.join(' | ')}`
-          : `Successfully imported ${imported} rows.`
-      )
+      setResult(`Successfully imported ${imported} rows.`)
     } catch (importError) {
       setError(
         importError instanceof Error
@@ -777,7 +982,15 @@ const TempUploadDownload = ({ module }: Props) => {
         <p className="text-muted">No form templates are configured for this module yet.</p>
       )}
 
-      {error && <div className="alert alert-danger mt-3" role="alert">{error}</div>}
+      {error && (
+        <div
+          className="alert alert-danger mt-3"
+          role="alert"
+          style={{ whiteSpace: 'pre-line' }}
+        >
+          {error}
+        </div>
+      )}
       {result && <div className="alert alert-info mt-3" role="status">{result}</div>}
       {progress && <p className="mt-3" role="status">{progress}</p>}
     </ModulePageFrame>
